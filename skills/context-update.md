@@ -1,0 +1,73 @@
+# context-update
+
+## Purpose
+
+Keep workspace CONTEXT.md files accurate and current after work sessions. A stale CONTEXT.md is a liability — it primes the agent with false state and wastes tokens correcting for it. This skill makes updating a consistent, low-friction habit.
+
+## When to Use
+
+At the end of any session where substantive work was done in a workspace. "Substantive" means: a file was created or modified, a decision was made, a task was completed, or a blocker was discovered.
+
+If you only read files without producing output, a CONTEXT.md update is optional.
+
+---
+
+## Process
+
+### 1. Check In Progress
+
+Look at the "In Progress" list. For each item, ask: is this still in progress, or was it completed this session?
+
+- If completed: move it to Done. Add today's date if useful.
+- If still in progress: leave it. Update the description if the nature of the work changed.
+- If abandoned or deprioritized: move it to Queued or remove it entirely.
+
+### 2. Update Done
+
+Move any completed items from In Progress to Done. Keep Done concise — it's a record, not a trophy case. When the Done list gets long (more than 10 items), prune the oldest entries. Completed work is preserved in the actual files; the Done list is for recent context only.
+
+### 3. Update Queued
+
+Add any new tasks that came up this session and haven't been started. Remove tasks that are no longer relevant. Reorder if priority shifted.
+
+### 4. Update Blocked
+
+Add any items that were discovered to be blocked. Note specifically what the block is — "blocked by [dependency / person / decision]" — so the next session doesn't have to rediscover it.
+
+Remove items from Blocked if the block was resolved.
+
+### 5. Update Standards and Conventions (if needed)
+
+If this session established a new pattern, format decision, or working convention for this workspace, add it here. Only add standards when they're actually new — don't re-document things already listed.
+
+### 6. Update Key References (if needed)
+
+If new files were created that will be needed in future sessions, add them to Key References. If referenced files were renamed or moved, correct the links.
+
+---
+
+## Standards
+
+**Always reflect reality.** The CONTEXT.md is not a plan — it's current state. If something isn't done, it doesn't go in Done. If something isn't blocked, it doesn't go in Blocked.
+
+**Be specific in state descriptions.** "In Progress: estimate module" is weaker than "In Progress: estimate module — scoring logic complete, SMS alert not yet wired." The more specific, the faster the next session orients.
+
+**Date completions when order matters.** If the sequence of completions matters for understanding the project's state, add a date to Done entries: `[2026-04-10] Built scoring logic`.
+
+**Prune aggressively.** A CONTEXT.md that hasn't been pruned in a month is probably longer than it should be. Old Done items, obsolete references, and no-longer-relevant queued items should be removed. The goal is fast orientation, not comprehensive history.
+
+**One CONTEXT.md per workspace.** Never consolidate multiple workspaces into one CONTEXT.md. Each workspace owns its own context.
+
+---
+
+## Quick Checklist
+
+Before closing a session:
+
+- [ ] In Progress is accurate — nothing that's done is still listed here
+- [ ] Done reflects what was actually completed this session
+- [ ] Queued includes any new tasks that came up
+- [ ] Blocked is current — resolved blocks removed, new blocks added with specifics
+- [ ] Any new conventions from this session are captured in Standards
+- [ ] Any new key files are listed in References
+- [ ] Nothing in the file describes a state that no longer exists
