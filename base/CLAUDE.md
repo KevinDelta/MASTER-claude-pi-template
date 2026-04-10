@@ -34,13 +34,20 @@
      the agent has no map and will guess.
 
      Always read at minimum: one context/ file + the workspace's CONTEXT.md
-     Only list a skill if that task genuinely needs it. -->
+     Only list a skill if that task genuinely needs it.
+
+     If your project uses the memory layer (memory/ folder exists):
+     - Add the session-start row at the top of your table
+     - Add memory/index.md to the Read column for tasks where prior decisions/patterns are relevant -->
 
 | Task Type | Workspace | Read | Load Skills |
 |-----------|-----------|------|-------------|
+| Session start — if memory/ exists | — | memory/index.md | memory-query.md |
 | [task description] | /workspaces/[workspace-a] | context/project.md + [workspace-a]/CONTEXT.md | [skill.md or —] |
 | [task description] | /workspaces/[workspace-b] | context/client.md + [workspace-b]/CONTEXT.md | [skill.md or —] |
 | [task description] | /workspaces/[workspace-c] | context/project.md + [workspace-c]/CONTEXT.md | [skill.md or —] |
+
+<!-- Remove the memory row if the project does not use the memory layer. -->
 
 ---
 
@@ -61,7 +68,10 @@
 
 <!-- What goes here: Standing instructions that apply across all work in this project.
      Rules the agent must always follow regardless of the task.
-     Keep these short and specific. Generic rules ("be helpful") are noise. -->
+     Keep these short and specific. Generic rules ("be helpful") are noise.
+
+     The memory rules at the bottom apply only if the project uses the memory layer.
+     Remove them if memory/ does not exist in this project. -->
 
 - Always read this file before beginning any task
 - Load the relevant workspace CONTEXT.md before producing any output
@@ -69,6 +79,8 @@
 - Ask before overwriting any file marked [FINAL]
 - [Project-specific rule]
 - [Project-specific rule]
+- If memory/ exists: read memory/index.md before beginning any session
+- If memory/ exists: run memory-write skill before closing any session where work was done
 
 ---
 

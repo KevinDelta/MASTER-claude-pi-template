@@ -87,6 +87,27 @@ Copy the ones you need into your project's `skills/` folder.
 
 ---
 
+## Memory Layer (Optional)
+
+The base template is stateless. For short, bounded projects that's a feature. For longer-running projects, add the optional `memory/` folder.
+
+**Add memory when any of these apply:**
+- Project will run longer than 3 months
+- Agent needs to recall decisions or patterns from past sessions without reading all history
+- Accumulated knowledge of the project is itself a deliverable
+- Workspace CONTEXT.md files are growing unwieldy
+
+**How it works:** Three files — `index.md` (navigation catalog, read first every session), `log.md` (append-only, grep-navigable record), and topic pages (consolidated knowledge on specific subjects). No database. No external tooling. Obsidian-compatible as a bonus.
+
+**To activate:** Copy `base/memory/` into your project, add memory rows to your routing table, add the session-end guardrail to PI.md, and copy `skills/memory-write.md` and `skills/memory-query.md` into your project's skills folder.
+
+The routing table entry that makes it embedded (not bolted-on):
+```
+| Session start (if memory/ exists) | — | memory/index.md | memory-query.md |
+```
+
+---
+
 ## What's in This Repo
 
 ```
@@ -98,12 +119,18 @@ base/                       ← annotated template, copy to start a project
 │   ├── client.md
 │   ├── stack.md
 │   └── decisions.md
-└── workspaces/
-    └── example-workspace/
-        └── CONTEXT.md
+├── workspaces/
+│   └── example-workspace/
+│       └── CONTEXT.md
+└── memory/                 ← optional, copy when project scale warrants it
+    ├── index.md
+    ├── log.md
+    └── example-topic.md
 
 skills/                     ← universal skills with real content
 ├── stop-slop.md
 ├── doc-authoring.md
-└── context-update.md
+├── context-update.md
+├── memory-write.md         ← pair with memory layer
+└── memory-query.md         ← pair with memory layer
 ```

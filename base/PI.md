@@ -46,13 +46,17 @@ It does not access files outside this directory without explicit instruction.
 <!-- What goes here: Every skill file in this project's skills/ folder,
      and the condition under which the routing table loads it.
      This is a declaration, not a decision — the routing table in CLAUDE.md
-     decides when to load each skill. This index just registers that they exist. -->
+     decides when to load each skill. This index just registers that they exist.
+
+     Add memory skills only if the project uses the memory layer (memory/ exists). -->
 
 | Skill File | Load When |
 |------------|-----------|
 | `skills/stop-slop.md` | Writing or editing any prose output |
 | `skills/doc-authoring.md` | Creating or updating documentation files |
 | `skills/context-update.md` | Updating a workspace CONTEXT.md after a session |
+| `skills/memory-query.md` | Session start, if memory/ exists in this project |
+| `skills/memory-write.md` | Session end, if memory/ exists and work was done |
 | `skills/[domain-skill].md` | [condition] |
 
 ---
@@ -61,13 +65,18 @@ It does not access files outside this directory without explicit instruction.
 
 <!-- What goes here: Hard constraints on how the agent operates — independent of
      the specific task being worked on. These govern process, not content.
-     Copy and modify the defaults below. Add project-specific constraints. -->
+     Copy and modify the defaults below. Add project-specific constraints.
+
+     The memory guardrails at the bottom apply only if memory/ exists.
+     Remove them if this project does not use the memory layer. -->
 
 - Read CLAUDE.md at the start of every session
 - Load the workspace CONTEXT.md before producing any output in that workspace
 - Append `_draft` to all work files until explicitly finalized
 - Surface ambiguity before proceeding — do not assume
 - Update workspace CONTEXT.md at the end of any session where work was done
+- If memory/ exists: read memory/index.md before beginning work each session
+- If memory/ exists: write to memory (log entry + index update) before closing any productive session
 - [Project-specific constraint]
 
 ---
