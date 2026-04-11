@@ -7,7 +7,7 @@ Produce documentation that is specific, scannable, and complete. Every section e
 ## When to Use
 
 Load this skill when creating or updating:
-- CLAUDE.md and PI.md files
+- AGENTS.md files
 - Workspace CONTEXT.md files
 - Decision logs
 - Project briefs and context files
@@ -25,7 +25,7 @@ Before writing any content, define the sections. A document with the right secti
 
 Ask: what does the reader need to do or decide after reading this? Structure backward from that.
 
-For CLAUDE.md: the reader needs to orient to the project and know where to start. Sections: what it is, where work lives, how to route tasks, rules.
+For AGENTS.md: the reader needs to orient to the project and know where to start. Sections: what it is, where work lives, how to route tasks, rules.
 
 For CONTEXT.md: the reader needs to know current state and how to work here. Sections: purpose, state (done/in-progress/queued), standards, active skills, references.
 
@@ -75,7 +75,7 @@ Use prose for:
 
 **Annotations must be specific.** When writing template files with instructions for how to fill them in, be concrete about what makes a good answer. "What goes here: a description of the project" is useless. "What goes here: one paragraph describing what the project produces, who it's for, and what done looks like — specific enough that someone unfamiliar with the project could accurately describe it after reading" is useful.
 
-**Decisions go in decisions.md.** CLAUDE.md and CONTEXT.md are not the right place for detailed rationale. Record the decision (one sentence), then add full reasoning to decisions.md. Keep working documents lean.
+**Decisions go in decisions.md.** AGENTS.md and CONTEXT.md are not the right place for detailed rationale. Record the decision (one sentence), then add full reasoning to decisions.md. Keep working documents lean.
 
 **Current state is always current.** CONTEXT.md files are the exception to "write once" documentation. They should change every session. A CONTEXT.md that hasn't been updated in two weeks is probably wrong.
 

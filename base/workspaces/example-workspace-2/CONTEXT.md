@@ -43,7 +43,7 @@
 
 <!-- How is work done in this workspace? Format requirements, quality bar,
      patterns to follow, things to always or never do.
-     Be specific to this workspace — generic standards go in PI.md, not here. -->
+     Be specific to this workspace — generic standards go in AGENTS.md, not here. -->
 
 - [Standard or convention specific to this workspace]
 - [Standard or convention specific to this workspace]

@@ -1,6 +1,10 @@
 # AGENTS.md — [Project Name]
 
-<!-- HOW THIS FILE WORKS:
+<!-- AGENTS.md is the only project config file pi reads. No PI.md or CLAUDE.md needed.
+     Harness settings (model, tools, memory path) live in .pi/settings.json.
+     These two files — AGENTS.md + settings.json — are the complete pi project config.
+
+     HOW THIS FILE WORKS:
      Pi loads AGENTS.md hierarchically — global first, then project.
      Both layers are documented here so you can see the full picture in one place.
 
