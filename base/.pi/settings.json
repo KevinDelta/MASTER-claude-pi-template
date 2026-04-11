@@ -1,0 +1,26 @@
+{
+  "_comment": "Pi project settings — overrides ~/.pi/settings.json for this project. Remove any key you want to inherit from global settings. Delete this file if you have no project-specific overrides.",
+
+  "model": {
+    "_comment": "Override the LLM model for this project. Options depend on which providers are configured. Examples: 'anthropic:claude-sonnet-4-6', 'openai:gpt-4o', 'google:gemini-2.5-pro'. Remove this key to use the global default.",
+    "name": "anthropic:claude-sonnet-4-6"
+  },
+
+  "tools": {
+    "_comment": "Tool permissions for this project. 'allow' skips confirmation, 'deny' blocks, 'ask' prompts (default for most tools). Only configure tools that need project-specific behavior.",
+    "bash": "ask",
+    "write": "ask",
+    "edit": "ask",
+    "read": "allow"
+  },
+
+  "compaction": {
+    "_comment": "Context compaction behavior. 'auto' triggers when approaching token limit. 'manual' requires /compact command. 'off' disables compaction.",
+    "mode": "auto"
+  },
+
+  "memory": {
+    "_comment": "Pi-memory extension config. PI_MEMORY_DIR controls where memory files are stored. Default: ~/.pi/agent/memory/. Set to a project-relative path to keep memory inside the project repo (useful for team-shared memory).",
+    "dir": "memory"
+  }
+}

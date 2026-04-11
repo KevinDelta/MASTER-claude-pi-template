@@ -87,33 +87,107 @@ Copy the ones you need into your project's `skills/` folder.
 
 ---
 
-## Memory Layer (Optional)
+## Memory Layer
 
-The base template is stateless. For short, bounded projects that's a feature. For longer-running projects, add the optional `memory/` folder.
+Memory is included in every project that uses this template. It uses the **pi-memory extension** (`github.com/jayzeng/pi-memory`), which auto-injects relevant context before every agent turn via BM25 keyword search.
 
-**Add memory when any of these apply:**
-- Project will run longer than 3 months
-- Agent needs to recall decisions or patterns from past sessions without reading all history
-- Accumulated knowledge of the project is itself a deliverable
-- Workspace CONTEXT.md files are growing unwieldy
+**Three files, three purposes:**
+- `MEMORY.md` — long-term knowledge: `#decision`, `#pattern`, `#preference`, `#lesson`, `#bug` tagged entries with `[[wiki-links]]`
+- `SCRATCHPAD.md` — active checklist: `- [ ]` open items, `- [x]` completed (pi-memory stops injecting checked items)
+- `daily/YYYY-MM-DD.md` — append-only session logs (auto-created on compaction; write manually for explicit session closure)
 
-**How it works:** Three files — `index.md` (navigation catalog, read first every session), `log.md` (append-only, grep-navigable record), and topic pages (consolidated knowledge on specific subjects). No database. No external tooling. Obsidian-compatible as a bonus.
+**Memory ROI:** Pays for itself on projects longer than 3 months, or any project where accumulated decisions and patterns need to survive session boundaries. On short, isolated projects the memory files simply stay sparse — no overhead.
 
-**To activate:** Copy `base/memory/` into your project, add memory rows to your routing table, add the session-end guardrail to PI.md, and copy `skills/memory-write.md` and `skills/memory-query.md` into your project's skills folder.
-
-The routing table entry that makes it embedded (not bolted-on):
+**Install pi-memory once per machine:**
+```bash
+pi install npm:pi-memory
 ```
-| Session start (if memory/ exists) | — | memory/index.md | memory-query.md |
+
+The routing table session-start row reads MEMORY.md explicitly for full orientation — auto-injection gives keyword-relevant slices, direct read gives the complete picture:
 ```
+| Session start | — | memory/MEMORY.md | memory-query.md |
+```
+
+---
+
+## Pi.dev as Default Agent
+
+This template is built for **pi.dev** — an open-source, model-agnostic coding agent (`github.com/badlogic/pi-mono`). Pi's ~200 token system prompt means the project's context files do the real work. The template's design philosophy is a direct match for how pi was architected.
+
+### What Pi Loads and When
+
+Pi loads files hierarchically: `~/.pi/agent/` → parent directories → current project directory. All matched files compose (global first, project appends). This means:
+
+**Two layers, one AGENTS.md template:**
+
+The `base/AGENTS.md` template contains both layers in one file with clear delineation — so you can see and fill in the full picture in one place. When deploying:
+
+| Layer | Source | Deploy to | Applies to |
+|-------|--------|-----------|------------|
+| Global | Top section of `base/AGENTS.md` | `~/.pi/agent/AGENTS.md` | Every project on this machine |
+| Project | Bottom section of `base/AGENTS.md` | `[project-root]/AGENTS.md` | This project only |
+
+`global/AGENTS.md` is the standalone org-layer template — install once, inherit everywhere. Never duplicate global rules in a project's AGENTS.md.
+
+**Other pi config files (project-level only):**
+- **`APPEND_SYSTEM.md`**: extends pi's default system prompt (tone, output defaults)
+- **`SOUL.md`**: persona customization (optional — delete if not needed)
+- **`.pi/settings.json`**: model, tool permissions, compaction, memory path
+
+Skills load on demand — the agent doesn't have a skill unless the routing table loads it.
+
+### Pi Config Files (new in `base/`)
+
+| File | Purpose | Required? |
+|------|---------|-----------|
+| `AGENTS.md` | Primary project config — routing, workspaces, behavioral rules | Yes |
+| `APPEND_SYSTEM.md` | Additive system prompt — tone, communication style, output defaults | Recommended |
+| `SYSTEM.md` | Full system prompt replacement — only for specialized agents | Optional |
+| `SOUL.md` | Persona customization | Optional |
+| `.pi/settings.json` | Model, tool permissions, memory path, compaction | Optional |
+
+`CLAUDE.md` is preserved as the authoring reference and Claude Code fallback. For pi.dev projects, `AGENTS.md` is the live config the agent reads.
+
+### Memory — Pi-Memory Extension (Default)
+
+Memory uses the **pi-memory extension** (`github.com/jayzeng/pi-memory`). It auto-injects relevant context before every agent turn. No manual routing is needed for memory to work — but the routing table still includes a session-start row to have the agent explicitly read MEMORY.md for full orientation.
+
+**Install once per machine:**
+```bash
+pi install npm:pi-memory
+```
+
+**Memory files live at** `memory/` (project-relative, set in `.pi/settings.json`):
+
+```
+memory/
+├── MEMORY.md       ← long-term: #decision, #pattern, #preference, #lesson, #bug
+├── SCRATCHPAD.md   ← active items: - [ ] open  - [x] done
+└── daily/
+    └── YYYY-MM-DD.md  ← append-only session logs
+```
+
+Pi-memory injects up to 16K of context per turn (scratchpad → today's log → search results → MEMORY.md → yesterday's log). BM25 keyword search surfaces relevant entries automatically. Add optional `qmd` for semantic search.
+
+Memory is always included — it is not optional. The `memory/` folder ships with every project that uses this template.
 
 ---
 
 ## What's in This Repo
 
 ```
-base/                       ← annotated template, copy to start a project
-├── CLAUDE.md
-├── PI.md
+global/                        ← org-layer template (install once per machine)
+└── AGENTS.md                  ← deploy to ~/.pi/agent/AGENTS.md; applies to all projects
+
+base/                          ← annotated template, copy to start a project
+├── AGENTS.md                  ← pi.dev primary config (routing, workspaces, rules)
+├── CLAUDE.md                  ← authoring reference + Claude Code fallback
+├── PI.md                      ← harness config (tools, skills index, memory setup)
+├── APPEND_SYSTEM.md           ← additive system prompt (recommended default)
+├── SYSTEM.md                  ← full system prompt replacement (power user)
+├── SOUL.md                    ← persona/tone (optional, delete if not needed)
+├── .pi/
+│   └── settings.json          ← model, tools, memory path, compaction
 ├── context/
 │   ├── project.md
 │   ├── client.md
@@ -122,15 +196,15 @@ base/                       ← annotated template, copy to start a project
 ├── workspaces/
 │   └── example-workspace/
 │       └── CONTEXT.md
-└── memory/                 ← optional, copy when project scale warrants it
-    ├── index.md
-    ├── log.md
-    └── example-topic.md
+└── memory/                    ← pi-memory compatible, always included
+    ├── MEMORY.md              ← long-term knowledge (#tags + [[wiki-links]])
+    ├── SCRATCHPAD.md          ← active checklist items
+    └── daily/                 ← session logs, one file per day
 
-skills/                     ← universal skills with real content
+skills/                        ← universal skills with real content
 ├── stop-slop.md
 ├── doc-authoring.md
 ├── context-update.md
-├── memory-write.md         ← pair with memory layer
-└── memory-query.md         ← pair with memory layer
+├── memory-write.md            ← pi-memory tools + write conventions
+└── memory-query.md            ← pi-memory retrieval + auto-injection awareness
 ```

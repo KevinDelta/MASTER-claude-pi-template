@@ -71,3 +71,15 @@ Before closing a session:
 - [ ] Any new conventions from this session are captured in Standards
 - [ ] Any new key files are listed in References
 - [ ] Nothing in the file describes a state that no longer exists
+
+---
+
+## Pi.dev Session-End Protocol
+
+When running with pi.dev, run `memory-write` skill alongside this skill at session end.
+
+**Order:**
+1. Update workspace CONTEXT.md (this skill) — current task state per workspace
+2. Write to memory (memory-write skill) — decisions, patterns, lessons that transcend a single workspace
+
+CONTEXT.md captures *where the work stands*. Memory captures *what was learned*. Both are needed. Neither substitutes for the other.

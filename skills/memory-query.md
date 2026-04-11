@@ -2,107 +2,104 @@
 
 ## Purpose
 
-Navigate the project memory layer efficiently before doing work. The memory layer exists to prevent re-deriving things that have already been figured out. This skill defines how to read memory without wasting context tokens on files that aren't relevant to the current task.
+Surface relevant project memory before doing work. Pi-memory auto-injects context before every agent turn — but knowing what you're getting, how to ask for more, and when to read MEMORY.md directly makes the memory layer genuinely useful rather than invisible.
 
 ## When to Use
 
-At the start of any session when memory/ exists in the project. Also load when:
-- Starting a task that likely has prior decisions or patterns relevant to it
+Load this skill at session start when memory/ exists in the project. Also apply when:
+- Starting a task where prior decisions or patterns are likely relevant
 - Asked about something that may have been addressed in a previous session
 - Writing something where prior learnings should inform the approach
 
 ---
 
-## The Navigation Order
+## What Pi-Memory Gives You Automatically
 
-Always read in this order. Stop when you have enough to proceed.
+Before every agent turn, pi-memory prepends to the system prompt (up to 16K chars total):
 
-### Step 1: Read index.md (always)
+1. **Open scratchpad items** (2K) — what's actively being tracked
+2. **Today's daily log tail** (3K) — what happened in this session so far
+3. **BM25 search results** (2.5K) — entries from MEMORY.md + daily logs relevant to your current prompt
+4. **MEMORY.md long-term content** (4K) — curated decisions, patterns, preferences
+5. **Yesterday's daily log** (3K) — lowest priority, trimmed first if space runs out
 
-`memory/index.md` is the only file you read every session without filtering. It's small and gives you complete orientation: what topic pages exist, what they cover, and what happened in recent sessions.
+This means relevant memory surfaces without you asking. But auto-injection has limits — it's BM25 keyword search, not full recall. If something isn't surfacing that should be, use explicit retrieval below.
 
-After reading index.md, you know:
-- Whether any topic pages are relevant to today's task
-- What was decided or learned in recent sessions
-- Where to find deep knowledge if needed
+---
 
-If index.md tells you nothing is relevant to today's task: proceed to work. Don't read more.
+## Session Start — Explicit Orientation
 
-### Step 2: Pull relevant topic pages (if applicable)
+At session start, read MEMORY.md directly for full project orientation. Auto-injection gives you keyword-relevant slices; reading MEMORY.md gives you the complete picture of what the project knows.
 
-If the index shows a topic page relevant to today's task, read it. Topic pages are consolidated knowledge — they're faster than grepping the log.
-
-Examples of when to pull a topic page:
-- Starting work that involves pricing → read `pricing.md`
-- Writing anything client-facing → read `client-[name].md`
-- Making a technical choice → read `technical-decisions.md`
-
-Read only the pages that apply. Don't read all topic pages as a default.
-
-### Step 3: Grep log.md for specific questions (when needed)
-
-Use log.md grep when you have a specific question that the index and topic pages didn't answer: "What was the exact reasoning on the pricing exception we made last month?"
-
-**Standard queries — run these in the project root:**
-
-```bash
-# What happened recently (last 10 entries)
-grep "^## \[" memory/log.md | tail -10
-
-# All decisions ever logged
-grep "^## \[" memory/log.md | grep " decision "
-
-# All learnings ever logged
-grep "^## \[" memory/log.md | grep " learning "
-
-# Decisions about a specific topic
-grep -A8 "decision | pricing" memory/log.md
-
-# Patterns logged
-grep "^## \[" memory/log.md | grep " pattern "
-
-# Everything from this month
-grep "^## \[2026-04" memory/log.md
-
-# Full entry for a specific date
-grep -A10 "\[2026-04-08\]" memory/log.md
+```
+read("memory/MEMORY.md")
 ```
 
-Read the matching entries. Don't read log.md linearly from the top — it's a grep target, not a document.
+After reading, state what's relevant to today's work before proceeding:
+
+> "From memory: #decision [[client-comms]] shows the client wants open questions in a numbered list at the top of deliverables. #pattern [[research-workflow]] shows two-pass research works best for this project. Applying both today."
+
+This makes the memory retrieval visible and auditable. If a memory is stale or wrong, it can be corrected before it shapes the work.
+
+---
+
+## Explicit Search
+
+When auto-injection isn't surfacing something you expect — or when you need to find a specific past decision:
+
+**Keyword search (fast, ~30ms):**
+```
+memory_search(query: "pricing exceptions client discount", mode: "keyword")
+```
+
+**Semantic search (deeper, requires qmd):**
+```
+memory_search(query: "how we handle client requests outside scope", mode: "semantic")
+```
+
+**Read a daily log directly:**
+```
+read("memory/daily/2026-04-08.md")
+```
+
+**Scan recent daily logs:**
+```bash
+ls memory/daily/ | sort | tail -5
+```
 
 ---
 
 ## How to Surface Memory Into Context
 
-After reading memory, bring what's relevant into your working context explicitly before producing output. Don't assume memory was absorbed — state it.
+After reading or searching memory, explicitly state what applies before producing output. Don't assume it was absorbed.
 
-**Before writing a proposal:**
-> "From memory: pricing decisions say we use outcomes-first framing (2026-04-10). Client-acme.md shows they respond slowly to process descriptions. Applying both to this draft."
+**Before writing a client deliverable:**
+> "From memory: #preference [[output-format]] shows all deliverables go to Drive, not Markdown. #lesson [[client-comms]] shows questions go in a numbered list at the top. Applying both."
 
 **Before making a technical recommendation:**
-> "From memory: technical-decisions.md shows we ruled out DuckDB (too much tooling overhead). Railway Postgres is the confirmed pattern."
+> "From memory: #decision [[tech-stack]] shows we chose PostgreSQL and ruled out MongoDB. Recommending consistently with that."
 
 **Before starting a research task:**
-> "From memory: the pattern logged 2026-04-10 shows irrigation jobs consistently run over on labor. This shapes what I'll look for in the competitive analysis."
+> "From memory: #pattern [[research-workflow]] shows two-pass research outperforms single-pass here. Using that approach."
 
-This makes the memory retrieval visible and auditable. If a memory is wrong, it can be corrected.
+This makes retrieval auditable. If a memory is wrong or outdated, state it and add a corrected `#lesson` entry via memory-write.
 
 ---
 
 ## When Memory Has Nothing Relevant
 
-If index.md shows no relevant topic pages and recent sessions don't touch today's task: proceed to work without reading further. Don't force memory consultation for tasks that have no prior history.
+If MEMORY.md shows no applicable decisions or patterns for today's task: proceed. Don't force memory consultation when there's no prior history.
 
-This is expected for:
+Expected for:
 - Early project sessions (memory is sparse)
 - New task types that haven't come up before
-- Projects with short lifespans that haven't accumulated much
+- Routine work with no accumulated project-specific context
 
 ---
 
 ## Signs Memory Is Being Misused
 
-- Reading all topic pages every session regardless of task relevance (wasteful)
-- Reading log.md linearly from the top (it's a grep target)
+- Reading all daily logs every session regardless of relevance (wasteful)
 - Consulting memory for things already in context/ files (don't duplicate reads)
-- Skipping index.md and going straight to grepping log.md (index gives you better orientation faster)
+- Ignoring auto-injected context and re-reading everything manually (redundant)
+- Never checking if auto-injection missed something relevant (blind trust in BM25)
