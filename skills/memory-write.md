@@ -22,6 +22,24 @@ If you only read and discussed without producing output or making decisions, mem
 
 ---
 
+## Auto-Capture vs Manual Curation
+
+If the **agentmemory bridge extension** is running, tool calls (write/edit/bash) are automatically captured as working memory observations. This covers the episodic record of *what happened* — which files were modified, what commands ran, what operations took place.
+
+**Auto-capture handles:** the "what" — the factual record of actions taken.
+
+**Manual curation still required for:** the "why" — context that can't be inferred from tool call logs:
+- `#decision` entries: *why* something was chosen, *what was ruled out*, *what constraint drove it*
+- `#lesson` entries: *what went wrong* and *what to do differently*
+- `#preference` entries: *how the client/team wants things* that wasn't stated in a file
+- `#pattern` entries: recurring approaches worth flagging explicitly for future sessions
+
+**If agentmemory is running:** focus manual writes on `#decision`, `#lesson`, `#preference`, `#pattern`. Skip detailed "what was done" prose — the bridge already captured it as observations.
+
+**If agentmemory is not running:** use the full session-end checklist below. Write the session summary to `daily/` manually.
+
+---
+
 ## The Three Destinations
 
 ### 1. MEMORY.md — Long-term, durable knowledge

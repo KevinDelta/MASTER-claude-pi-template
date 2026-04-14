@@ -1,0 +1,9 @@
+# agentmemory binary store — regenerable from observation history
+memory/.agentmemory/
+memory/.agentmemory-export.json
+
+# pi session state
+.pi/.session/
+
+# environment overrides (copy .pi/.env.example → .pi/.env and fill in)
+.pi/.env

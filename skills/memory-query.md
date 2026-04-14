@@ -48,18 +48,13 @@ This makes the memory retrieval visible and auditable. If a memory is stale or w
 
 ---
 
-## Explicit Search
+## Explicit Search (pi-memory)
 
 When auto-injection isn't surfacing something you expect — or when you need to find a specific past decision:
 
 **Keyword search (fast, ~30ms):**
 ```
 memory_search(query: "pricing exceptions client discount", mode: "keyword")
-```
-
-**Semantic search (deeper, requires qmd):**
-```
-memory_search(query: "how we handle client requests outside scope", mode: "semantic")
 ```
 
 **Read a daily log directly:**
@@ -71,6 +66,47 @@ read("memory/daily/2026-04-08.md")
 ```bash
 ls memory/daily/ | sort | tail -5
 ```
+
+---
+
+## Agentmemory Search (requires bridge extension)
+
+When the agentmemory bridge is connected, four additional search tools are available. Each serves a distinct purpose — use the right tool for the right query.
+
+**`memory_smart_search` — hybrid search (BM25 + vector + graph)**
+```
+memory_smart_search(query: "how we handle client requests outside scope", project_id: "my-project", mode: "hybrid")
+```
+Use for: open-ended questions spanning multiple sessions. Best default when you're not sure exactly what you're looking for. Searches across all memory tiers.
+
+**`memory_recall` — targeted recall with token budget**
+```
+memory_recall(query: "database architecture decisions", project_id: "my-project", token_budget: 2000)
+```
+Use for: manually triggering a recall mid-session when a task pivots unexpectedly. The bridge already calls this automatically at session start — use this when you need a fresh pull partway through.
+
+**`memory_patterns` — recurring behavior patterns**
+```
+memory_patterns(project_id: "my-project", category: "behavior")
+```
+Use for: "how do we usually approach X?" Returns detected patterns across sessions — not stored facts, but observed regularities in how the agent has worked. Useful before starting a task type that has recurred before.
+
+**`memory_graph_query` — knowledge graph traversal**
+```
+memory_graph_query(concept: "database", project_id: "my-project", depth: 2)
+```
+Use for: tracing relationships between decisions. "What's connected to the database choice?" Traverses the knowledge graph up to `depth` hops — returns related concepts, decisions, and observations.
+
+### When to use which
+
+| Goal | Tool |
+|------|------|
+| Fast specific lookup (known term) | `memory_search` (keyword, always available) |
+| Explore what's known about a topic | `memory_smart_search` (hybrid) |
+| Find recurring patterns | `memory_patterns` |
+| Trace concept relationships | `memory_graph_query` |
+| Full project orientation | `read("memory/MEMORY.md")` |
+| Manual mid-session recall | `memory_recall` |
 
 ---
 

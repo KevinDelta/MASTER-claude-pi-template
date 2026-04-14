@@ -84,6 +84,80 @@ pi install git:github.com/pi-agent/pi-safeguard
 
 ---
 
+## Semantic Memory Extension (agentmemory)
+
+**agentmemory** ([github.com/rohitg00/agentmemory](https://github.com/rohitg00/agentmemory)) adds a semantic intelligence layer on top of pi-memory's BM25 keyword injection. The two work in parallel — pi-memory handles fast keyword-matched injection; agentmemory adds vector search, knowledge graph traversal, and automatic tier-based consolidation.
+
+### What agentmemory adds
+
+| Capability | pi-memory | agentmemory |
+|------------|-----------|-------------|
+| Keyword search (BM25) | ✓ | ✓ |
+| Semantic / vector search | — | ✓ |
+| Knowledge graph | — | ✓ |
+| Pattern detection across sessions | — | ✓ |
+| Auto-capture of tool call observations | — | ✓ |
+| Memory tier consolidation | — | ✓ (Working → Episodic → Semantic → Procedural) |
+| Sync back to MEMORY.md | — | ✓ (Claude Bridge) |
+
+### Setup
+
+```bash
+# 1. Clone and start the agentmemory service
+git clone https://github.com/rohitg00/agentmemory
+cd agentmemory
+
+# Option A: Docker (recommended)
+docker-compose up -d
+
+# Option B: Node
+npm install && npm start
+```
+
+Confirm the service is running:
+```bash
+curl http://localhost:3111/health
+# → { "status": "ok" }
+```
+
+### Configure the project
+
+```bash
+# Copy the env template and fill in your project values
+cp .pi/.env.example .pi/.env
+```
+
+Key variables in `.pi/.env`:
+- `AGENTMEMORY_URL` — service URL (default `http://localhost:3111`)
+- `AGENTMEMORY_PROJECT_ID` — project namespace (e.g. `client-acme`, `q2-sprint`)
+- `AGENTMEMORY_TOKEN_BUDGET` — tokens to inject per turn (default `2000`)
+- `AGENTMEMORY_AUTO_CAPTURE` — auto-capture tool calls as observations (default `true`)
+- `CLAUDE_BRIDGE_SYNC` — sync consolidated memory back to MEMORY.md (default `false`)
+
+### How the bridge extension works
+
+`agentmemory-bridge.ts` (in this directory) connects automatically:
+
+1. **`session_start`** — health check sets `available` flag; logs connection status or graceful skip message
+2. **`before_agent_start`** — calls `memory_recall` with the current user message → injects semantically relevant memory into the system prompt prefix (in addition to pi-memory's BM25 injection)
+3. **`tool_call`** — captures write/edit/bash executions as working memory observations (skips read-only and memory tools)
+4. **`agent_end`** — calls `memory_consolidate` to promote Working → Episodic → Semantic tiers, then (if `CLAUDE_BRIDGE_SYNC=true`) syncs consolidated memories back to `memory/MEMORY.md`
+
+**Graceful degradation:** if agentmemory is down, `available` stays `false` and every hook skips silently. Pi-memory continues without interruption.
+
+### When to enable CLAUDE_BRIDGE_SYNC
+
+Enable it for:
+- Engagements longer than a week (cross-session pattern detection pays off)
+- Client work where MEMORY.md is reviewed or committed to git
+- Projects where the pi agent will run without Claude Code in the loop
+
+Keep it off for:
+- Short sprints (MEMORY.md doesn't accumulate enough for consolidation to matter)
+- Experimental / exploratory work where you don't want noisy syncs
+
+---
+
 ## What `permissions-config.json` Does
 
 When pi-permission-system is installed, it reads `permissions-config.json` in this directory. The template is pre-populated with sensible defaults:

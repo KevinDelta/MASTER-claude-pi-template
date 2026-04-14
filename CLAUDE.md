@@ -1,144 +1,93 @@
 # MASTER-claude-pi-template
 
-A reusable template system for building Pi agent project repos — self-contained directories that give a stateless agent everything it needs to operate without external memory.
+> **Note:** This file is read by Claude Code as project instructions. The pi agent does not read this file — it reads `AGENTS.md`, `BLUEPRINT.md` (for harness work), and the skills/context files you point it to.
 
-The core idea: a well-structured repo IS the agent's brain. Drop a pi.dev agent into a properly built project and it knows what the project is, where to work, what skills to load, and how to behave — from the files alone.
+A template system for building project repos that a **pi.dev agent can fully inhabit**. The core idea: a well-structured repo IS the agent's brain. Drop a pi.dev agent into a properly built project and it knows what the project is, where to work, what skills to load, and how to behave — from the files alone.
 
 **Default agent:** [pi.dev](https://github.com/badlogic/pi-mono) — open-source, MIT-licensed, model-agnostic coding agent.
+
+**Authoritative technical reference:** `BLUEPRINT.md` — read this before making structural changes to the template.
 
 ---
 
 ## How to Use This Template
 
 1. Copy the `base/` directory into your new project root
-2. Fill in `AGENTS.md` — project description, workspaces, routing table, rules
+2. Fill in `AGENTS.md` — project layer: description, workspaces, routing table, rules
 3. Fill in all `context/` files with real project information
-4. Rename workspaces to match your project's actual work areas
+4. Rename workspaces to match your project's actual work areas; fill in each `CONTEXT.md`
 5. Copy relevant skills from `skills/` into your project's `skills/` folder
-6. Configure `.pi/settings.json` — model, tools, memory path
-7. Delete the annotation comments before going live
+6. Configure `.pi/settings.json` — model, tool permissions, memory path
+7. (Optional) Set up the agentmemory bridge for semantic memory — see `base/.pi/extensions/README.md`
+8. Delete the annotation comments before going live
 
-The quality of the agent's output is a direct function of how well these files are written. Generic files produce generic output.
-
----
-
-## Two Files Run the Project
-
-**`AGENTS.md`** — the agent's operating manual. Pi reads this at every session start. Contains the routing table, workspace map, behavioral rules, and out-of-bounds. This is what the agent knows.
-
-**`.pi/settings.json`** — the harness config. Controls model, tool permissions, compaction behavior, and memory path. Pi reads this for operational settings. The agent never sees it directly.
-
-Everything else — context files, workspace CONTEXT.md, memory, skills — is content that AGENTS.md points to.
+The quality of agent output is a direct function of how well these files are written. Generic content produces generic output.
 
 ---
 
-## The Routing Table
-
-The routing table in AGENTS.md is what makes stateless operation workable. Every session, the agent reads AGENTS.md, finds the routing table, and knows exactly what context to load and what skills to activate before touching any work.
+## Repo Structure
 
 ```
-| Task Type     | Workspace   | Read                                     | Load Skills   |
-|---------------|-------------|------------------------------------------|---------------|
-| Session start | —           | memory/MEMORY.md                         | memory-query  |
-| Write content | /drafting   | context/project.md + drafting/CONTEXT.md | stop-slop     |
-| Research      | /research   | context/client.md + research/CONTEXT.md  | —             |
-| Session end   | —           | —                                        | memory-write  |
-```
+global/                        ← Org-layer AGENTS.md — deploy to ~/.pi/agent/ once per machine
 
-The routing table is a contract. When a task arrives, the agent checks the table, loads what it says, and starts from context — every time.
-
----
-
-## How Skills Work
-
-Skills are plain markdown files — behavioral instructions, standards, and process guides. A skill tells the agent how to do a specific type of work to a specific standard.
-
-Skills load on demand via the routing table. The agent doesn't have a skill unless the routing table loads it. This keeps behavior predictable.
-
-**Universal skills** (this repo's `skills/` folder):
-- `stop-slop.md` — strip AI writing patterns from prose
-- `doc-authoring.md` — structure-first documentation methodology
-- `context-update.md` — keep workspace CONTEXT.md files current after sessions
-- `memory-write.md` — pi-memory write protocol (three destinations, tag vocabulary)
-- `memory-query.md` — pi-memory retrieval and auto-injection awareness
-
-Copy what each project needs into its own `skills/` folder.
-
----
-
-## The Two-Layer Architecture
-
-Pi loads AGENTS.md hierarchically — global first, then project. Both layers live in one `base/AGENTS.md` template with clear delineation:
-
-| Layer | Deploy to | Applies to |
-|-------|-----------|------------|
-| Global (top section) | `~/.pi/agent/AGENTS.md` | Every project on this machine |
-| Project (bottom section) | `[project-root]/AGENTS.md` | This project only |
-
-`global/AGENTS.md` is the standalone org-layer template — install once, inherit everywhere.
-
----
-
-## Memory Layer
-
-Memory is included in every project. Uses the **pi-memory extension** (`github.com/jayzeng/pi-memory`), which auto-injects relevant context before every agent turn via BM25 keyword search.
-
-**Three files, three purposes:**
-- `MEMORY.md` — long-term knowledge: `#decision`, `#pattern`, `#preference`, `#lesson`, `#bug` with `[[wiki-links]]`
-- `SCRATCHPAD.md` — active checklist: `- [ ]` open, `- [x]` done (completed items excluded from injection)
-- `daily/YYYY-MM-DD.md` — append-only session logs
-
-**Install once per machine:**
-```bash
-pi install npm:pi-memory
-```
-
----
-
-## Structural Principles
-
-**Two files, everything else is content.** AGENTS.md is the operating manual. settings.json is the harness config. Context files, CONTEXT.md, memory, and skills are content — rich, specific, and accurate.
-
-**Global/project separation prevents drift.** Org-wide standards in global AGENTS.md means you write them once and every project inherits them.
-
-**Skills are explicit contracts.** The agent has exactly the skills the routing table loads — nothing more, nothing assumed.
-
-**Memory accumulates, context stays lean.** CONTEXT.md captures current task state. Memory captures what was learned. Neither substitutes for the other.
-
-**Authoring quality is the product.** A vague AGENTS.md or sparse context files aren't configuration problems — they're output quality problems.
-
----
-
-## What's in This Repo
-
-```
-global/                        ← org-layer template (install once per machine)
-└── AGENTS.md                  ← deploy to ~/.pi/agent/AGENTS.md; applies to all projects
-
-base/                          ← annotated template, copy to start a project
-├── AGENTS.md                  ← pi.dev primary config (routing, workspaces, rules)
-├── APPEND_SYSTEM.md           ← additive system prompt (recommended default)
-├── SYSTEM.md                  ← full system prompt replacement (power user)
-├── SOUL.md                    ← persona/tone (optional, delete if not needed)
+base/                          ← Copy this to start any new project
+├── AGENTS.md                  ← Pi's primary config (two-layer: global + project sections)
+├── APPEND_SYSTEM.md           ← Additive system prompt (recommended default)
+├── SYSTEM.md                  ← Full system prompt replacement (power user only)
+├── SOUL.md                    ← Persona/tone customization (optional — delete if not needed)
+├── .gitignore                 ← Gitignores agentmemory binary store and .pi/.env
 ├── .pi/
-│   └── settings.json          ← model, tools, memory path, compaction
+│   ├── settings.json          ← Model, tool permissions, compaction, skills/extensions paths
+│   ├── .env.example           ← Env template for agentmemory bridge (copy → .pi/.env)
+│   └── extensions/
+│       ├── README.md          ← How extensions work, safety tiers, agentmemory setup
+│       ├── permissions-config.json      ← Config for pi-permission-system (safety tier 2)
+│       └── agentmemory-bridge.ts        ← Semantic memory bridge extension
 ├── context/
-│   ├── project.md
-│   ├── client.md
-│   ├── stack.md
-│   └── decisions.md
+│   ├── project.md             ← What the project is, scope, deliverables, current phase
+│   ├── client.md              ← Who it's for, communication preferences (delete if no client)
+│   ├── stack.md               ← Tech stack, tools, infrastructure
+│   └── decisions.md           ← Decisions already made (prevents relitigating)
 ├── workspaces/
 │   └── [workspace-name]/
-│       └── CONTEXT.md
+│       └── CONTEXT.md         ← Purpose, Functions, Workflow, Standards, Current State
 └── memory/
-    ├── MEMORY.md
-    ├── SCRATCHPAD.md
-    └── daily/
+    ├── MEMORY.md              ← Long-term knowledge (#tags + [[wiki-links]])
+    ├── SCRATCHPAD.md          ← Active checklist (open items auto-injected by pi-memory)
+    └── daily/                 ← Append-only session logs
 
-skills/                        ← universal skills with real content
-├── stop-slop.md
-├── doc-authoring.md
-├── context-update.md
-├── memory-write.md
-└── memory-query.md
+skills/                        ← Universal skills — copy what each project needs
+├── stop-slop.md               ← Strip AI writing patterns from prose
+├── doc-authoring.md           ← Structure-first documentation methodology
+├── context-update.md          ← End-of-session CONTEXT.md update protocol
+├── memory-write.md            ← Write protocol: 3 destinations, auto-capture vs manual
+├── memory-query.md            ← Retrieval: pi-memory BM25 + agentmemory semantic/graph
+├── memory-architecture.md     ← Two-layer memory reference: setup, search guide, diagnostics
+└── harness-dev.md             ← How to build and iterate on the harness itself
 ```
+
+---
+
+## Working on This Repo with Claude Code
+
+**To understand the system:** read `BLUEPRINT.md` first.
+
+**To understand current project state and decisions:** read `PROJECT-CONTEXT.md`.
+
+**Key files when making structural changes:**
+- `base/AGENTS.md` — the agent's operating manual; changes here affect every project built from the template
+- `base/.pi/settings.json` — harness config; json with `_comment` fields documenting each key
+- `skills/*.md` — universal skills; each needs valid YAML frontmatter (`name` + `description`)
+- `base/.pi/extensions/*.ts` — TypeScript extensions; use `ExtensionAPI` type, two-param handlers `(_event, ctx)`
+- `BLUEPRINT.md` — keep in sync when structural decisions change
+
+**What the pi agent reads vs what Claude Code reads:**
+
+| File | Pi agent | Claude Code |
+|------|----------|-------------|
+| `AGENTS.md` | ✓ (primary config) | reference |
+| `BLUEPRINT.md` | ✓ (harness-dev tasks) | ✓ (technical reference) |
+| `CLAUDE.md` | — | ✓ (project instructions) |
+| `PROJECT-CONTEXT.md` | — | ✓ (dev context) |
+| `skills/*.md` | ✓ (via routing table) | reference |
+| `.pi/settings.json` | ✓ (harness config) | reference |

@@ -42,9 +42,11 @@ MASTER-claude-pi-template/
 │   ├── SOUL.md                ← Persona / tone customization (optional — delete if not needed)
 │   ├── .pi/
 │   │   ├── settings.json      ← Model, tool permissions, compaction, extensions, skills paths
+│   │   ├── .env.example       ← Env var template for agentmemory bridge (copy → .pi/.env)
 │   │   └── extensions/
-│   │       ├── README.md      ← How extensions work, safety tiers, install instructions
-│   │       └── permissions-config.json  ← Config for pi-permission-system (safety tier 2)
+│   │       ├── README.md      ← How extensions work, safety tiers, agentmemory setup
+│   │       ├── permissions-config.json     ← Config for pi-permission-system (safety tier 2)
+│   │       └── agentmemory-bridge.ts       ← Semantic memory bridge extension
 │   ├── context/
 │   │   ├── project.md         ← What the project is, scope, success criteria, current phase
 │   │   ├── client.md          ← Who it's for, communication preferences, delivery standards
@@ -62,8 +64,9 @@ MASTER-claude-pi-template/
     ├── stop-slop.md           ← Strip AI writing patterns from human-facing prose
     ├── doc-authoring.md       ← Structure-first documentation methodology
     ├── context-update.md      ← End-of-session CONTEXT.md update protocol
-    ├── memory-write.md        ← Pi-memory write protocol (3 destinations, tag vocabulary)
-    ├── memory-query.md        ← Pi-memory retrieval + auto-injection awareness
+    ├── memory-write.md        ← Write protocol: 3 destinations, auto-capture vs manual curation
+    ├── memory-query.md        ← Retrieval: pi-memory BM25 + agentmemory semantic/graph tools
+    ├── memory-architecture.md ← Two-layer memory reference: setup, search tool guide, diagnostics
     └── harness-dev.md         ← How to build and iterate on the harness itself
 ```
 
@@ -151,12 +154,15 @@ description: Strip AI writing patterns from prose. Load when writing or reviewin
 
 ## Memory Architecture
 
-**Extension:** [pi-memory](https://github.com/jayzeng/pi-memory)
-**Install:** `pi install npm:pi-memory`
+The memory layer has two tiers. Layer 1 (pi-memory) is required and always active. Layer 2 (agentmemory) is optional and additive — it upgrades search without replacing anything.
 
-Pi-memory hooks `before_agent_start` and prepends relevant memory to the system prompt before every turn. No manual action required.
+### Layer 1 — Pi-memory (required)
 
-### Three Files
+**Extension:** [pi-memory](https://github.com/jayzeng/pi-memory) | **Install:** `pi install npm:pi-memory`
+
+Pi-memory hooks `before_agent_start` and prepends keyword-relevant slices to the system prompt before every turn. 16K total budget. BM25 search.
+
+**Three files:**
 
 | File | Purpose | When to Write |
 |------|---------|--------------|
@@ -164,20 +170,46 @@ Pi-memory hooks `before_agent_start` and prepends relevant memory to the system 
 | `memory/SCRATCHPAD.md` | Active checklist | Open items to track across sessions; checked items excluded from injection |
 | `memory/daily/YYYY-MM-DD.md` | Append-only session log | What was done, decided, and left open each session |
 
-### Auto-Injection Priority (16K total budget)
-
+**Auto-injection priority (16K total):**
 1. Open scratchpad items (2K)
 2. Today's daily log tail (3K)
-3. BM25 keyword search results on current prompt (2.5K)
+3. BM25 keyword search on current prompt (2.5K)
 4. MEMORY.md long-term content (4K)
-5. Yesterday's daily log (3K — trimmed first when space is tight)
+5. Yesterday's daily log (3K — trimmed first)
 
-### Pull vs Push
+**Pull vs push:** Pi-memory auto-injects keyword-relevant slices (push). The routing table session-start row reads MEMORY.md directly for full orientation (pull). Both are needed.
 
-**Push (automatic):** Pi-memory injects keyword-relevant memory slices before every turn.
-**Pull (explicit):** Routing table session-start row reads `memory/MEMORY.md` directly for full orientation.
+---
 
-Both are needed. Auto-injection surfaces relevant context; direct read gives the complete picture at session start.
+### Layer 2 — Agentmemory (optional)
+
+**Repo:** [github.com/rohitg00/agentmemory](https://github.com/rohitg00/agentmemory) — runs as a background HTTP service (default: `localhost:3111`).
+
+**What it adds over pi-memory:**
+
+| Capability | pi-memory | agentmemory |
+|------------|-----------|-------------|
+| Keyword search (BM25) | ✓ | ✓ |
+| Semantic / vector search | — | ✓ |
+| Knowledge graph | — | ✓ |
+| Pattern detection across sessions | — | ✓ |
+| Auto-capture of tool call observations | — | ✓ |
+| Memory tier consolidation | — | ✓ |
+| Sync back to MEMORY.md (Claude Bridge) | — | ✓ |
+
+**Bridge extension** (`base/.pi/extensions/agentmemory-bridge.ts`) connects automatically:
+- `session_start` → health check; sets availability flag
+- `before_agent_start` → semantic recall injected into system prompt prefix (adds to pi-memory's BM25 injection)
+- `tool_call` → captures write/edit/bash as working memory observations
+- `agent_end` → consolidates memory tiers; optionally syncs back to MEMORY.md via Claude Bridge
+
+**Graceful degradation:** if agentmemory is unavailable, the bridge skips silently. Pi-memory continues uninterrupted.
+
+**Configure:** copy `base/.pi/.env.example` → `.pi/.env`, set `AGENTMEMORY_PROJECT_ID` and optionally `CLAUDE_BRIDGE_SYNC=true`.
+
+**What's gitignored:** `memory/.agentmemory/` (binary KV store, regenerable). `memory/MEMORY.md` is always committed — it remains the canonical record regardless of whether agentmemory is running.
+
+For detailed setup, search tool selection, and diagnostics: load `memory-architecture.md` skill.
 
 ---
 
@@ -281,7 +313,13 @@ cd ~/projects/my-project/
 #    pi install git:github.com/marcfargas/pi-safety        # tier 1
 #    pi install git:github.com/MasuRii/pi-permission-system # tier 2
 
-# 7. Delete all annotation comments from all files
+# 7. (Optional) Enable agentmemory for semantic memory:
+#    git clone https://github.com/rohitg00/agentmemory && cd agentmemory
+#    docker-compose up -d
+#    cp .pi/.env.example .pi/.env
+#    # Edit .pi/.env: set AGENTMEMORY_PROJECT_ID, CLAUDE_BRIDGE_SYNC
+
+# 8. Delete all annotation comments from all files
 
 pi  # run
 ```
