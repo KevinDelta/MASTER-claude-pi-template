@@ -1,3 +1,8 @@
+---
+name: memory-write
+description: Write project knowledge to the right pi-memory destination at session end. Load when decisions were made, patterns confirmed, lessons learned, or open items need tracking across sessions.
+---
+
 # memory-write
 
 ## Purpose

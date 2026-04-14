@@ -1,3 +1,8 @@
+---
+name: doc-authoring
+description: Produce specific, scannable, load-bearing documentation. Load when creating or updating AGENTS.md, CONTEXT.md files, project briefs, decision logs, or reference documentation.
+---
+
 # doc-authoring
 
 ## Purpose

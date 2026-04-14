@@ -1,3 +1,8 @@
+---
+name: context-update
+description: Keep workspace CONTEXT.md files accurate after work sessions. Load at the end of any session where files were modified, decisions were made, or task state changed.
+---
+
 # context-update
 
 ## Purpose
@@ -36,11 +41,19 @@ Add any items that were discovered to be blocked. Note specifically what the blo
 
 Remove items from Blocked if the block was resolved.
 
-### 5. Update Standards and Conventions (if needed)
+### 5. Update Functions (if needed)
 
-If this session established a new pattern, format decision, or working convention for this workspace, add it here. Only add standards when they're actually new — don't re-document things already listed.
+If this session introduced a new type of operation that wasn't previously done in this workspace, add it to the Functions list. Do not add one-off tasks — only add operations that will recur. Functions are stable; update them rarely.
 
-### 6. Update Key References (if needed)
+### 6. Update Workflow (if needed)
+
+If the sequence of how work moves through this workspace changed — a new gate was added, a step was reordered, a completion condition was clarified — update the Workflow section. This is not a session log; only update it when the *process itself* changed, not when work progressed through the existing process.
+
+### 7. Update Standards and Conventions (if needed)
+
+If this session established a new format rule, quality bar, or hard constraint specific to this workspace, add it here. Only add standards when they're actually new — don't re-document things already listed.
+
+### 8. Update Key References (if needed)
 
 If new files were created that will be needed in future sessions, add them to Key References. If referenced files were renamed or moved, correct the links.
 
@@ -68,6 +81,8 @@ Before closing a session:
 - [ ] Done reflects what was actually completed this session
 - [ ] Queued includes any new tasks that came up
 - [ ] Blocked is current — resolved blocks removed, new blocks added with specifics
+- [ ] Functions updated only if a new recurring operation type was introduced
+- [ ] Workflow updated only if the process sequence itself changed (not just progress through it)
 - [ ] Any new conventions from this session are captured in Standards
 - [ ] Any new key files are listed in References
 - [ ] Nothing in the file describes a state that no longer exists

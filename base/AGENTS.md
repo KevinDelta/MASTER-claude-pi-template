@@ -90,20 +90,50 @@ before doing anything.
      Task arrives → agent checks table → loads what it says → starts from context.
      If a task type isn't here, the agent guesses. Be exhaustive.
 
+     HOW TO USE THIS TABLE:
+     - Replace [workspace-name] placeholders with actual directory names from your Workspaces section
+     - Replace [skill.md] with actual skill filenames from your Skills Available table
+     - Add rows for every distinct type of work this project does
+     - Remove rows for work types this project doesn't do
+     - Keep Session start and Session end rows — they are always needed
+
      MEMORY ROW NOTE:
-     Pi-memory auto-injects relevant context before every turn (scratchpad, daily log,
-     search results, MEMORY.md — up to 16K). You don't need this row for memory to work.
-     Keep it for explicit full orientation at session start — reading MEMORY.md directly
-     gives you the complete picture, not just keyword-matched slices.
-     Remove it if your project has sparse memory and auto-injection is sufficient. -->
+     Pi-memory auto-injects relevant context before every turn. The session-start row
+     reads MEMORY.md directly for full orientation — not just keyword-matched slices.
+     Remove it only if memory/ is empty or this is an early-stage project. -->
 
 | Task Type | Workspace | Read | Load Skills |
 |-----------|-----------|------|-------------|
-| Session start | — | memory/MEMORY.md | memory-query.md |
-| [task description] | /workspaces/[workspace-a] | context/project.md + [workspace-a]/CONTEXT.md | [skill.md or —] |
-| [task description] | /workspaces/[workspace-b] | context/client.md + [workspace-b]/CONTEXT.md | [skill.md or —] |
-| [task description] | /workspaces/[workspace-c] | context/project.md + [workspace-c]/CONTEXT.md | [skill.md or —] |
-| Session end | — | — | memory-write.md + context-update.md |
+| **Session start** — orient before any work | — | `memory/MEMORY.md` | `memory-query.md` |
+| **Plan / scope** — define phases, break down work, create task list | /workspaces/[workspace-a] | `context/project.md` + `[workspace-a]/CONTEXT.md` | `doc-authoring.md` |
+| **Research** — gather information, synthesize sources, produce a brief | /workspaces/[workspace-b] | `context/client.md` + `context/project.md` + `[workspace-b]/CONTEXT.md` | — |
+| **Write / draft** — produce first draft of any deliverable | /workspaces/[workspace-a] | `context/project.md` + `context/client.md` + `[workspace-a]/CONTEXT.md` | `stop-slop.md` |
+| **Edit / revise** — refine existing draft, apply feedback | /workspaces/[workspace-a] | `[workspace-a]/CONTEXT.md` | `stop-slop.md` |
+| **Review / QA** — check deliverable against brief and standards | /workspaces/[workspace-a] | `context/project.md` + `[workspace-a]/CONTEXT.md` | `stop-slop.md` |
+| **Client comms** — draft message, email, or update for client | /workspaces/[workspace-b] | `context/client.md` + `[workspace-b]/CONTEXT.md` | `stop-slop.md` |
+| **Document** — update AGENTS.md, CONTEXT.md, decisions, reference docs | — | `context/project.md` | `doc-authoring.md` |
+| **Build / code** — write, edit, or debug code | /workspaces/[workspace-c] | `context/stack.md` + `[workspace-c]/CONTEXT.md` | — |
+| **Analyze / synthesize** — process data, extract patterns, produce findings | /workspaces/[workspace-b] | `context/project.md` + `[workspace-b]/CONTEXT.md` | — |
+| **Status / report** — summarize progress, produce a status update | — | `memory/MEMORY.md` + `memory/SCRATCHPAD.md` | `stop-slop.md` |
+| **Harness** — modify AGENTS.md, skills, extensions, or settings | — | `BLUEPRINT.md` | `harness-dev.md` |
+| **Session end** — update state and write memory | — | — | `memory-write.md` + `context-update.md` |
+
+<!-- ADAPTING THIS TABLE FOR YOUR PROJECT:
+
+     Content / writing projects:
+     - Rename [workspace-a] to /drafting, [workspace-b] to /research, [workspace-c] to /production
+     - Add rows: "Publish / format", "Asset prep", "Newsletter send"
+
+     Consulting / client work:
+     - Rename to /analysis, /deliverables, /client-comms
+     - Add rows: "Workshop prep", "Interview synthesis", "Recommendations"
+
+     Software projects:
+     - Rename to /backend, /frontend, /infra or by feature area
+     - Add rows: "Test / debug", "Deploy", "Incident response"
+
+     Always write task descriptions as the user would phrase them —
+     the agent matches by reading the Task Type column. Vague rows get missed. -->
 
 ---
 
@@ -125,7 +155,33 @@ before doing anything.
 
 ---
 
+## Skills Available
+
+<!-- Skills are auto-discovered from skills/*.md (configured in .pi/settings.json).
+     The routing table loads specific skills per task type. Skills listed here are
+     what this project has — the routing table determines when each is active. -->
+
+| Skill | When It Loads |
+|-------|--------------|
+| `stop-slop.md` | Any prose output — reports, proposals, briefs, emails |
+| `doc-authoring.md` | Creating or updating AGENTS.md, CONTEXT.md, reference docs |
+| `context-update.md` | End of any session where workspace state changed |
+| `memory-write.md` | Session end — decisions, patterns, lessons to persist |
+| `memory-query.md` | Session start — orientation before first task |
+| `[your-skill].md` | [When to load it] |
+
+---
+
 ## Out of Bounds
 
-- [Action the agent must not take without explicit instruction]
-- [Action the agent must not take without explicit instruction]
+<!-- Hard stops — actions the agent must never take without explicit user instruction.
+     These are enforced by the permissions-config.json in .pi/extensions/ when
+     pi-permission-system is installed. The extension adds enforcement; this list
+     documents intent for agents running without the extension. -->
+
+- Never delete files or directories without explicit confirmation
+- Never force-push to any branch (`git push --force`)
+- Never read or modify `.env` files, `auth.json`, or files named `secrets.*`
+- Never hard reset git state (`git reset --hard`)
+- Never send output to an external party (client, email, API) without review
+- [Project-specific hard stop]

@@ -1,3 +1,8 @@
+---
+name: stop-slop
+description: Strip AI writing patterns from prose. Load when writing or reviewing any human-facing text — reports, proposals, emails, briefs, documentation, social copy.
+---
+
 # stop-slop
 
 ## Purpose

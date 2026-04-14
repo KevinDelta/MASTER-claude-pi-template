@@ -1,3 +1,8 @@
+---
+name: memory-query
+description: Surface relevant project memory before doing work. Load at session start when memory/ exists, or when prior decisions and patterns are likely relevant to the current task.
+---
+
 # memory-query
 
 ## Purpose
