@@ -40,11 +40,13 @@ Both workspace templates rewritten with five stable sections (Purpose, Functions
 `base/.pi/extensions/agentmemory-bridge.ts` — TypeScript extension connecting to agentmemory HTTP service. Implements health check (session_start), semantic recall injection (before_agent_start), observation capture (tool_call), and memory consolidation + Claude Bridge sync (agent_end). Full graceful degradation if service is unavailable.
 
 **Infrastructure files added:**
+
 - `base/.gitignore` — gitignores `memory/.agentmemory/` (binary), `.pi/.env` (secrets)
 - `base/.pi/.env.example` — env template with all 5 bridge vars documented
 - `base/.pi/settings.json` — added `env._file` block pointing to `.pi/.env`
 
 **Memory skills updated:**
+
 - `skills/memory-write.md` — added Auto-Capture vs Manual Curation section (auto handles episodic; manual handles decisions/lessons/preferences)
 - `skills/memory-query.md` — added Agentmemory Search section with `memory_smart_search`, `memory_recall`, `memory_patterns`, `memory_graph_query` and when to use each
 
@@ -62,7 +64,7 @@ CLAUDE.md trimmed to entry-point only (how to use template, repo structure, who-
 ## Key Design Decisions
 
 | Decision | What | Why |
-|----------|------|-----|
+| ---------- | ------ | ----- |
 | YAML frontmatter required on skills | `name` + `description` fields | Pi can't discover or describe skills without them |
 | `defaultThinkingLevel` is a string | `"medium"` not `{ "level": "medium" }` | Pi's actual type; object caused silent parse failure |
 | `skills`/`extensions` are arrays | `["skills/*.md"]` not `{ "paths": [...] }` | Same issue — real pi schema takes flat arrays |
@@ -100,6 +102,7 @@ CLAUDE.md trimmed to entry-point only (how to use template, repo structure, who-
 **Phase 2:** Complete.
 
 **Open items / what's next:**
+
 - Context files (`project.md`, `client.md`, etc.) need worked examples showing what "specific enough" looks like
 - The `global/AGENTS.md` template could be more opinionated about org-wide routing patterns
 - Domain-specific skills (research, writing, code, ops) could be added to the universal skills library
