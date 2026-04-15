@@ -1,3 +1,4 @@
+# Ignore macOS system files
 .DS_Store
 
 # Client data — sensitive, not committed to template repo
@@ -10,3 +11,6 @@ clients/
 # Tools: client-intake, workflow-mapper, prioritization-matrix, agent-design-brief,
 #        pilot-run-plan, assessment-synthesis, harness-scaffold
 Intake-mapping/
+
+# Go-to-market strategy for WynDelta
+WynDelta-GTM-Strategy.md

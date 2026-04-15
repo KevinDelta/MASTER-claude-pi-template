@@ -124,63 +124,65 @@ async function syncBridge(): Promise<void> {
 
 // ─── extension hooks ─────────────────────────────────────────────────────────
 
-export default {
-  /**
-   * session_start — runs when pi loads the session.
-   * Checks agentmemory health and sets the `available` flag used by all other hooks.
-   */
-  async session_start(_event: unknown, ctx: ExtensionAPI) {
-    available = await checkHealth();
-    if (available) {
-      ctx.log(`agentmemory-bridge: connected → ${AGENTMEMORY_URL} (project: ${PROJECT_ID})`);
-    } else {
-      ctx.log(
-        `agentmemory-bridge: service unavailable at ${AGENTMEMORY_URL} — pi-memory continues uninterrupted`
+export default function (): Partial<ExtensionAPI> {
+  return {
+    /**
+     * session_start — runs when pi loads the session.
+     * Checks agentmemory health and sets the `available` flag used by all other hooks.
+     */
+    async session_start(_event: unknown, ctx: ExtensionAPI) {
+      available = await checkHealth();
+      if (available) {
+        ctx.log(`agentmemory-bridge: connected → ${AGENTMEMORY_URL} (project: ${PROJECT_ID})`);
+      } else {
+        ctx.log(
+          `agentmemory-bridge: service unavailable at ${AGENTMEMORY_URL} — pi-memory continues uninterrupted`
+        );
+      }
+    },
+
+    /**
+     * before_agent_start — fires before every agent turn.
+     * Injects semantically recalled memory into the system prompt prefix.
+     * Complements pi-memory's BM25 injection with vector + graph search.
+     */
+    async before_agent_start(_event: unknown, ctx: ExtensionAPI) {
+      if (!available) return;
+      const query = (ctx as any).getLastUserMessage?.() ?? "";
+      if (!query) return;
+
+      const recalled = await recallMemory(query);
+      if (!recalled) return;
+
+      (ctx as any).prependSystemPrompt?.(
+        `\n\n<!-- agentmemory semantic recall -->\n${recalled}\n<!-- end agentmemory recall -->\n`
       );
-    }
-  },
+    },
 
-  /**
-   * before_agent_start — fires before every agent turn.
-   * Injects semantically recalled memory into the system prompt prefix.
-   * Complements pi-memory's BM25 injection with vector + graph search.
-   */
-  async before_agent_start(_event: unknown, ctx: ExtensionAPI) {
-    if (!available) return;
-    const query = (ctx as any).getLastUserMessage?.() ?? "";
-    if (!query) return;
+    /**
+     * tool_call — fires before every tool execution.
+     * Captures write/edit/bash calls as working memory observations.
+     * Skipped for read-only tools and memory tools to avoid feedback loops.
+     */
+    async tool_call(_event: unknown, ctx: ExtensionAPI) {
+      if (!available || !AUTO_CAPTURE) return;
+      const tool = (ctx as any).getCurrentTool?.();
+      if (!tool) return;
+      if (SKIP_CAPTURE_TOOLS.has(tool.name)) return;
 
-    const recalled = await recallMemory(query);
-    if (!recalled) return;
+      const summary = `Tool: ${tool.name}\nArgs: ${JSON.stringify(tool.args ?? {}).slice(0, 500)}`;
+      await saveObservation(summary);
+    },
 
-    (ctx as any).prependSystemPrompt?.(
-      `\n\n<!-- agentmemory semantic recall -->\n${recalled}\n<!-- end agentmemory recall -->\n`
-    );
-  },
-
-  /**
-   * tool_call — fires before every tool execution.
-   * Captures write/edit/bash calls as working memory observations.
-   * Skipped for read-only tools and memory tools to avoid feedback loops.
-   */
-  async tool_call(_event: unknown, ctx: ExtensionAPI) {
-    if (!available || !AUTO_CAPTURE) return;
-    const tool = (ctx as any).getCurrentTool?.();
-    if (!tool) return;
-    if (SKIP_CAPTURE_TOOLS.has(tool.name)) return;
-
-    const summary = `Tool: ${tool.name}\nArgs: ${JSON.stringify(tool.args ?? {}).slice(0, 500)}`;
-    await saveObservation(summary);
-  },
-
-  /**
-   * agent_end — fires when the agent loop completes.
-   * Consolidates Working → Episodic → Semantic → Procedural tiers,
-   * then optionally syncs consolidated memories back to MEMORY.md via Claude Bridge.
-   */
-  async agent_end(_event: unknown, _ctx: ExtensionAPI) {
-    if (!available) return;
-    await consolidateMemory();
-    await syncBridge();
-  },
-} satisfies Partial<ExtensionAPI>;
+    /**
+     * agent_end — fires when the agent loop completes.
+     * Consolidates Working → Episodic → Semantic → Procedural tiers,
+     * then optionally syncs consolidated memories back to MEMORY.md via Claude Bridge.
+     */
+    async agent_end(_event: unknown, _ctx: ExtensionAPI) {
+      if (!available) return;
+      await consolidateMemory();
+      await syncBridge();
+    },
+  };
+}
