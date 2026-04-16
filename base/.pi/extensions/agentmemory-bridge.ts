@@ -25,7 +25,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 const AGENTMEMORY_URL = process.env.AGENTMEMORY_URL ?? "http://localhost:3111";
 const AUTO_CAPTURE = process.env.AGENTMEMORY_AUTO_CAPTURE !== "false";
-const TOKEN_BUDGET = parseInt(process.env.AGENTMEMORY_TOKEN_BUDGET ?? "2000", 10);
+const TOKEN_BUDGET = parseInt(process.env.AGENTMEMORY_TOKEN_BUDGET ?? "2000", 10) || 2000;
 const PROJECT_ID = process.env.AGENTMEMORY_PROJECT_ID ?? "default";
 
 // Tools that should never be captured as observations.
@@ -122,67 +122,66 @@ async function syncBridge(): Promise<void> {
   }
 }
 
-// ─── extension hooks ─────────────────────────────────────────────────────────
+// ─── extension factory ───────────────────────────────────────────────────────
 
-export default function (): Partial<ExtensionAPI> {
-  return {
-    /**
-     * session_start — runs when pi loads the session.
-     * Checks agentmemory health and sets the `available` flag used by all other hooks.
-     */
-    async session_start(_event: unknown, ctx: ExtensionAPI) {
-      available = await checkHealth();
-      if (available) {
-        ctx.log(`agentmemory-bridge: connected → ${AGENTMEMORY_URL} (project: ${PROJECT_ID})`);
-      } else {
-        ctx.log(
-          `agentmemory-bridge: service unavailable at ${AGENTMEMORY_URL} — pi-memory continues uninterrupted`
-        );
-      }
-    },
-
-    /**
-     * before_agent_start — fires before every agent turn.
-     * Injects semantically recalled memory into the system prompt prefix.
-     * Complements pi-memory's BM25 injection with vector + graph search.
-     */
-    async before_agent_start(_event: unknown, ctx: ExtensionAPI) {
-      if (!available) return;
-      const query = (ctx as any).getLastUserMessage?.() ?? "";
-      if (!query) return;
-
-      const recalled = await recallMemory(query);
-      if (!recalled) return;
-
-      (ctx as any).prependSystemPrompt?.(
-        `\n\n<!-- agentmemory semantic recall -->\n${recalled}\n<!-- end agentmemory recall -->\n`
+export default function (pi: ExtensionAPI): void {
+  /**
+   * session_start — runs when pi loads the session.
+   * Checks agentmemory health and sets the `available` flag used by all other hooks.
+   */
+  pi.on("session_start", async (_event, _ctx) => {
+    available = await checkHealth();
+    if (available) {
+      console.log(`agentmemory-bridge: connected → ${AGENTMEMORY_URL} (project: ${PROJECT_ID})`);
+    } else {
+      console.log(
+        `agentmemory-bridge: service unavailable at ${AGENTMEMORY_URL} — pi-memory continues uninterrupted`
       );
-    },
+    }
+  });
 
-    /**
-     * tool_call — fires before every tool execution.
-     * Captures write/edit/bash calls as working memory observations.
-     * Skipped for read-only tools and memory tools to avoid feedback loops.
-     */
-    async tool_call(_event: unknown, ctx: ExtensionAPI) {
-      if (!available || !AUTO_CAPTURE) return;
-      const tool = (ctx as any).getCurrentTool?.();
-      if (!tool) return;
-      if (SKIP_CAPTURE_TOOLS.has(tool.name)) return;
+  /**
+   * before_agent_start — fires before every agent turn.
+   * Injects semantically recalled memory into the system prompt.
+   * Complements pi-memory's BM25 injection with vector + graph search.
+   * Returns { systemPrompt } to append recalled context to the current system prompt.
+   */
+  pi.on("before_agent_start", async (event, _ctx) => {
+    if (!available) return;
+    const query = event.prompt;
+    if (!query) return;
 
-      const summary = `Tool: ${tool.name}\nArgs: ${JSON.stringify(tool.args ?? {}).slice(0, 500)}`;
-      await saveObservation(summary);
-    },
+    const recalled = await recallMemory(query);
+    if (!recalled) return;
 
-    /**
-     * agent_end — fires when the agent loop completes.
-     * Consolidates Working → Episodic → Semantic → Procedural tiers,
-     * then optionally syncs consolidated memories back to MEMORY.md via Claude Bridge.
-     */
-    async agent_end(_event: unknown, _ctx: ExtensionAPI) {
-      if (!available) return;
-      await consolidateMemory();
-      await syncBridge();
-    },
-  };
+    return {
+      systemPrompt:
+        event.systemPrompt +
+        `\n\n<!-- agentmemory semantic recall -->\n${recalled}\n<!-- end agentmemory recall -->`,
+    };
+  });
+
+  /**
+   * tool_call — fires before every tool execution.
+   * Captures write/edit/bash calls as working memory observations.
+   * Skipped for read-only tools and memory tools to avoid feedback loops.
+   */
+  pi.on("tool_call", async (event, _ctx) => {
+    if (!available || !AUTO_CAPTURE) return;
+    if (SKIP_CAPTURE_TOOLS.has(event.toolName)) return;
+
+    const summary = `Tool: ${event.toolName}\nArgs: ${JSON.stringify(event.input).slice(0, 500)}`;
+    await saveObservation(summary);
+  });
+
+  /**
+   * agent_end — fires when the agent loop completes.
+   * Consolidates Working → Episodic → Semantic → Procedural tiers,
+   * then optionally syncs consolidated memories back to MEMORY.md via Claude Bridge.
+   */
+  pi.on("agent_end", async (_event, _ctx) => {
+    if (!available) return;
+    await consolidateMemory();
+    await syncBridge();
+  });
 }

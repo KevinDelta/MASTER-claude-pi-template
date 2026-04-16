@@ -37,11 +37,11 @@ MASTER-claude-pi-template/
 │
 ├── base/                      ← Copy this directory to start any new project
 │   ├── AGENTS.md              ← Pi's primary config (TWO SECTIONS: global layer + project layer)
-│   ├── APPEND_SYSTEM.md       ← Extends pi's system prompt (recommended for most projects)
-│   ├── SYSTEM.md              ← Replaces pi's system prompt entirely (power user only)
 │   ├── SOUL.md                ← Persona / tone customization (optional — delete if not needed)
 │   ├── .pi/
 │   │   ├── settings.json      ← Model, tool permissions, compaction, extensions, skills paths
+│   │   ├── SYSTEM.md          ← Replaces pi's system prompt entirely (power user only)
+│   │   ├── APPEND_SYSTEM.md   ← Extends pi's system prompt (recommended for most projects)
 │   │   ├── .env.example       ← Env var template for agentmemory bridge (copy → .pi/.env)
 │   │   └── extensions/
 │   │       ├── README.md      ← How extensions work, safety tiers, agentmemory setup
@@ -102,13 +102,13 @@ project-specific rules, out-of-bounds.
 
 Pi natively reads and acts on exactly these files:
 
-| File | What Pi Does With It |
-|------|---------------------|
-| `AGENTS.md` | Loads hierarchically (global → project) at every session start |
-| `APPEND_SYSTEM.md` | Prepends content to pi's default ~200 token system prompt |
-| `SYSTEM.md` | Replaces pi's default system prompt entirely |
-| `SOUL.md` | Applies persona / tone customization |
-| `.pi/settings.json` | Configures model, tools, extensions, memory path, compaction |
+| File | Path | What Pi Does With It |
+|------|------|---------------------|
+| `AGENTS.md` | `[project-root]/AGENTS.md` | Loads hierarchically (global → project) at every session start; walks ancestor dirs |
+| `.pi/APPEND_SYSTEM.md` | `[project-root]/.pi/APPEND_SYSTEM.md` | Appends content to pi's default ~200 token system prompt |
+| `.pi/SYSTEM.md` | `[project-root]/.pi/SYSTEM.md` | Replaces pi's default system prompt entirely (power user only) |
+| `SOUL.md` | `[project-root]/SOUL.md` | Not a pi primitive — a content file the agent reads when AGENTS.md routes to it |
+| `.pi/settings.json` | `[project-root]/.pi/settings.json` | Configures model, tools, extensions, memory path, compaction |
 
 Pi's 4 built-in tools (always available, no config): `read`, `write`, `edit`, `bash`
 

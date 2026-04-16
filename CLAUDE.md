@@ -32,12 +32,12 @@ global/                        ← Org-layer AGENTS.md — deploy to ~/.pi/agent
 
 base/                          ← Copy this to start any new project
 ├── AGENTS.md                  ← Pi's primary config (two-layer: global + project sections)
-├── APPEND_SYSTEM.md           ← Additive system prompt (recommended default)
-├── SYSTEM.md                  ← Full system prompt replacement (power user only)
 ├── SOUL.md                    ← Persona/tone customization (optional — delete if not needed)
 ├── .gitignore                 ← Gitignores agentmemory binary store and .pi/.env
 ├── .pi/
 │   ├── settings.json          ← Model, tool permissions, compaction, skills/extensions paths
+│   ├── APPEND_SYSTEM.md       ← Additive system prompt (recommended default)
+│   ├── SYSTEM.md              ← Full system prompt replacement (power user only)
 │   ├── .env.example           ← Env template for agentmemory bridge (copy → .pi/.env)
 │   └── extensions/
 │       ├── README.md          ← How extensions work, safety tiers, agentmemory setup
@@ -81,6 +81,8 @@ skills/                        ← Universal skills — copy what each project n
 - `base/.pi/extensions/*.ts` — TypeScript extensions; use `ExtensionAPI` type, two-param handlers `(_event, ctx)`
 - `BLUEPRINT.md` — keep in sync when structural decisions change
 
+**For client onboarding workflow:** see `CLIENT-ONBOARDING-RUNBOOK.md` (internal only, gitignored).
+
 **What the pi agent reads vs what Claude Code reads:**
 
 | File | Pi agent | Claude Code |
@@ -89,5 +91,6 @@ skills/                        ← Universal skills — copy what each project n
 | `BLUEPRINT.md` | ✓ (harness-dev tasks) | ✓ (technical reference) |
 | `CLAUDE.md` | — | ✓ (project instructions) |
 | `PROJECT-CONTEXT.md` | — | ✓ (dev context) |
+| `CLIENT-ONBOARDING-RUNBOOK.md` | — | ✓ (onboarding ops, gitignored) |
 | `skills/*.md` | ✓ (via routing table) | reference |
 | `.pi/settings.json` | ✓ (harness config) | reference |
