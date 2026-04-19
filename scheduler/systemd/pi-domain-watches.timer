@@ -1,0 +1,20 @@
+# pi-domain-watches.timer — systemd timer for pi watches (Linux)
+# Companion to pi-domain-watches.service.
+# Fires the service every minute so pi can evaluate watches.yaml cron schedules.
+#
+# Install alongside the .service file. Installed by install.sh.
+
+[Unit]
+Description=Timer for Pi domain watches — {{DOMAIN_NAME}}
+Requires=pi-domain-{{DOMAIN_NAME}}-watches.service
+
+[Timer]
+# Fire every minute — pi checks which watches.yaml entries match current time
+OnCalendar=*:0/1
+
+# Persistent=true ensures any missed fires (e.g., machine was off) run on next startup
+# Workers who don't want catch-up fires can set this to false
+Persistent=true
+
+[Install]
+WantedBy=timers.target

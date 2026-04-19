@@ -1,0 +1,54 @@
+# watches.yaml — domain-level proactivity declarations
+# Location when deployed: ~/.pi/domain/<domain-name>/watches.yaml
+#
+# Each watch fires pi headless via launchd (macOS) or systemd (Linux).
+# The OS scheduler fires pi once per minute. Pi reads this file and evaluates
+# which cron entries match the current time. Pi exits when done — no daemon.
+#
+# Run install.sh to configure the OS scheduler for your machine.
+#
+# Fields:
+#   name:      unique identifier used as the scheduler job label
+#   schedule:  cron expression (min hour dom month dow) — man 5 crontab for syntax
+#   task:      instruction passed to pi as --task; runs with full domain context loaded
+#   output:    notify | append MEMORY.md | silent
+#   condition: (optional) natural-language condition pi checks before running task
+#   goal:      (optional) goal name from goals table; triggers delta check against observed state
+#
+# Output modes:
+#   notify        — pi surfaces the result as a notification (macOS: osascript; Linux: notify-send)
+#   append MEMORY.md — pi appends a summary line to ~/.pi/domain/<name>/MEMORY.md
+#   silent        — pi runs and writes observations to DB; no user-visible output
+
+watches:
+  - name: morning-plan
+    schedule: "0 7 * * *"
+    task: "Review calendar for today. Check open scratchpad items. Draft a prioritized daily plan."
+    output: notify
+
+  - name: weekly-sync
+    schedule: "0 17 * * 5"
+    task: "Summarize the week across active projects. Flag open items. Note any decisions made this week."
+    output: append MEMORY.md
+
+  - name: stale-project-check
+    schedule: "0 9 * * 1"
+    condition: "any project with no observations in the past 14 days"
+    task: "Identify stale projects. For each, note last activity date and ask whether to archive, resume, or close."
+    output: notify
+
+  # Goal-referenced watches — enable after adding goals to memory.db via:
+  #   INSERT INTO goals (scope, name, definition, check_cron, resolver_skill)
+  #   VALUES ('domain', 'deep-work-hours-per-week', '20 hours of focused work per week', '0 18 * * *', 'goals-resolver');
+  #
+  # - name: deep-work-goal-check
+  #   schedule: "0 18 * * *"
+  #   goal: deep-work-hours-per-week
+  #   task: "Compare this week's deep-work hours to the 20-hour target. If below 75%, propose tomorrow's schedule adjustments."
+  #   output: notify
+  #
+  # - name: client-response-check
+  #   schedule: "0 9 * * *"
+  #   condition: "any client message in observations older than 24 hours with no response logged"
+  #   task: "Flag pending client responses. List client, message summary, and days since received."
+  #   output: notify

@@ -1,0 +1,31 @@
+# pi-domain-watches.service — systemd service for pi watches (Linux)
+# Generated and installed to ~/.config/systemd/user/ by install.sh.
+# Do not edit this template directly — edit the installed unit then run:
+#   systemctl --user daemon-reload
+#   systemctl --user restart pi-domain-{{DOMAIN_NAME}}-watches.timer
+#
+# DESIGN: oneshot service — pi runs, evaluates watches.yaml cron schedules,
+# executes matching watches, and exits. The companion .timer fires this every minute.
+# No daemon. systemd manages scheduling reliability and restart on failure.
+
+[Unit]
+Description=Pi domain watches runner — {{DOMAIN_NAME}}
+Documentation=https://github.com/badlogic/pi-mono
+After=network.target
+
+[Service]
+Type=oneshot
+
+# install.sh substitutes {{USER}} and {{HOME}} at deploy time
+User={{USER}}
+Environment=PI_DOMAIN_NAME={{DOMAIN_NAME}}
+Environment=HOME={{HOME}}
+
+# install.sh substitutes {{PI_BIN}} and {{WATCHES_PATH}}
+ExecStart={{PI_BIN}} --domain {{DOMAIN_NAME}} --watches {{WATCHES_PATH}}
+
+StandardOutput=append:{{LOG_DIR}}/pi-watches.log
+StandardError=append:{{LOG_DIR}}/pi-watches.err
+
+# Allow up to 5 minutes for a watch to complete before killing
+TimeoutStartSec=300

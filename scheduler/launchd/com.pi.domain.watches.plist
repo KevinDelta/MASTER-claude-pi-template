@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- com.pi.domain.watches.plist — launchd job template for macOS
+     Generated and installed by install.sh. Do not edit this template directly.
+     To update the live job: edit the installed plist in ~/Library/LaunchAgents/ then run:
+       launchctl unload ~/Library/LaunchAgents/com.pi.domain.{{DOMAIN_NAME}}.watches.plist
+       launchctl load ~/Library/LaunchAgents/com.pi.domain.{{DOMAIN_NAME}}.watches.plist
+
+     DESIGN: This job fires pi every minute. Pi reads watches.yaml and evaluates which cron
+     entries match the current time, then runs only matching watches. Pi exits when done.
+     No daemon. The OS manages scheduling reliability. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.pi.domain.{{DOMAIN_NAME}}.watches</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <!-- install.sh replaces {{PI_BIN}} with the actual pi binary path -->
+        <string>{{PI_BIN}}</string>
+        <string>--domain</string>
+        <string>{{DOMAIN_NAME}}</string>
+        <string>--watches</string>
+        <string>{{WATCHES_PATH}}</string>
+    </array>
+
+    <!-- Fire every minute — pi checks watches.yaml cron schedules internally -->
+    <key>StartInterval</key>
+    <integer>60</integer>
+
+    <key>StandardOutPath</key>
+    <string>{{LOG_DIR}}/pi-watches.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>{{LOG_DIR}}/pi-watches.err</string>
+
+    <!-- Do not fire immediately on load — wait for first minute boundary -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PI_DOMAIN_NAME</key>
+        <string>{{DOMAIN_NAME}}</string>
+        <key>HOME</key>
+        <string>{{HOME}}</string>
+        <key>PATH</key>
+        <string>{{PATH}}</string>
+    </dict>
+
+    <!-- Restart on crash — watches should be resilient -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+</dict>
+</plist>

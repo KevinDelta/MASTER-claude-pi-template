@@ -6,6 +6,56 @@
 
 ## What We Built (Changelog)
 
+### Phase 3 — SPEC-v2 Domain Layer (2026-04-18)
+
+**Domain template (`domain/`) created:**
+Full domain layer template deployed to `~/.pi/domain/<name>/` via `install.sh`. Contains:
+- `AGENTS.md` — domain-layer config (vocabulary, methods, routing table scaffold)
+- `SOUL.md` — persona template (REQUIRED at domain creation — not optional)
+- `MEMORY.md` — human-readable domain memory index (decisions, patterns, lessons)
+- `watches.yaml` — proactivity declarations (cron schedules, tasks, optional goals)
+- `context/domain.md` — what the domain is, scope, active projects, constraints
+- `context/clients.md` — cross-project client registry and comm standards
+- `skills/goals-resolver.md` — check goals against observations, propose recovery
+- `skills/domain-status.md` — cross-project status summary from domain memory
+- `.pi/settings.json` — domain-level pi config (model, skills path, extensions path)
+- `.pi/extensions/memory-db.ts` — embedded memory extension (SQLite + sqlite-vec)
+- `.pi/extensions/.env.example` — env template for memory-db
+
+**memory-db.ts extension:**
+TypeScript extension backed by SQLite + sqlite-vec. Replaces the HTTP-based agentmemory service for the domain layer. No daemon. No Docker. One file per domain.
+- `session_start` — open DB, initialize schema, log status
+- `before_agent_start` — FTS + vector search on prompt; inject top N slices (16K budget); inject open scratchpad items
+- `tool_call` — capture write/edit/bash calls as observation rows
+- `agent_end` — backfill embeddings (nomic-embed-text via ollama); optionally append session summary to MEMORY.md
+- Graceful degradation: DB unavailable → all hooks return early; ollama unavailable → FTS still works
+
+**PI_DOCK.md template:**
+Host interface declaration at repo root; deploys to `~/.pi/PI_DOCK.md`. Declares what pi carries (domain, persona, active projects, memory DB, skills), export allowlist (default deny on anything not listed), and host requirements (MCP endpoints, permissions, network, workspace). MCP is the dock protocol.
+
+**Scheduler templates:**
+- `scheduler/launchd/com.pi.domain.watches.plist` — macOS launchd template
+- `scheduler/systemd/pi-domain-watches.service` — Linux systemd service
+- `scheduler/systemd/pi-domain-watches.timer` — Linux systemd timer (fires every minute)
+- `scheduler/README.md` — setup, management, troubleshooting
+
+**New skills:**
+- `skills/domain-bootstrap.md` — bootstrap new project context files from domain memory; prevents blank-template starts
+- `skills/memory-db.md` — v2 memory DB reference (schema, queries, setup, diagnostics)
+- `domain/skills/goals-resolver.md` — domain skill for goal delta checking
+- `domain/skills/domain-status.md` — domain skill for cross-project status
+
+**install.sh:**
+One-command installer. Takes `--domain <name>` and `--persona <name>`. Handles: prereq checks, directory creation, template deployment, placeholder substitution, .env creation, active-domain pointer file, nomic-embed-text pull, persona CLI alias, OS scheduler setup (macOS launchd or Linux systemd). Flags: `--skip-ollama`, `--skip-scheduler`, `--yes`, `--dry-run`.
+
+**Modified files:**
+- `base/AGENTS.md` — stripped to project-layer only (global section removed; now loads after global+domain)
+- `global/AGENTS.md` — added three-layer load order documentation in header comment
+- `base/.pi/extensions/README.md` — updated memory section to lead with memory-db.ts (v2); kept agentmemory-bridge docs as v1 fallback
+- `BLUEPRINT.md` — major update: three-layer architecture, domain template, embedded DB, PI_DOCK, watches, scheduler, updated session flow, updated setup instructions
+
+---
+
 ### Phase 1 — Harness Foundation (2026-04-11 / 2026-04-14)
 
 **Skills system fixed:**
@@ -97,13 +147,20 @@ CLAUDE.md trimmed to entry-point only (how to use template, repo structure, who-
 
 ## Current State
 
-**Phase 1:** Complete.
+**Phase 1 (Harness Foundation):** Complete.
 
-**Phase 2:** Complete.
+**Phase 2 (Memory Upgrade):** Complete — agentmemory bridge shipped.
+
+**Phase 3 (SPEC-v2 Domain Layer):** Complete. All five phases shipped.
 
 **Open items / what's next:**
 
+- End-to-end test: run `./install.sh --domain test --persona test-agent --dry-run`, then full install, verify memory-db extension connects and DB is created on first session
 - Context files (`project.md`, `client.md`, etc.) need worked examples showing what "specific enough" looks like
 - The `global/AGENTS.md` template could be more opinionated about org-wide routing patterns
 - Domain-specific skills (research, writing, code, ops) could be added to the universal skills library
 - End-to-end test: stand up an actual pi project from `base/`, run through session start → task → session end, verify memory injection and routing table work correctly
+- Multi-device setup docs: iCloud Drive sync (macOS primary) and syncthing (cross-platform) documented in BLUEPRINT.md under domain portability
+- LanceDB migration path: document the Phase 2 (sqlite-vec → LanceDB) migration steps when multi-device write conflicts become a real constraint
+- Phase 0 (upstream): contribute `--as-mcp` mode to pi.dev — unlocks PI_DOCK.md host plug-in model; currently PI_DOCK.md is a declaration without enforcement
+- v3 natural-language authoring layer: let a knowledge worker configure their domain without editing files directly — v3 work, not v2

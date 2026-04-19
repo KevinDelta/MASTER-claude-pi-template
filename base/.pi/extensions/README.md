@@ -84,21 +84,51 @@ pi install git:github.com/pi-agent/pi-safeguard
 
 ---
 
-## Semantic Memory Extension (agentmemory)
+## Semantic Memory
 
-**agentmemory** ([github.com/rohitg00/agentmemory](https://github.com/rohitg00/agentmemory)) adds a semantic intelligence layer on top of pi-memory's BM25 keyword injection. The two work in parallel — pi-memory handles fast keyword-matched injection; agentmemory adds vector search, knowledge graph traversal, and automatic tier-based consolidation.
+**v2 (recommended):** `memory-db.ts` — domain-layer extension using embedded SQLite + sqlite-vec. No external service. No Docker. One file per domain at `~/.pi/domain/<name>/memory.db`.
 
-### What agentmemory adds
+**v1 (project-layer fallback):** `agentmemory-bridge.ts` — connects to a running agentmemory HTTP service. Available for projects that don't use the v2 domain layer.
 
-| Capability | pi-memory | agentmemory |
-|------------|-----------|-------------|
+### v2 — memory-db.ts (domain layer)
+
+The `memory-db.ts` extension lives in the domain template at `domain/.pi/extensions/memory-db.ts` and deploys to `~/.pi/domain/<name>/.pi/extensions/memory-db.ts` via `install.sh`.
+
+| Capability | pi-memory | memory-db |
+|------------|-----------|-----------|
 | Keyword search (BM25) | ✓ | ✓ |
-| Semantic / vector search | — | ✓ |
-| Knowledge graph | — | ✓ |
-| Pattern detection across sessions | — | ✓ |
-| Auto-capture of tool call observations | — | ✓ |
-| Memory tier consolidation | — | ✓ (Working → Episodic → Semantic → Procedural) |
-| Sync back to MEMORY.md | — | ✓ (Claude Bridge) |
+| Semantic / vector search | — | ✓ (via ollama) |
+| Cross-project observation capture | — | ✓ |
+| Scratchpad across projects | — | ✓ |
+| Goals table + delta tracking | — | ✓ |
+| Embedded — no daemon, no Docker | ✓ | ✓ |
+
+**Prerequisites:**
+
+```bash
+# Install npm packages (once per machine)
+npm install -g better-sqlite3 sqlite-vec
+
+# Install ollama and pull embedding model
+curl -fsSL https://ollama.ai/install.sh | sh
+ollama pull nomic-embed-text
+```
+
+**Configure per project** — add to `<project-root>/.pi/.env`:
+
+```bash
+PI_PROJECT_ID=my-project-slug  # tags observations to this project in the domain DB
+```
+
+The domain-level env (`~/.pi/domain/<name>/.pi/.env`) handles all other config. See `.env.example` in the domain template.
+
+**Graceful degradation:** if the DB is unavailable, all hooks return early. If ollama is unavailable, FTS search still works — only vector recall is skipped.
+
+---
+
+### v1 — agentmemory-bridge.ts (project layer, backwards-compatible)
+
+**agentmemory** ([github.com/rohitg00/agentmemory](https://github.com/rohitg00/agentmemory)) runs as a background HTTP service (default: `localhost:3111`). Use this for projects not using the v2 domain layer.
 
 ### Setup
 
@@ -139,22 +169,11 @@ Key variables in `.pi/.env`:
 `agentmemory-bridge.ts` (in this directory) connects automatically:
 
 1. **`session_start`** — health check sets `available` flag; logs connection status or graceful skip message
-2. **`before_agent_start`** — calls `memory_recall` with the current user message → injects semantically relevant memory into the system prompt prefix (in addition to pi-memory's BM25 injection)
+2. **`before_agent_start`** — calls `memory_recall` with the current user message → injects semantically relevant memory into the system prompt prefix
 3. **`tool_call`** — captures write/edit/bash executions as working memory observations (skips read-only and memory tools)
 4. **`agent_end`** — calls `memory_consolidate` to promote Working → Episodic → Semantic tiers, then (if `CLAUDE_BRIDGE_SYNC=true`) syncs consolidated memories back to `memory/MEMORY.md`
 
-**Graceful degradation:** if agentmemory is down, `available` stays `false` and every hook skips silently. Pi-memory continues without interruption.
-
-### When to enable CLAUDE_BRIDGE_SYNC
-
-Enable it for:
-- Engagements longer than a week (cross-session pattern detection pays off)
-- Client work where MEMORY.md is reviewed or committed to git
-- Projects where the pi agent will run without Claude Code in the loop
-
-Keep it off for:
-- Short sprints (MEMORY.md doesn't accumulate enough for consolidation to matter)
-- Experimental / exploratory work where you don't want noisy syncs
+**Graceful degradation:** if agentmemory is down, every hook skips silently. Pi-memory continues without interruption.
 
 ---
 

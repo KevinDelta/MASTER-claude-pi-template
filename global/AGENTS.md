@@ -5,7 +5,22 @@
      Keep it minimal. Only put things here that are true across ALL projects.
      Project-specific details belong in the project's AGENTS.md — not here.
 
-     When in doubt: if it would change between projects, it's a project-level concern. -->
+     When in doubt: if it would change between projects, it's a project-level concern.
+
+     THREE-LAYER LOAD ORDER (v2):
+     Pi loads AGENTS.md in this sequence:
+       1. Global    → ~/.pi/agent/AGENTS.md          (THIS FILE — machine-wide)
+       2. Domain    → ~/.pi/domain/<name>/AGENTS.md  (worker's active domain)
+       3. Project   → <project-root>/AGENTS.md       (engagement-specific)
+
+     Each layer appends and overrides the one above.
+     Routing rows are matched by the Task Type column's first keyword.
+     A domain row overrides a global row with the same key.
+     A project row overrides a domain row with the same key.
+
+     The active domain is declared in ~/.pi/active-domain (plain text, one line).
+     Workers switch domains with: pi domain use <name>
+     Most workers run one domain at a time. -->
 
 ---
 
