@@ -1,6 +1,6 @@
 # SPEC v2 — Domain Layer, Embedded Memory DB, Dock Interface, Proactivity
 
-**Status:** Proposal. Informs the next phase of work on MASTER-claude-pi-template. Does not supersede BLUEPRINT.md yet; BLUEPRINT.md stays accurate for v1 until phases ship.
+**Status:** Proposal. Informs the next phase of work on MASTER-claude-pi-template.
 
 ---
 
