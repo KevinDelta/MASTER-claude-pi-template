@@ -33,9 +33,6 @@ Hot-reload during development: `/reload` in the pi session.
 # From GitHub
 pi install git:github.com/MasuRii/pi-permission-system
 
-# From npm
-pi install npm:pi-memory
-
 # Installed extensions land in ~/.pi/agent/extensions/ (global) or .pi/extensions/ (project)
 ```
 
@@ -86,22 +83,18 @@ pi install git:github.com/pi-agent/pi-safeguard
 
 ## Semantic Memory
 
-**v2 (recommended):** `memory-db.ts` — domain-layer extension using embedded SQLite + sqlite-vec. No external service. No Docker. One file per domain at `~/.pi/domain/<name>/memory.db`.
+`memory-db.ts` — domain-layer extension using embedded SQLite + sqlite-vec. No external service. No Docker. One file per domain at `~/.pi/domain/<name>/memory.db`.
 
-**v1 (project-layer fallback):** `agentmemory-bridge.ts` — connects to a running agentmemory HTTP service. Available for projects that don't use the v2 domain layer.
+The extension lives in the domain template at `domain/.pi/extensions/memory-db.ts` and deploys to `~/.pi/domain/<name>/.pi/extensions/memory-db.ts` via `install.sh`.
 
-### v2 — memory-db.ts (domain layer)
-
-The `memory-db.ts` extension lives in the domain template at `domain/.pi/extensions/memory-db.ts` and deploys to `~/.pi/domain/<name>/.pi/extensions/memory-db.ts` via `install.sh`.
-
-| Capability | pi-memory | memory-db |
-|------------|-----------|-----------|
-| Keyword search (BM25) | ✓ | ✓ |
-| Semantic / vector search | — | ✓ (via ollama) |
-| Cross-project observation capture | — | ✓ |
-| Scratchpad across projects | — | ✓ |
-| Goals table + delta tracking | — | ✓ |
-| Embedded — no daemon, no Docker | ✓ | ✓ |
+| Capability | memory-db |
+|------------|-----------|
+| Keyword search (FTS5) | ✓ |
+| Semantic / vector search | ✓ (via ollama) |
+| Cross-project observation capture | ✓ |
+| Scratchpad across projects | ✓ |
+| Goals table + delta tracking | ✓ |
+| Embedded — no daemon, no Docker | ✓ |
 
 **Prerequisites:**
 
@@ -123,57 +116,6 @@ PI_PROJECT_ID=my-project-slug  # tags observations to this project in the domain
 The domain-level env (`~/.pi/domain/<name>/.pi/.env`) handles all other config. See `.env.example` in the domain template.
 
 **Graceful degradation:** if the DB is unavailable, all hooks return early. If ollama is unavailable, FTS search still works — only vector recall is skipped.
-
----
-
-### v1 — agentmemory-bridge.ts (project layer, backwards-compatible)
-
-**agentmemory** ([github.com/rohitg00/agentmemory](https://github.com/rohitg00/agentmemory)) runs as a background HTTP service (default: `localhost:3111`). Use this for projects not using the v2 domain layer.
-
-### Setup
-
-```bash
-# 1. Clone and start the agentmemory service
-git clone https://github.com/rohitg00/agentmemory
-cd agentmemory
-
-# Option A: Docker (recommended)
-docker-compose up -d
-
-# Option B: Node
-npm install && npm start
-```
-
-Confirm the service is running:
-```bash
-curl http://localhost:3111/health
-# → { "status": "ok" }
-```
-
-### Configure the project
-
-```bash
-# Copy the env template and fill in your project values
-cp .pi/.env.example .pi/.env
-```
-
-Key variables in `.pi/.env`:
-- `AGENTMEMORY_URL` — service URL (default `http://localhost:3111`)
-- `AGENTMEMORY_PROJECT_ID` — project namespace (e.g. `client-acme`, `q2-sprint`)
-- `AGENTMEMORY_TOKEN_BUDGET` — tokens to inject per turn (default `2000`)
-- `AGENTMEMORY_AUTO_CAPTURE` — auto-capture tool calls as observations (default `true`)
-- `CLAUDE_BRIDGE_SYNC` — sync consolidated memory back to MEMORY.md (default `false`)
-
-### How the bridge extension works
-
-`agentmemory-bridge.ts` (in this directory) connects automatically:
-
-1. **`session_start`** — health check sets `available` flag; logs connection status or graceful skip message
-2. **`before_agent_start`** — calls `memory_recall` with the current user message → injects semantically relevant memory into the system prompt prefix
-3. **`tool_call`** — captures write/edit/bash executions as working memory observations (skips read-only and memory tools)
-4. **`agent_end`** — calls `memory_consolidate` to promote Working → Episodic → Semantic tiers, then (if `CLAUDE_BRIDGE_SYNC=true`) syncs consolidated memories back to `memory/MEMORY.md`
-
-**Graceful degradation:** if agentmemory is down, every hook skips silently. Pi-memory continues without interruption.
 
 ---
 

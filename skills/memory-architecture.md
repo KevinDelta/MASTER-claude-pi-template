@@ -1,64 +1,79 @@
 ---
 name: memory-architecture
-description: Reference for the two-layer memory system (pi-memory + agentmemory). Load when setting up memory for a new project, debugging why context isn't surfacing, or choosing between memory search tools.
+description: Reference for the domain memory DB (SQLite + sqlite-vec). Load when setting up memory for a new domain, debugging why context isn't surfacing, or understanding how the memory extension works.
 ---
 
 # memory-architecture
 
 ## Purpose
 
-Explains how the two-layer memory system works so you can set it up correctly, diagnose problems, and choose the right search tool for the right job. Load this skill when onboarding a new project, troubleshooting missing context, or confused about which memory layer to write to.
+Explains how the domain memory system works so you can set it up correctly, diagnose problems, and understand what gets captured and when. Load when onboarding a new domain, troubleshooting missing context, or deciding what to write to memory.
 
 ---
 
-## The Two Layers
+## The Domain Memory DB
 
-### Layer 1 — Markdown Substrate (pi-memory)
+**Location:** `~/.pi/domain/<name>/memory.db`
 
-**Location:** `memory/MEMORY.md`, `memory/SCRATCHPAD.md`, `memory/daily/`
+One SQLite file per domain. Carries across every project in the domain. No HTTP service. No Docker.
 
-**What it is:** Plain markdown files. Permanent. Git-committed. Human-readable. The source of truth for project knowledge.
+**Extension:** `memory-db.ts` (in `domain/.pi/extensions/`) — hooks into pi's lifecycle events:
 
-**What it does:** Pi-memory hooks `before_agent_start` and injects keyword-relevant slices (BM25 search) into the system prompt before every turn. 16K total budget.
+| Hook | What it does |
+|------|-------------|
+| `session_start` | Opens DB, initializes schema, logs connection status |
+| `before_agent_start` | FTS + vector search on current prompt; injects top results (16K budget); injects open scratchpad items |
+| `tool_call` | Captures write/edit/bash calls as observation rows; skips read-only and memory tools |
+| `agent_end` | Backfills embeddings for unembedded observations (up to 50 per session); optionally appends session summary to MEMORY.md |
 
-**Injection priority:**
-1. Open scratchpad items (2K)
-2. Today's daily log tail (3K)
-3. BM25 search results on current prompt (2.5K)
-4. MEMORY.md long-term content (4K)
-5. Yesterday's daily log (3K — trimmed first)
+**Embedding:** nomic-embed-text via local ollama (768 dimensions, MIT license, retrieval-tuned). Local by default — observations never leave the machine.
 
-**Install:** `pi install npm:pi-memory` (once per machine)
-
-**Always active.** Does not require agentmemory. This layer is the floor.
+**Graceful degradation:** if DB is unavailable, all hooks return early. If ollama is unavailable, FTS search still works — only vector recall is skipped.
 
 ---
 
-### Layer 2 — Intelligence Layer (agentmemory)
+## Schema
 
-**Location:** `memory/.agentmemory/` (binary KV store, **gitignored**)
+```sql
+-- Project-scoped observation log (auto-captured from tool calls)
+CREATE TABLE observations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id TEXT NOT NULL,
+  content TEXT NOT NULL,
+  tags TEXT,           -- space-separated: "write edit decision"
+  created_at TEXT DEFAULT (datetime('now'))
+);
 
-**What it is:** A background HTTP service with 4-tier memory consolidation, hybrid semantic/graph/BM25 search, and auto-capture of tool call observations.
+-- Vector index (sqlite-vec)
+CREATE VIRTUAL TABLE observations_vec USING vec0(
+  embedding FLOAT[768]
+);
 
-**What it does:**
-- Captures tool calls (write/edit/bash) as working memory automatically
-- Consolidates Working → Episodic → Semantic → Procedural on session end
-- Provides semantic search, pattern detection, and knowledge graph traversal
-- Optionally syncs consolidated memories back to MEMORY.md via Claude Bridge
+-- Full-text search index (FTS5)
+CREATE VIRTUAL TABLE observations_fts USING fts5(
+  content,
+  tags,
+  content=observations
+);
 
-**Always optional. Graceful degradation.** The bridge extension checks health at session start. If agentmemory is unavailable, Layer 1 continues uninterrupted.
+-- Active open items (cross-project)
+CREATE TABLE scratchpad (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  content TEXT NOT NULL,
+  project_id TEXT,
+  done INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
 
----
-
-### The Bridge (Claude Bridge)
-
-agentmemory's consolidation can write back to `memory/MEMORY.md` (Layer 1) at session end. This keeps the git-committed record current without manual effort.
-
-**Direction:** agentmemory → MEMORY.md. Never the other way.
-
-**Enable via:** `CLAUDE_BRIDGE_SYNC=true` in `.pi/.env`
-
-**When to enable:** Engagements longer than a week; client projects where MEMORY.md is reviewed; projects where git history of decisions matters.
+-- Domain-level goals (for watches and proactivity)
+CREATE TABLE goals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  content TEXT NOT NULL,
+  status TEXT DEFAULT 'active',
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+```
 
 ---
 
@@ -66,81 +81,70 @@ agentmemory's consolidation can write back to `memory/MEMORY.md` (Layer 1) at se
 
 | Information | Where to put it | How it gets there |
 |-------------|----------------|-------------------|
-| Decision + rationale | `MEMORY.md` `#decision` tag | Write manually (memory-write skill) or via Claude Bridge sync |
+| Decision + rationale | `MEMORY.md` `#decision` tag | Write manually (memory-write skill) |
 | Client/team preference | `MEMORY.md` `#preference` tag | Write manually |
 | Lesson learned | `MEMORY.md` `#lesson` tag | Write manually |
-| Active open item | `SCRATCHPAD.md` | Write manually |
-| What was done today | `daily/YYYY-MM-DD.md` | Pi-memory writes on compaction; write manually for explicit closure |
-| Tool call observations | `memory/.agentmemory/` | Auto-captured by bridge extension (gitignored) |
-| Consolidated patterns | `memory/.agentmemory/` → MEMORY.md | agentmemory consolidation + Claude Bridge sync |
+| Active open item | `scratchpad` table | Write manually; auto-injected before every turn |
+| Tool call observations | `observations` table | Auto-captured by memory-db.ts |
+| Domain goals | `goals` table | Write manually or via watches |
 
-**Rule of thumb:** If it needs to survive the binary store being wiped — write it to MEMORY.md manually. The binary store is regenerable; MEMORY.md is the canonical record.
+**Rule of thumb:** Decisions, preferences, and lessons belong in MEMORY.md — human-readable, git-committed, durable. Observations are auto-captured ephemera that feed search. Scratchpad items drive continuity across sessions.
 
 ---
 
 ## Setup
 
-### Layer 1 (required)
+### One-time per machine
 
 ```bash
-pi install npm:pi-memory
+# Install DB dependencies
+npm install -g better-sqlite3 sqlite-vec
+
+# Install ollama and pull embedding model
+curl -fsSL https://ollama.ai/install.sh | sh
+ollama pull nomic-embed-text
 ```
 
-No other setup. Pi-memory auto-injects on every turn as long as `memory.dir` is set in `.pi/settings.json`.
+### Per project
 
-### Layer 2 (optional)
+Add to `<project-root>/.pi/.env`:
 
 ```bash
-# 1. Run agentmemory service
-git clone https://github.com/rohitg00/agentmemory
-cd agentmemory && docker-compose up -d
-
-# 2. Verify
-curl http://localhost:3111/health
-# → { "status": "ok" }
-
-# 3. Configure the project
-cp .pi/.env.example .pi/.env
-# Edit .pi/.env: set AGENTMEMORY_PROJECT_ID, CLAUDE_BRIDGE_SYNC, etc.
-
-# 4. The bridge extension (agentmemory-bridge.ts) is already in .pi/extensions/
-# Pi discovers it automatically on next session start.
+PI_PROJECT_ID=my-project-slug
 ```
 
----
+This tags all observations captured in this project to the correct namespace in the domain DB.
 
-## Choosing the Right Search Tool
-
-When you need to go beyond what auto-injection surfaced:
-
-| Goal | Tool | When to use |
-|------|------|------------|
-| Find specific prior decision or fact | `memory_search(query, mode: "keyword")` | You know the keyword; fast (~30ms) |
-| Explore what's known about a topic | `memory_smart_search(query, mode: "hybrid")` | Open-ended; combines BM25 + vector + graph |
-| Find how we usually approach something | `memory_patterns(category: "behavior")` | Looking for recurring behavior, not facts |
-| Trace what's connected to a concept | `memory_graph_query(concept, depth: 2)` | Following relationships across decisions |
-| Full project orientation | `read("memory/MEMORY.md")` | Session start; want the complete picture |
-
-**Note:** `memory_smart_search`, `memory_patterns`, and `memory_graph_query` require agentmemory to be running. `memory_search` and direct `read` always work.
+The domain-level config (`~/.pi/domain/<name>/.pi/.env`) handles everything else — DB path, ollama URL, token budget.
 
 ---
 
 ## Diagnosing Missing Context
 
-If relevant context isn't surfacing in a session, work through this checklist:
+**DB not opening:**
+- Check `PI_DOMAIN_NAME` is set in the domain env or passed as `--domain` to pi
+- Check `PI_DOMAIN_DB_PATH` override if using a non-default path
+- Check `better-sqlite3` and `sqlite-vec` are installed: `npm list -g better-sqlite3 sqlite-vec`
 
-**Layer 1 (pi-memory)**
-- [ ] Is `memory.dir` set correctly in `.pi/settings.json`?
-- [ ] Does `memory/MEMORY.md` contain the relevant information?
-- [ ] Is the relevant info tagged correctly (`#decision`, `#pattern`, etc.)?
-- [ ] Is pi-memory installed? (`pi install npm:pi-memory` if not)
+**Vector search not working:**
+- Is ollama running? `ollama list` — should show `nomic-embed-text`
+- Start ollama: `ollama serve`
+- FTS still works without ollama — only vector recall is skipped
 
-**Layer 2 (agentmemory)**
-- [ ] Is the agentmemory service running? (`curl http://localhost:3111/health`)
-- [ ] Is `AGENTMEMORY_PROJECT_ID` set correctly in `.pi/.env`?
-- [ ] Did the bridge extension connect? (Check session start log for "agentmemory-bridge: connected")
-- [ ] Has enough been captured to recall? (New projects have sparse observations for the first few sessions)
+**Observations not being captured:**
+- Is `PI_PROJECT_ID` set in `.pi/.env`?
+- Is `PI_MEMORY_AUTO_CAPTURE` set to `false`? Default is true.
+- Check the session start log for "memory-db: connected"
 
-**Both layers**
-- [ ] Is the information actually written down anywhere? If not, write it now (memory-write skill).
-- [ ] Is the query specific enough? Vague queries return vague results. Use terms from MEMORY.md tags and topic names.
+**Relevant context not surfacing:**
+- Is the information in MEMORY.md or observations, or only in conversation context?
+- Is the query specific enough? Vague prompts return vague matches.
+- Try the explicit search tools if auto-injection missed something.
+
+---
+
+## Multi-Device (Roadmap)
+
+Phase 1: iCloud Drive or syncthing — filesystem sync of `memory.db`. Works for single-writer scenarios (one device active at a time).
+
+Phase 2: LanceDB with object storage (S3, R2, GCS) — native multi-writer support. Migration path from sqlite-vec is planned but not yet implemented.

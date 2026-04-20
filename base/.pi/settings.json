@@ -23,10 +23,6 @@
   "extensions": [
     ".pi/extensions/*.ts"
   ],
-  "memory": {
-    "_comment": "Pi-memory extension config. 'dir' sets where MEMORY.md, SCRATCHPAD.md, and daily/ are stored. Project-relative path keeps memory inside the repo — useful for team-shared memory via git.",
-    "dir": "memory"
-  },
   "retry": {
     "_comment": "Retry behavior for failed LLM calls. 'maxAttempts' is total attempt count. 'baseDelay'/'maxDelay' control exponential backoff in milliseconds.",
     "maxAttempts": 3,
@@ -34,7 +30,7 @@
     "maxDelay": 10000
   },
   "env": {
-    "_comment": "Environment variables loaded before extensions run. The '_file' key tells pi to load a .env file at the given path (project-relative). Copy .pi/.env.example → .pi/.env and fill in values. .pi/.env is gitignored — never commit it. Variables here feed the agentmemory-bridge extension (AGENTMEMORY_URL, AGENTMEMORY_PROJECT_ID, etc.).",
+    "_comment": "Environment variables loaded before extensions run. The '_file' key tells pi to load a .env file at the given path (project-relative). Copy .pi/.env.example → .pi/.env and set PI_PROJECT_ID. .pi/.env is gitignored — never commit it.",
     "_file": ".pi/.env"
   }
 }

@@ -99,7 +99,7 @@ After modifying the routing table: start a fresh pi session, describe a task mat
 - `model.name` — requires reload to switch providers
 - `skills.paths` — requires reload to re-discover skills
 - `extensions.paths` — requires reload to register extension hooks
-- `memory.dir` — requires reload to point pi-memory at new path
+- `memory.dir` — requires reload to update the path pi uses
 
 ### Thinking level tradeoffs
 
@@ -185,11 +185,11 @@ Run `/skills` to see discovered skills. If a skill is missing, check the frontma
 
 ### 3. Check memory injection
 
-At session start, pi-memory injects up to 16K of context. If the agent seems to have wrong information from a past session, check `memory/MEMORY.md` and `memory/SCRATCHPAD.md` for stale entries. Update or remove them.
+At session start, `memory-db.ts` injects up to 16K of context from the domain DB. If the agent seems to have wrong information from a past session, check domain `MEMORY.md` and the scratchpad table for stale entries. Update or remove them.
 
 ### 4. Check the system prompt
 
-Run `/prompt` (if available in your pi version) to see what's actually in the system prompt. This reveals what APPEND_SYSTEM.md contributed, what skills descriptions are visible, and what pi-memory injected.
+Run `/prompt` (if available in your pi version) to see what's actually in the system prompt. This reveals what APPEND_SYSTEM.md contributed, what skills descriptions are visible, and what memory-db.ts injected.
 
 ### 5. Thinking level
 

@@ -64,9 +64,8 @@ MASTER-claude-pi-template/
 │   │   ├── APPEND_SYSTEM.md   ← Extends pi's system prompt (recommended for most projects)
 │   │   ├── .env.example       ← Env var template (copy → .pi/.env; set PI_PROJECT_ID here)
 │   │   └── extensions/
-│   │       ├── README.md      ← How extensions work, safety tiers, memory options (v1 + v2)
-│   │       ├── permissions-config.json     ← Config for pi-permission-system (safety tier 2)
-│   │       └── agentmemory-bridge.ts       ← v1 semantic bridge (kept for backwards compat)
+│   │       ├── README.md      ← How extensions work, safety tiers, memory setup
+│   │       └── permissions-config.json     ← Config for pi-permission-system (safety tier 2)
 │   ├── context/
 │   │   ├── project.md         ← What the project is, scope, success criteria, current phase
 │   │   ├── client.md          ← Who it's for, communication preferences, delivery standards
@@ -75,10 +74,6 @@ MASTER-claude-pi-template/
 │   ├── workspaces/
 │   │   └── [workspace-name]/
 │   │       └── CONTEXT.md     ← Current state: done / in-progress / queued / blocked
-│   └── memory/                ← v1 project-level memory (used without domain layer)
-│       ├── MEMORY.md          ← Long-term knowledge (#tags + [[wiki-links]])
-│       ├── SCRATCHPAD.md      ← Active checklist (open items auto-injected by pi-memory)
-│       └── daily/             ← Append-only session logs (one file per day, YYYY-MM-DD.md)
 │
 ├── scheduler/                 ← OS scheduler templates for watches
 │   ├── README.md              ← macOS + Linux scheduler setup and troubleshooting
@@ -93,9 +88,9 @@ MASTER-claude-pi-template/
     ├── doc-authoring.md       ← Structure-first documentation methodology
     ├── context-update.md      ← End-of-session CONTEXT.md update protocol
     ├── memory-write.md        ← Write protocol: 3 destinations, auto-capture vs manual curation
-    ├── memory-query.md        ← Retrieval: pi-memory BM25 + domain DB semantic search
-    ├── memory-db.md           ← v2 memory DB reference: schema, queries, setup, diagnostics
-    ├── memory-architecture.md ← v1 two-layer memory reference (kept for v1 projects)
+    ├── memory-query.md        ← Retrieval: domain DB FTS + semantic search
+    ├── memory-db.md           ← Memory DB reference: schema, queries, setup, diagnostics
+    ├── memory-architecture.md ← Domain memory architecture reference
     ├── domain-bootstrap.md    ← Bootstrap new project context from domain memory
     └── harness-dev.md         ← How to build and iterate on the harness itself
 ```
@@ -148,13 +143,14 @@ Pi's 4 built-in tools (always available, no config): `read`, `write`, `edit`, `b
 
 The most critical artifact in AGENTS.md. Every task type → workspace → files to read → skills to load. When a task arrives, the agent checks the table and starts from full context every time. Without it, the agent guesses.
 
+**v2 (domain layer active):**
 ```
-| Task Type     | Workspace       | Read                                      | Load Skills                       |
-|---------------|-----------------|-------------------------------------------|-----------------------------------|
-| Session start | —               | memory/MEMORY.md                          | memory-query.md                   |
-| Write content | /drafting       | context/project.md + drafting/CONTEXT.md  | stop-slop.md                      |
-| Research      | /research       | context/client.md + research/CONTEXT.md   | —                                 |
-| Session end   | —               | —                                         | memory-write.md + context-update.md |
+| Task Type     | Workspace  | Read                                              | Load Skills                         |
+|---------------|------------|---------------------------------------------------|-------------------------------------|
+| Session start | —          | ~/.pi/domain/<name>/MEMORY.md                     | memory-query.md                     |
+| Write content | /drafting  | context/project.md + drafting/CONTEXT.md          | stop-slop.md                        |
+| Research      | /research  | context/client.md + context/project.md + CONTEXT.md | —                                |
+| Session end   | —          | —                                                 | memory-write.md + context-update.md |
 ```
 
 If a task type isn't in the table, the agent guesses what context to load. Be exhaustive.
@@ -184,56 +180,13 @@ description: Strip AI writing patterns from prose. Load when writing or reviewin
 
 ## Memory Architecture
 
-The memory layer has two tiers. Layer 1 (pi-memory) is required and always active. Layer 2 (agentmemory) is optional and additive — it upgrades search without replacing anything.
+Domain memory lives in a single SQLite file at `~/.pi/domain/<name>/memory.db`. The `memory-db.ts` extension hooks into pi's lifecycle to inject context before every turn and capture observations after tool calls. No HTTP service. No Docker.
 
-### Layer 1 — Pi-memory (required)
+### Domain Memory DB
 
-**Extension:** [pi-memory](https://github.com/jayzeng/pi-memory) | **Install:** `pi install npm:pi-memory`
-
-Pi-memory hooks `before_agent_start` and prepends keyword-relevant slices to the system prompt before every turn. 16K total budget. BM25 search.
-
-**Three files:**
-
-| File | Purpose | When to Write |
-|------|---------|--------------|
-| `memory/MEMORY.md` | Long-term, durable knowledge | Decisions, patterns, preferences, lessons — things true for the life of the project |
-| `memory/SCRATCHPAD.md` | Active checklist | Open items to track across sessions; checked items excluded from injection |
-| `memory/daily/YYYY-MM-DD.md` | Append-only session log | What was done, decided, and left open each session |
-
-**Auto-injection priority (16K total):**
-1. Open scratchpad items (2K)
-2. Today's daily log tail (3K)
-3. BM25 keyword search on current prompt (2.5K)
-4. MEMORY.md long-term content (4K)
-5. Yesterday's daily log (3K — trimmed first)
-
-**Pull vs push:** Pi-memory auto-injects keyword-relevant slices (push). The routing table session-start row reads MEMORY.md directly for full orientation (pull). Both are needed.
-
----
-
-### Layer 2 — Domain Memory DB (v2, recommended)
-
-`memory-db.ts` extension backed by SQLite + sqlite-vec. One file per domain at `~/.pi/domain/<name>/memory.db`. No HTTP service. No Docker. Full details in the **Embedded Memory DB** section below.
+`memory-db.ts` is backed by SQLite + sqlite-vec. Full details in the **Embedded Memory DB** section below.
 
 For setup, query reference, and diagnostics: load `memory-db.md` skill.
-
-### Layer 2 — Agentmemory (v1, project-layer fallback)
-
-**Repo:** [github.com/rohitg00/agentmemory](https://github.com/rohitg00/agentmemory) — runs as a background HTTP service (default: `localhost:3111`). Available for projects not using the v2 domain layer.
-
-**Bridge extension** (`base/.pi/extensions/agentmemory-bridge.ts`):
-- `session_start` → health check; sets availability flag
-- `before_agent_start` → semantic recall injected into system prompt prefix
-- `tool_call` → captures write/edit/bash as working memory observations
-- `agent_end` → consolidates memory tiers; optionally syncs back to MEMORY.md
-
-**Graceful degradation:** if agentmemory is unavailable, the bridge skips silently. Pi-memory continues uninterrupted.
-
-**Configure:** copy `base/.pi/.env.example` → `.pi/.env`, set `AGENTMEMORY_PROJECT_ID` and optionally `CLAUDE_BRIDGE_SYNC=true`.
-
-**What's gitignored:** `memory/.agentmemory/` (binary KV store, regenerable). `memory/MEMORY.md` is always committed — it remains the canonical record regardless of whether agentmemory is running.
-
-For setup and search tool guide: load `memory-architecture.md` skill.
 
 ---
 
@@ -304,7 +257,7 @@ The active domain is declared in `~/.pi/active-domain` — a plain text file con
 
 ## Embedded Memory DB (v2)
 
-The domain memory DB replaces the HTTP-based agentmemory service for the domain layer. One SQLite file at `~/.pi/domain/<name>/memory.db`. No daemon. No Docker.
+One SQLite file at `~/.pi/domain/<name>/memory.db`. No daemon. No Docker.
 
 ### Schema overview
 
@@ -329,8 +282,6 @@ The domain memory DB replaces the HTTP-based agentmemory service for the domain 
 **Embedding model:** nomic-embed-text via local ollama (768 dimensions, MIT license, retrieval-tuned). Local by default. Workers who change this accept the privacy trade explicitly.
 
 **Graceful degradation:** if DB is unavailable, all hooks return early. If ollama is unavailable, FTS recall still works — only vector recall is skipped.
-
-**v1 project-layer memory:** `base/.pi/extensions/agentmemory-bridge.ts` remains for projects not using the domain layer. The two do not conflict — agentmemory-bridge handles project-layer memory, memory-db handles domain-layer memory.
 
 ---
 
@@ -402,7 +353,6 @@ Scheduler templates: `scheduler/launchd/` (macOS) and `scheduler/systemd/` (Linu
 # Install prerequisites
 npm install -g @mariozechner/pi-coding-agent
 npm install -g better-sqlite3 sqlite-vec
-pi install npm:pi-memory
 curl -fsSL https://ollama.ai/install.sh | sh
 ollama pull nomic-embed-text
 
@@ -450,17 +400,6 @@ echo "PI_PROJECT_ID=my-project-slug" >> .pi/.env
 <persona-name>  # run via alias, or: PI_DOMAIN_NAME=<domain-name> pi
 ```
 
-### One-time per machine (v1 — without domain layer)
-
-```bash
-npm install -g @mariozechner/pi-coding-agent
-pi install npm:pi-memory
-
-cp global/AGENTS.md ~/.pi/agent/AGENTS.md
-# Fill in: org name, org-wide standards, tone
-```
-
-Then follow the per-project steps above, skipping step 1 (PI_PROJECT_ID not required without domain memory).
 
 ---
 

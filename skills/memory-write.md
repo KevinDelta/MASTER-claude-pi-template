@@ -1,13 +1,13 @@
 ---
 name: memory-write
-description: Write project knowledge to the right pi-memory destination at session end. Load when decisions were made, patterns confirmed, lessons learned, or open items need tracking across sessions.
+description: Write domain knowledge to the right destination at session end. Load when decisions were made, patterns confirmed, lessons learned, or open items need tracking across sessions.
 ---
 
 # memory-write
 
 ## Purpose
 
-Write project knowledge to the right place in pi-memory at the end of a session. The goal is not to log everything — it's to capture what would be genuinely useful to the agent in a future session that has no access to today's conversation.
+Write project knowledge to the right place in the domain memory system at the end of a session. The goal is not to log everything — it's to capture what would be genuinely useful to the agent in a future session that has no access to today's conversation.
 
 ## When to Use
 
@@ -24,7 +24,7 @@ If you only read and discussed without producing output or making decisions, mem
 
 ## Auto-Capture vs Manual Curation
 
-If the **agentmemory bridge extension** is running, tool calls (write/edit/bash) are automatically captured as working memory observations. This covers the episodic record of *what happened* — which files were modified, what commands ran, what operations took place.
+`memory-db.ts` auto-captures tool calls (write/edit/bash) as observation rows in the domain DB. This covers the episodic record of *what happened* — which files were modified, what commands ran, what operations took place.
 
 **Auto-capture handles:** the "what" — the factual record of actions taken.
 
@@ -34,21 +34,19 @@ If the **agentmemory bridge extension** is running, tool calls (write/edit/bash)
 - `#preference` entries: *how the client/team wants things* that wasn't stated in a file
 - `#pattern` entries: recurring approaches worth flagging explicitly for future sessions
 
-**If agentmemory is running:** focus manual writes on `#decision`, `#lesson`, `#preference`, `#pattern`. Skip detailed "what was done" prose — the bridge already captured it as observations.
-
-**If agentmemory is not running:** use the full session-end checklist below. Write the session summary to `daily/` manually.
+Focus manual writes on `#decision`, `#lesson`, `#preference`, `#pattern`. Auto-capture handles the action log.
 
 ---
 
-## The Three Destinations
+## The Two Destinations
 
 ### 1. MEMORY.md — Long-term, durable knowledge
 
-**Write here when:** The information is true for the life of the project, not just today.
+**Write here when:** The information is true for the life of the domain or project, not just today.
 
 **What belongs:**
 - Decisions: why something was chosen, what was ruled out, what constraint drove it
-- Patterns: approaches that work well for this project specifically
+- Patterns: approaches that work well for this domain/project specifically
 - Preferences: how the client/team wants things done
 - Lessons: what went wrong, what was fixed, what was non-obvious
 - Known bugs: ongoing issues and their workarounds
@@ -76,39 +74,11 @@ memory_write(
 
 ---
 
-### 2. daily/YYYY-MM-DD.md — Session log
-
-**Write here when:** Recording what was actually done this session.
-
-**What belongs:**
-- What work was completed
-- What was researched or discovered
-- What was decided (brief — full context goes in MEMORY.md)
-- What's left open for next session
-
-**Format:**
-```
-<!-- YYYY-MM-DD HH:MM:SS [sessionId] -->
-#session [Brief title of what this session covered]
-- [What was done]
-- [What was decided — reference [[topic]] if also adding to MEMORY.md]
-- [What's still open]
-```
-
-**Pi-memory creates and appends to the daily file automatically** during context compaction (handoff). Write manually for explicit session closure:
-
-```
-memory_write(
-  file: "daily/2026-04-10.md",
-  content: "<!-- 2026-04-10 17:30:00 -->\n#session Onboarding doc first draft\n- Completed sections 1-3\n- Decided to use numbered steps throughout [[client-prefs]]\n- Section 4 (tool setup) still pending"
-)
-```
-
----
-
-### 3. SCRATCHPAD.md — Active working items
+### 2. Scratchpad — Active working items
 
 **Write here when:** Something needs to be tracked across sessions but isn't yet done.
+
+The scratchpad table in the domain DB is injected before every agent turn automatically.
 
 **What belongs:**
 - Open follow-ups the agent should remember
@@ -119,8 +89,6 @@ memory_write(
 ```
 - [ ] [YYYY-MM-DD] [What to remember / do]
 ```
-
-Check off completed items with `- [x]`. Pi-memory stops injecting checked items automatically.
 
 **How to write (via tool):**
 ```
@@ -148,13 +116,12 @@ Before closing any productive session:
 - [ ] Was a pattern confirmed or established? → Write `#pattern` entry to MEMORY.md
 - [ ] Did something go wrong that shouldn't repeat? → Write `#lesson` entry to MEMORY.md
 - [ ] Was a preference or constraint learned? → Write `#preference` entry to MEMORY.md
-- [ ] Did work get done? → Write session summary to `daily/YYYY-MM-DD.md`
-- [ ] Are there open items for next session? → Add to SCRATCHPAD.md
-- [ ] Are any scratchpad items now complete? → Check them off
+- [ ] Are there open items for next session? → Add to scratchpad
+- [ ] Are any scratchpad items now complete? → Mark them done
 
 ## What NOT to Write
 
 - **Do not log everything.** Dense memory is harder to search than sparse memory.
 - **Do not duplicate context/ files.** Project description, client profile, stack — don't copy them here.
 - **Do not write process summaries.** "We had a productive session" is noise. What was decided is signal.
-- **Do not write ephemeral details.** Debug traces, exact command outputs — daily log at most, never MEMORY.md.
+- **Do not write ephemeral details.** Debug traces, exact command outputs — observations table captures those automatically.

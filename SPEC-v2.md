@@ -1,6 +1,6 @@
 # SPEC v2 — Domain Layer, Embedded Memory DB, Dock Interface, Proactivity
 
-**Status:** Proposal. Informs the next phase of work on MASTER-claude-pi-template.
+**Status:** Substantially implemented. Domain template, memory-db extension, PI_DOCK.md, watches, scheduler, and install.sh all shipped. Two open items: (1) upstream `pi serve --as-mcp` contribution to pi.dev — required to activate the host plug-in model; (2) multi-device sync not yet documented. See Section 10 build order and PROJECT-CONTEXT.md open items.
 
 ---
 

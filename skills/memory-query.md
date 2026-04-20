@@ -1,118 +1,79 @@
 ---
 name: memory-query
-description: Surface relevant project memory before doing work. Load at session start when memory/ exists, or when prior decisions and patterns are likely relevant to the current task.
+description: Surface relevant domain memory before doing work. Load at session start or when prior decisions and patterns are likely relevant to the current task.
 ---
 
 # memory-query
 
 ## Purpose
 
-Surface relevant project memory before doing work. Pi-memory auto-injects context before every agent turn — but knowing what you're getting, how to ask for more, and when to read MEMORY.md directly makes the memory layer genuinely useful rather than invisible.
+Surface relevant context from the domain memory DB before doing work. `memory-db.ts` injects context before every agent turn automatically — but knowing what you're getting, how to ask for more, and when to read MEMORY.md directly makes the memory layer genuinely useful rather than invisible.
 
 ## When to Use
 
-Load this skill at session start when memory/ exists in the project. Also apply when:
+Load at session start. Also apply when:
 - Starting a task where prior decisions or patterns are likely relevant
-- Asked about something that may have been addressed in a previous session
+- Asked about something addressed in a previous session
 - Writing something where prior learnings should inform the approach
 
 ---
 
-## What Pi-Memory Gives You Automatically
+## What memory-db.ts Gives You Automatically
 
-Before every agent turn, pi-memory prepends to the system prompt (up to 16K chars total):
+Before every agent turn, `memory-db.ts` prepends to the system prompt (up to 16K tokens total):
 
-1. **Open scratchpad items** (2K) — what's actively being tracked
-2. **Today's daily log tail** (3K) — what happened in this session so far
-3. **BM25 search results** (2.5K) — entries from MEMORY.md + daily logs relevant to your current prompt
-4. **MEMORY.md long-term content** (4K) — curated decisions, patterns, preferences
-5. **Yesterday's daily log** (3K) — lowest priority, trimmed first if space runs out
+1. **Open scratchpad items** — what's actively being tracked across projects
+2. **FTS keyword search results** — observations from the domain DB matching your current prompt
+3. **Vector search results** — semantically similar observations (requires ollama + nomic-embed-text)
+4. **MEMORY.md content** — curated decisions, patterns, preferences (domain-level)
 
-This means relevant memory surfaces without you asking. But auto-injection has limits — it's BM25 keyword search, not full recall. If something isn't surfacing that should be, use explicit retrieval below.
-
----
-
-## Session Start — Explicit Orientation
-
-At session start, read MEMORY.md directly for full project orientation. Auto-injection gives you keyword-relevant slices; reading MEMORY.md gives you the complete picture of what the project knows.
-
-```
-read("memory/MEMORY.md")
-```
-
-After reading, state what's relevant to today's work before proceeding:
-
-> "From memory: #decision [[client-comms]] shows the client wants open questions in a numbered list at the top of deliverables. #pattern [[research-workflow]] shows two-pass research works best for this project. Applying both today."
-
-This makes the memory retrieval visible and auditable. If a memory is stale or wrong, it can be corrected before it shapes the work.
+Auto-injection surfaces relevant memory without you asking. If something isn't appearing that should, use explicit retrieval below.
 
 ---
 
-## Explicit Search (pi-memory)
+## Session Start — Full Orientation
 
-When auto-injection isn't surfacing something you expect — or when you need to find a specific past decision:
+At session start, read domain MEMORY.md directly for complete orientation. Auto-injection gives keyword-relevant slices; reading MEMORY.md gives the full picture of what the domain knows.
 
-**Keyword search (fast, ~30ms):**
 ```
-memory_search(query: "pricing exceptions client discount", mode: "keyword")
-```
-
-**Read a daily log directly:**
-```
-read("memory/daily/2026-04-08.md")
+read("~/.pi/domain/<name>/MEMORY.md")
 ```
 
-**Scan recent daily logs:**
-```bash
-ls memory/daily/ | sort | tail -5
-```
+After reading, state what applies to today's work before proceeding:
+
+> "From memory: #decision [[client-comms]] shows the client wants open questions in a numbered list at the top of deliverables. #pattern [[research-workflow]] shows two-pass research works best here. Applying both today."
+
+This makes retrieval visible and auditable. If a memory is stale or wrong, correct it before it shapes the work.
 
 ---
 
-## Agentmemory Search (requires bridge extension)
+## Explicit Search
 
-When the agentmemory bridge is connected, four additional search tools are available. Each serves a distinct purpose — use the right tool for the right query.
+When auto-injection isn't surfacing something expected — or when you need a specific past decision:
 
-**`memory_smart_search` — hybrid search (BM25 + vector + graph)**
+**FTS keyword search (fast, always available):**
+The domain DB's FTS5 index is searched automatically before every turn. If you need to trigger it explicitly:
 ```
-memory_smart_search(query: "how we handle client requests outside scope", project_id: "my-project", mode: "hybrid")
+memory_db_search(query: "pricing exceptions client discount", mode: "fts")
 ```
-Use for: open-ended questions spanning multiple sessions. Best default when you're not sure exactly what you're looking for. Searches across all memory tiers.
 
-**`memory_recall` — targeted recall with token budget**
+**Vector/semantic search (requires ollama):**
 ```
-memory_recall(query: "database architecture decisions", project_id: "my-project", token_budget: 2000)
+memory_db_search(query: "how we approach out-of-scope requests", mode: "vector")
 ```
-Use for: manually triggering a recall mid-session when a task pivots unexpectedly. The bridge already calls this automatically at session start — use this when you need a fresh pull partway through.
 
-**`memory_patterns` — recurring behavior patterns**
+**Read a specific project's observation log:**
+Check the domain MEMORY.md for cross-project patterns first. For project-specific detail, read context files:
 ```
-memory_patterns(project_id: "my-project", category: "behavior")
+read("context/project.md")
+read("context/decisions.md")
 ```
-Use for: "how do we usually approach X?" Returns detected patterns across sessions — not stored facts, but observed regularities in how the agent has worked. Useful before starting a task type that has recurred before.
-
-**`memory_graph_query` — knowledge graph traversal**
-```
-memory_graph_query(concept: "database", project_id: "my-project", depth: 2)
-```
-Use for: tracing relationships between decisions. "What's connected to the database choice?" Traverses the knowledge graph up to `depth` hops — returns related concepts, decisions, and observations.
-
-### When to use which
-
-| Goal | Tool |
-|------|------|
-| Fast specific lookup (known term) | `memory_search` (keyword, always available) |
-| Explore what's known about a topic | `memory_smart_search` (hybrid) |
-| Find recurring patterns | `memory_patterns` |
-| Trace concept relationships | `memory_graph_query` |
-| Full project orientation | `read("memory/MEMORY.md")` |
-| Manual mid-session recall | `memory_recall` |
 
 ---
 
 ## How to Surface Memory Into Context
 
-After reading or searching memory, explicitly state what applies before producing output. Don't assume it was absorbed.
+After reading or searching, explicitly state what applies before producing output. Don't assume it was absorbed.
 
 **Before writing a client deliverable:**
 > "From memory: #preference [[output-format]] shows all deliverables go to Drive, not Markdown. #lesson [[client-comms]] shows questions go in a numbered list at the top. Applying both."
@@ -140,7 +101,7 @@ Expected for:
 
 ## Signs Memory Is Being Misused
 
-- Reading all daily logs every session regardless of relevance (wasteful)
-- Consulting memory for things already in context/ files (don't duplicate reads)
+- Consulting memory for things already in context/ files (duplicate reads)
 - Ignoring auto-injected context and re-reading everything manually (redundant)
-- Never checking if auto-injection missed something relevant (blind trust in BM25)
+- Never checking if auto-injection missed something relevant (blind trust in FTS)
+- Reading full domain memory on every turn regardless of task type (wasteful)
