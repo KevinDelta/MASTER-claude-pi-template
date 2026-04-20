@@ -78,6 +78,32 @@ tail -f ~/.pi/logs/pi-watches.log
 
 ---
 
+## JSON Mode Watches
+
+Watches with `format: json` pass `--json` to pi. The output is structured JSON rather than prose, making it suitable for piping into other tools or parsing in scripts.
+
+Pi writes the structured result as an observation row (`kind: 'log'`) in memory.db in addition to the configured `output` channel. This means JSON-mode watch results are queryable alongside all other domain observations.
+
+**Example: parse a weekly-metrics watch result**
+
+```bash
+# Query the last weekly-metrics result from memory.db
+sqlite3 ~/.pi/domain/<domain-name>/memory.db \
+  "SELECT content FROM observations WHERE kind='log' ORDER BY ts DESC LIMIT 1;" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['projects'])"
+```
+
+**When to use JSON mode:**
+- Watches that produce data (counts, lists, metrics) rather than prose for reading
+- Watches whose output feeds another automation or dashboard
+- Watches where you want the result to be queryable in memory.db with a known structure
+
+**When to use text mode (default):**
+- Watches that produce human-readable summaries (`morning-plan`, `weekly-sync`)
+- Notification-style watches where the output is read directly by the worker
+
+---
+
 ## Troubleshooting
 
 **Watches not firing:**

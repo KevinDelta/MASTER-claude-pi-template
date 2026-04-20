@@ -71,7 +71,17 @@
 
     "write": [
       {
-        "_comment": "Block writes outside designated workspace folders",
+        "_ordering_comment": "Rules evaluate top-to-bottom; last matching rule wins. Put safe-area allows BEFORE critical denies so denies always take precedence.",
+        "_comment": "Safe work areas — allow without prompt",
+        "pattern": "*/workspaces/*",
+        "policy": "allow"
+      },
+      {
+        "pattern": "*/context/*",
+        "policy": "allow"
+      },
+      {
+        "_comment": "Sensitive config — deny (evaluated after allows; wins for these paths)",
         "pattern": "*/.env*",
         "policy": "deny",
         "reason": "Writing to env files blocked. Update via system environment only."
@@ -80,15 +90,45 @@
         "pattern": "*/auth.json",
         "policy": "deny",
         "reason": "Writing to auth files blocked."
+      },
+      {
+        "_comment": "Infrastructure — never write raw; use the extension API or sqlite3 CLI",
+        "pattern": "*/memory.db",
+        "policy": "deny",
+        "reason": "Direct writes to memory.db blocked. Use the memory-db extension API or sqlite3 for intentional DB operations."
+      },
+      {
+        "pattern": "*/node_modules/*",
+        "policy": "deny",
+        "reason": "Writing into node_modules blocked. Run npm/yarn install instead."
       }
     ],
 
     "edit": [
       {
-        "_comment": "Same restrictions as write for sensitive files",
+        "_comment": "Safe work areas — allow without prompt",
+        "pattern": "*/workspaces/*",
+        "policy": "allow"
+      },
+      {
+        "pattern": "*/context/*",
+        "policy": "allow"
+      },
+      {
+        "_comment": "Sensitive config and infrastructure — deny",
         "pattern": "*/.env*",
         "policy": "deny",
         "reason": "Editing env files blocked."
+      },
+      {
+        "pattern": "*/memory.db",
+        "policy": "deny",
+        "reason": "Direct edits to memory.db blocked. Use sqlite3 for intentional DB operations."
+      },
+      {
+        "pattern": "*/node_modules/*",
+        "policy": "deny",
+        "reason": "Editing node_modules blocked."
       }
     ]
   }

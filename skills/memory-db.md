@@ -22,11 +22,14 @@ The DB is the substrate. MEMORY.md is the record a human can read without a quer
 | Table | Purpose |
 |-------|---------|
 | `_meta` | One row: domain name, created date, embedding model |
-| `observations` | All captured events: tool calls, decisions, notes, session logs |
+| `observations` | All captured events: tool calls, decisions, notes, session logs, errors, compaction snapshots |
 | `observations_vec` | Vector embeddings (768-dim, nomic-embed-text) for semantic search |
 | `observations_fts` | FTS5 full-text index for keyword search |
 | `scratchpad` | Active checklist items across projects |
+| `deferred_tasks` | Tasks queued for a future session; injected when due date is reached |
 | `goals` | Declared ideal states; referenced by watches for delta tracking |
+
+**Observation kinds:** `tool_call` · `decision` · `note` · `log` · `compact_summary` · `error`
 
 ## How Recall Works
 
@@ -36,6 +39,7 @@ On every turn (`before_agent_start` hook):
 3. Results merged, deduplicated, ranked (vector results first)
 4. Top N injected into system prompt (16K token budget)
 5. Open scratchpad items for current project appended
+6. Deferred tasks with `due_date <= today` appended, tagged `[deferred]`
 
 FTS is the fallback. Vector search improves semantic retrieval but FTS alone is useful.
 
@@ -48,13 +52,31 @@ sqlite3 ~/.pi/domain/<domain-name>/memory.db
 # Check domain identity
 SELECT * FROM _meta;
 
-# Recent observations
-SELECT ts, project, kind, substr(content, 1, 100) FROM observations
+# Recent observations (any kind)
+SELECT ts, project, workspace, kind, substr(content, 1, 100) FROM observations
 ORDER BY ts DESC LIMIT 20;
+
+# Errors captured this week
+SELECT ts, project, substr(content, 1, 200) FROM observations
+WHERE kind = 'error' AND ts > datetime('now', '-7 days')
+ORDER BY ts DESC;
+
+# Last compaction snapshot (what was preserved before context compression)
+SELECT ts, content FROM observations
+WHERE kind = 'compact_summary'
+ORDER BY ts DESC LIMIT 1;
 
 # Open scratchpad items
 SELECT project, item, created_at FROM scratchpad
 WHERE completed_at IS NULL ORDER BY created_at;
+
+# Pending deferred tasks
+SELECT project, task, due_date, created_at FROM deferred_tasks
+WHERE completed_at IS NULL ORDER BY due_date ASC;
+
+# Queue a deferred task (run from bash)
+# sqlite3 ~/.pi/domain/<name>/memory.db \
+#   "INSERT INTO deferred_tasks (project, task, due_date) VALUES ('my-project', 'Follow up with client on proposal', '2026-05-01');"
 
 # Current goals
 SELECT name, scope, project, definition FROM goals;
@@ -67,12 +89,15 @@ SELECT project, COUNT(*) FROM observations GROUP BY project ORDER BY COUNT(*) DE
 
 | Item | Destination | Why |
 |------|-------------|-----|
-| Tool call during a session | `observations` (auto-captured) | Raw activity log |
-| Decision made in a session | `observations` (kind='decision') + `MEMORY.md` | DB for recall, MD for human review |
-| Lesson learned | `observations` (kind='note') + `MEMORY.md` | Same — dual-write for durability |
+| Tool call during a session | `observations` (kind=`tool_call`, auto-captured) | Raw activity log |
+| Tool failure | `observations` (kind=`error`, auto-captured) | Surfaceable patterns of recurring failures |
+| Decision made in a session | `observations` (kind=`decision`) + `MEMORY.md` | DB for recall, MD for human review |
+| Lesson learned | `observations` (kind=`note`) + `MEMORY.md` | Same — dual-write for durability |
+| Context before compaction | `observations` (kind=`compact_summary`, auto-captured) | Survives session compression; re-injected next turn |
 | Active task | `scratchpad` | Injected every turn; auto-excluded when completed |
+| Task to revisit later | `deferred_tasks` | Injected when due_date is reached; survives across sessions |
 | Ongoing goal | `goals` | Referenced by watches; triggers resolver on delta |
-| Cross-project pattern | `MEMORY.md` | Human-curated; also in observations as kind='note' |
+| Cross-project pattern | `MEMORY.md` | Human-curated; also in observations as kind=`note` |
 
 ## Setup Checklist
 
@@ -80,8 +105,10 @@ SELECT project, COUNT(*) FROM observations GROUP BY project ORDER BY COUNT(*) DE
 2. Verify nomic-embed-text is pulled: `ollama list | grep nomic`
 3. Verify `PI_DOMAIN_NAME` is set in `~/.pi/domain/<name>/.pi/.env`
 4. Verify `~/.pi/active-domain` contains the domain name
-5. Start a pi session — memory-db extension logs: `memory-db: connected → <path>`
-6. Verify DB was created: `ls -la ~/.pi/domain/<name>/memory.db`
+5. Set `PI_PROJECT_ID` in `<project-root>/.pi/.env` (tags all observations to this project)
+6. Optionally set `PI_WORKSPACE` and `PI_PHASE` in the project `.env` to tag observations with workspace and project phase context
+7. Start a pi session — memory-db extension logs: `memory-db: connected → <path>`
+8. Verify DB was created: `ls -la ~/.pi/domain/<name>/memory.db`
 
 ## Diagnosing Recall Failures
 

@@ -75,7 +75,7 @@ CREATE TABLE observations (
   ts TIMESTAMP,
   project TEXT,        -- project id; null for cross-project entries
   workspace TEXT,
-  kind TEXT,           -- 'tool_call' | 'decision' | 'note' | 'log'
+  kind TEXT,           -- 'tool_call' | 'decision' | 'note' | 'log' | 'compact_summary' | 'error'
   content TEXT,
   meta JSON
 );
@@ -101,6 +101,16 @@ CREATE TABLE scratchpad (
   completed_at TIMESTAMP
 );
 
+-- Tasks queued for a future session; injected by before_agent_start when due
+CREATE TABLE deferred_tasks (
+  id           INTEGER PRIMARY KEY,
+  project      TEXT,
+  task         TEXT NOT NULL,
+  due_date     TEXT,      -- ISO date; NULL = inject on next session
+  created_at   TIMESTAMP,
+  completed_at TIMESTAMP
+);
+
 -- Ideal State the worker declares; referenced by watches
 CREATE TABLE goals (
   id INTEGER PRIMARY KEY,
@@ -117,9 +127,12 @@ CREATE TABLE goals (
 
 | Hook | Behavior |
 |------|----------|
-| `before_agent_start` | Run FTS + vector search on the current prompt. Inject top N slices. 16K budget. |
-| `tool_call` | Capture observation rows. Extract meta from tool input/output. |
-| `agent_end` | Compute embeddings via local model. Optionally append a human-readable summary to `MEMORY.md`. |
+| `session_start` | Open DB, initialize schema, log connection status. |
+| `before_agent_start` | FTS + vector search on current prompt. Inject top N slices (16K budget). Inject open scratchpad items and deferred tasks due today. |
+| `tool_call` | Capture `tool_call` observation rows. Tag with workspace and phase. |
+| `tool_call_error` | Capture `error` observation rows with tool name, error message, workspace, phase. |
+| `session_compact` | Snapshot open scratchpad, active goals, and recent decisions as a `compact_summary` observation before context compression. |
+| `agent_end` | Compute embeddings via local model. Optionally append session summary (+ pending deferred task count) to `MEMORY.md`. |
 
 **What stays as markdown:** `MEMORY.md` as a curated, human-readable index and decisions log. The DB is the working substrate. Markdown is the record a human can read without a query tool.
 

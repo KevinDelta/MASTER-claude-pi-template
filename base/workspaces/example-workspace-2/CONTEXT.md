@@ -135,3 +135,20 @@
 
 - [Reference] — [what it is and why it matters here]
 - [Reference] — [what it is and why it matters here]
+
+---
+
+## Session Navigation
+
+<!-- Use /tree to view and branch the conversation when parallel workstreams emerge mid-session.
+     Label active branches with Shift+L to distinguish them by purpose.
+
+     Common labeling pattern for this workspace:
+     - "research"  → exploratory or information-gathering threads
+     - "drafting"  → active writing or generation threads
+     - "review"    → feedback and revision threads
+     - "comms"     → client or stakeholder communication threads
+
+     Branches are ephemeral — they do not affect CONTEXT.md or Current State.
+     Only promote work to Current State when it is ready to be tracked as a real deliverable.
+     Use double-escape to fork a session before a risky or exploratory move. -->

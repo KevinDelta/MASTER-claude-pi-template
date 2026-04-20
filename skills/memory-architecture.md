@@ -22,8 +22,10 @@ One SQLite file per domain. Carries across every project in the domain. No HTTP 
 | Hook | What it does |
 |------|-------------|
 | `session_start` | Opens DB, initializes schema, logs connection status |
-| `before_agent_start` | FTS + vector search on current prompt; injects top results (16K budget); injects open scratchpad items |
-| `tool_call` | Captures write/edit/bash calls as observation rows; skips read-only and memory tools |
+| `before_agent_start` | FTS + vector search on current prompt; injects top results (16K budget); injects open scratchpad items and deferred tasks due today |
+| `tool_call` | Captures write/edit/bash calls as `tool_call` observation rows; skips read-only and memory tools |
+| `tool_call_error` | Captures tool failures as `error` observation rows (tool name, error message, workspace, phase) |
+| `session_compact` | Before context compression: snapshots open scratchpad, active goals, and recent decisions as a `compact_summary` observation |
 | `agent_end` | Backfills embeddings for unembedded observations (up to 50 per session); optionally appends session summary to MEMORY.md |
 
 **Embedding:** nomic-embed-text via local ollama (768 dimensions, MIT license, retrieval-tuned). Local by default — observations never leave the machine.
@@ -35,43 +37,64 @@ One SQLite file per domain. Carries across every project in the domain. No HTTP 
 ## Schema
 
 ```sql
--- Project-scoped observation log (auto-captured from tool calls)
-CREATE TABLE observations (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  project_id TEXT NOT NULL,
-  content TEXT NOT NULL,
-  tags TEXT,           -- space-separated: "write edit decision"
-  created_at TEXT DEFAULT (datetime('now'))
+-- Domain identity; one row
+CREATE TABLE _meta (
+  domain_name TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  embedding_model TEXT DEFAULT 'nomic-embed-text'
 );
 
--- Vector index (sqlite-vec)
+-- Raw session events: tool calls, decisions, notes, errors, compaction snapshots
+CREATE TABLE observations (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  project   TEXT,       -- PI_PROJECT_ID; null for domain-scoped entries
+  workspace TEXT,       -- PI_WORKSPACE; null if unset
+  kind      TEXT CHECK(kind IN ('tool_call','decision','note','log','compact_summary','error')),
+  content   TEXT NOT NULL,
+  meta      TEXT        -- JSON blob
+);
+
+-- Vector index (sqlite-vec, 768-dim nomic-embed-text)
 CREATE VIRTUAL TABLE observations_vec USING vec0(
+  observation_id INTEGER PRIMARY KEY,
   embedding FLOAT[768]
 );
 
 -- Full-text search index (FTS5)
 CREATE VIRTUAL TABLE observations_fts USING fts5(
-  content,
-  tags,
-  content=observations
+  content, project, workspace, kind,
+  content=observations, content_rowid=id
 );
 
--- Active open items (cross-project)
+-- Active checklist across projects; injected before every turn
 CREATE TABLE scratchpad (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  content TEXT NOT NULL,
-  project_id TEXT,
-  done INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now'))
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  project      TEXT,
+  item         TEXT NOT NULL,
+  created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  completed_at TIMESTAMP
 );
 
--- Domain-level goals (for watches and proactivity)
+-- Tasks queued for a future session; injected when due_date is reached
+CREATE TABLE deferred_tasks (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  project      TEXT,
+  task         TEXT NOT NULL,
+  due_date     TEXT,   -- ISO date string; NULL = inject on next session
+  created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  completed_at TIMESTAMP
+);
+
+-- Declared ideal state; referenced by watches for delta checks
 CREATE TABLE goals (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  content TEXT NOT NULL,
-  status TEXT DEFAULT 'active',
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  scope          TEXT CHECK(scope IN ('domain','project')) DEFAULT 'domain',
+  project        TEXT,
+  name           TEXT NOT NULL UNIQUE,
+  definition     TEXT,
+  check_cron     TEXT,
+  resolver_skill TEXT
 );
 ```
 
@@ -81,12 +104,15 @@ CREATE TABLE goals (
 
 | Information | Where to put it | How it gets there |
 |-------------|----------------|-------------------|
-| Decision + rationale | `MEMORY.md` `#decision` tag | Write manually (memory-write skill) |
-| Client/team preference | `MEMORY.md` `#preference` tag | Write manually |
-| Lesson learned | `MEMORY.md` `#lesson` tag | Write manually |
-| Active open item | `scratchpad` table | Write manually; auto-injected before every turn |
-| Tool call observations | `observations` table | Auto-captured by memory-db.ts |
-| Domain goals | `goals` table | Write manually or via watches |
+| Decision + rationale | `MEMORY.md` + `observations` (`kind='decision'`) | Write manually (memory-write skill) |
+| Client/team preference | `MEMORY.md` | Write manually |
+| Lesson learned | `MEMORY.md` + `observations` (`kind='note'`) | Write manually |
+| Active open item | `scratchpad` | Write manually; auto-injected before every turn |
+| Task for a future session | `deferred_tasks` | Write manually via sqlite3; auto-injected when due |
+| Tool call observations | `observations` (`kind='tool_call'`) | Auto-captured by memory-db.ts |
+| Tool failure | `observations` (`kind='error'`) | Auto-captured by tool_call_error hook |
+| Pre-compaction context snapshot | `observations` (`kind='compact_summary'`) | Auto-captured by session_compact hook |
+| Domain goals | `goals` | Write manually or via watches |
 
 **Rule of thumb:** Decisions, preferences, and lessons belong in MEMORY.md — human-readable, git-committed, durable. Observations are auto-captured ephemera that feed search. Scratchpad items drive continuity across sessions.
 
@@ -111,9 +137,13 @@ Add to `<project-root>/.pi/.env`:
 
 ```bash
 PI_PROJECT_ID=my-project-slug
+
+# Optional: tag observations with active workspace and phase
+PI_WORKSPACE=research          # matches workspaces/<name>/ folder
+PI_PHASE=delivery              # e.g. discovery, delivery, review, maintenance
 ```
 
-This tags all observations captured in this project to the correct namespace in the domain DB.
+`PI_PROJECT_ID` is required — it namespaces all observations for this project. `PI_WORKSPACE` and `PI_PHASE` are optional; when set, they are stored in observation `meta` and the `workspace` column, enabling per-workspace and per-phase recall filtering.
 
 The domain-level config (`~/.pi/domain/<name>/.pi/.env`) handles everything else — DB path, ollama URL, token budget.
 

@@ -12,6 +12,10 @@
 #   schedule:  cron expression (min hour dom month dow) — man 5 crontab for syntax
 #   task:      instruction passed to pi as --task; runs with full domain context loaded
 #   output:    notify | append MEMORY.md | silent
+#   format:    (optional) json | text (default: text)
+#              json — passes --json to pi; output is structured JSON suitable for piping or parsing.
+#              Use for watches that produce data (metrics, status snapshots) rather than prose.
+#              The structured result is also written as an observation row in memory.db.
 #   condition: (optional) natural-language condition pi checks before running task
 #   goal:      (optional) goal name from goals table; triggers delta check against observed state
 #
@@ -36,6 +40,30 @@ watches:
     condition: "any project with no observations in the past 14 days"
     task: "Identify stale projects. For each, note last activity date and ask whether to archive, resume, or close."
     output: notify
+
+  # JSON-mode watches — produce structured output for programmatic use.
+  # Pi passes --json; the result is parseable JSON written as an observation row in memory.db.
+  # Use for metrics, status snapshots, or any watch whose output feeds another process.
+  #
+  # - name: weekly-metrics
+  #   schedule: "0 18 * * 5"
+  #   format: json
+  #   task: >
+  #     Produce a JSON object summarizing this week across active projects.
+  #     Include: { projects: [{name, observations_count, open_scratchpad, last_activity}],
+  #     decisions_count, errors_count, deferred_tasks_pending }.
+  #     Return only the JSON object — no prose.
+  #   output: silent
+  #
+  # - name: daily-error-digest
+  #   schedule: "0 20 * * *"
+  #   format: json
+  #   condition: "any 'error' observations in the past 24 hours"
+  #   task: >
+  #     Produce a JSON array of tool errors from today's observations.
+  #     Each item: { tool, error_summary, project, count }.
+  #     Return only the JSON array.
+  #   output: notify
 
   # Goal-referenced watches — enable after adding goals to memory.db via:
   #   INSERT INTO goals (scope, name, definition, check_cron, resolver_skill)

@@ -23,6 +23,8 @@
   "extensions": [
     ".pi/extensions/*.ts"
   ],
+  "_enableSkillCommands_comment": "Enables /skill:name syntax for direct skill invocation — skills appear in autocomplete without a routing table match. Useful for ad-hoc skill calls. Set false to require explicit routing table dispatch.",
+  "enableSkillCommands": true,
   "retry": {
     "_comment": "Retry behavior for failed LLM calls. 'maxAttempts' is total attempt count. 'baseDelay'/'maxDelay' control exponential backoff in milliseconds.",
     "maxAttempts": 3,

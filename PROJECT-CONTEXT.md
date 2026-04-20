@@ -6,6 +6,36 @@
 
 ## What We Built (Changelog)
 
+### Phase 4 — Harness Enhancements from Team Review (2026-04-19)
+
+Triaged 23 items from a team review of v2 capabilities. Implemented 8; deferred 2 to v3; skipped the rest as out of scope for the template layer.
+
+**Batch 1 — Settings + Docs (#3, #4, #13):**
+- `base/.pi/settings.json` — `"enableSkillCommands": true` added; skills now invocable as `/skill:name` without a routing table match
+- Both `base/workspaces/*/CONTEXT.md` templates — new `## Session Navigation` section covering `/tree`, `Shift+L` branch labels, and when to promote work to Current State
+- `base/.pi/.env.example` — `PI_WORKSPACE` and `PI_PHASE` documented as per-project env vars with usage notes
+- `domain/.pi/extensions/.env.example` — reference block added explaining these vars are set per project, not at domain level
+
+**Batch 2 — memory-db.ts (#14, #16, #23):**
+- `session_compact` hook (#14): before context compression, snapshots open scratchpad items, active goals, and last 3 decisions into a `compact_summary` observation row — survives compaction, re-injected on next turn
+- `deferred_tasks` table (#16): new schema table; `before_agent_start` injects tasks with `due_date <= today` tagged `[deferred]`; `agent_end` SYNC_MD line now includes pending deferred task count
+- `tool_call_error` hook (#23): captures tool failures as `error` observation rows with tool, error message, workspace, and phase tagged
+- `tool_call` observations now tag `workspace` and `phase` from env vars
+- `WORKSPACE` and `PHASE` consts added from `PI_WORKSPACE`/`PI_PHASE` env vars
+- `insertObservation` type signature extended: `compact_summary` and `error` added as valid kinds
+- Schema: `kind` CHECK extended; `deferred_tasks` table added
+
+**Batch 3 — Watches + Permissions (#5, #11):**
+- `domain/watches.yaml` — `format` field added to schema (json | text); two commented-out JSON-mode example watches (`weekly-metrics`, `daily-error-digest`) demonstrate structured output contracts
+- `scheduler/README.md` — new "JSON Mode Watches" section: when to use it, how results land in memory.db, sqlite3 parse pattern
+- `base/.pi/extensions/permissions-config.json` — write and edit blocks extended: `*/workspaces/*` and `*/context/*` → allow; `*/memory.db` and `*/node_modules/*` → deny; ordering comment added explaining last-wins semantics
+
+**V3 deferred:** #10 (model switching hooks), #15 (RPC mode for watches)
+
+**Docs updated:** `skills/memory-db.md`, `skills/memory-architecture.md` (schema block was stale v1 — replaced with actual v2 schema), `SPEC-v2.md` (schema + hooks table), `PROJECT-CONTEXT.md`
+
+---
+
 ### Phase 3 — SPEC-v2 Domain Layer (2026-04-18)
 
 **Domain template (`domain/`) created:**
