@@ -8,7 +8,9 @@ A template system for building portable, domain-scoped knowledge worker agents. 
 
 **Authoritative technical reference:** `BLUEPRINT.md` — read this before making structural changes.
 
-**Current spec:** `SPEC-v2.md` — domain layer, embedded memory DB, dock interface, proactivity.
+**Current spec:** `SPEC-v2.md` — domain layer, embedded memory DB, dock interface, proactivity. Fully implemented.
+
+**Next spec:** `SPEC-v3.md` — auth, HTTP MCP transport, multi-device sync, worker UX, intelligence loops. Scoping phase.
 
 ---
 
