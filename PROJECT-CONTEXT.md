@@ -6,6 +6,25 @@
 
 ## What We Built (Changelog)
 
+### Phase 5 — MCP Server (2026-04-19)
+
+Implemented the `--as-mcp` dock model as a standalone stdio MCP server. Decision: standalone process rather than upstream `pi serve --as-mcp` contribution or pi extension — doesn't block on upstream acceptance, is always available outside pi sessions, and is forward-compatible when upstream support eventually lands.
+
+**`domain/.pi/mcp-server.ts`:**
+- Standalone TypeScript MCP server using `@modelcontextprotocol/sdk`, stdio transport
+- Opens `memory.db` read-only via `better-sqlite3` + `sqlite-vec`; closes after each request
+- Tools on allowlist (from PI_DOCK.md Section B): `domain_info`, `list_active_projects`, `list_skills`, `query_memory`, `get_scratchpad`, `get_domain_status`
+- `query_memory`: FTS + vector search (falls back to FTS if ollama unavailable); returns content chunks for the host LLM to synthesize — server never calls an LLM itself
+- Hard-rejected tool: `get_raw_observations` — returns descriptive error pointing to PI_DOCK.md allowlist
+- Reads SOUL.md for persona name; reads skills directory for name/description via frontmatter parser
+- Registration not automated in install.sh — worker adds manually to Claude Desktop config
+
+**Updated docs:** `PI_DOCK.md` Section D, `BLUEPRINT.md` (MCP Server section, repo structure), `PROJECT-CONTEXT.md`
+
+**Prerequisites:** `npm install -g better-sqlite3 sqlite-vec @modelcontextprotocol/sdk tsx`
+
+---
+
 ### Phase 4 — Harness Enhancements from Team Review (2026-04-19)
 
 Triaged 23 items from a team review of v2 capabilities. Implemented 8; deferred 2 to v3; skipped the rest as out of scope for the template layer.
@@ -185,12 +204,18 @@ CLAUDE.md trimmed to entry-point only (how to use template, repo structure, who-
 
 **Open items / what's next:**
 
+V2 is complete. V3 scope is defined in `SPEC-v3.md`. Remaining v2 housekeeping:
+
 - End-to-end test: run `./install.sh --domain test --persona test-agent --dry-run`, then full install, verify memory-db extension connects and DB is created on first session
-- Context files (`project.md`, `client.md`, etc.) need worked examples showing what "specific enough" looks like
-- The `global/AGENTS.md` template could be more opinionated about org-wide routing patterns
-- Domain-specific skills (research, writing, code, ops) could be added to the universal skills library
 - End-to-end test: stand up an actual pi project from `base/`, run through session start → task → session end, verify memory injection and routing table work correctly
-- Multi-device setup docs: iCloud Drive sync (macOS primary) and syncthing (cross-platform) documented in BLUEPRINT.md under domain portability
-- LanceDB migration path: document the Phase 2 (sqlite-vec → LanceDB) migration steps when multi-device write conflicts become a real constraint
-- Phase 0 (upstream): contribute `--as-mcp` mode to pi.dev — unlocks PI_DOCK.md host plug-in model; currently PI_DOCK.md is a declaration without enforcement
-- v3 natural-language authoring layer: let a knowledge worker configure their domain without editing files directly — v3 work, not v2
+- Context files (`project.md`, `client.md`, etc.) need worked examples showing what "specific enough" looks like
+- `global/AGENTS.md` template could be more opinionated about org-wide routing patterns
+- Domain-specific skills (research, writing, code, ops) could be added to the universal skills library
+
+**V3 first tranche (infrastructure — see SPEC-v3.md for full scope):**
+
+1. HTTP MCP transport (`PI_MCP_TRANSPORT=http` in `mcp-server.ts`) — prerequisite for auth
+2. Auth (`PI_WORKER_TOKEN`) — domain auth inward + MCP auth outward
+3. Multi-device sync operational guide (iCloud / syncthing for sqlite-vec era; LanceDB migration path)
+
+Subsequent v3 work (model routing, natural-language authoring, compounding loops, package distribution) follows after the infrastructure tranche lands.

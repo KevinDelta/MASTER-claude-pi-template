@@ -1,6 +1,6 @@
 # SPEC v2 — Domain Layer, Embedded Memory DB, Dock Interface, Proactivity
 
-**Status:** Substantially implemented. Domain template, memory-db extension, PI_DOCK.md, watches, scheduler, and install.sh all shipped. Two open items: (1) upstream `pi serve --as-mcp` contribution to pi.dev — required to activate the host plug-in model; (2) multi-device sync not yet documented. See Section 10 build order and PROJECT-CONTEXT.md open items.
+**Status:** Fully implemented. Domain template, memory-db extension, PI_DOCK.md, watches, scheduler, install.sh, and standalone MCP server all shipped. One open item: multi-device sync not yet documented. See Section 10 build order and PROJECT-CONTEXT.md open items.
 
 ---
 
@@ -177,7 +177,7 @@ Default deny. Any request outside this list triggers a confirmation prompt.
 - Workspace: host provides a working directory pi can write to
 ```
 
-**MCP is the dock protocol.** When plugging into a host, pi runs in MCP server mode (`pi serve --as-mcp` or equivalent). The host connects to pi's MCP server and receives structured answers from the worker's domain. The raw DB never leaves the worker's machine. The host sees what PI_DOCK.md declares, nothing more.
+**MCP is the dock protocol.** The domain ships a standalone MCP server (`domain/.pi/mcp-server.ts`) that runs as a stdio process independent of pi sessions. The host connects and receives structured tool results. The raw DB never leaves the worker's machine. The host sees what PI_DOCK.md declares, nothing more.
 
 ---
 
@@ -272,7 +272,7 @@ Six phases. Each deletes as much as it adds. Each ships independently.
 
 | Phase | Work | Deletes |
 |-------|------|---------|
-| 0 | Upstream contribution: `--as-mcp` mode for pi.dev, or a thin extension that exposes the worker's domain over MCP. This unlocks the host plug-in model. | N/A — new capability. |
+| 0 | Standalone MCP server (`domain/.pi/mcp-server.ts`) — stdio transport, allowlist enforcement from PI_DOCK.md, six tools exposed, one hard-rejected. Unlocks the host plug-in model without requiring upstream pi.dev changes. | N/A — new capability. |
 | 1 | Add `domain/` template directory. Update pi load order to global → domain → project. | Duplicated routing in projects. |
 | 2 | Write `memory-db.ts` extension backed by sqlite-vec. Port semantic recall and observation capture. | `agentmemory-bridge.ts`, HTTP client code, Docker requirement. |
 | 3 | Move per-project `memory/` contents into domain DB. Tag by project. | Per-project `SCRATCHPAD.md` and `daily/` folders. |
@@ -294,14 +294,14 @@ Six phases. Each deletes as much as it adds. Each ships independently.
 
 Order of implementation. Each phase shippable standalone.
 
-0. Upstream `--as-mcp` mode contribution to pi.dev (unlocks the entire dock model)
-1. Three-layer AGENTS.md + persona declaration at domain creation
-2. Embedded memory DB (sqlite-vec extension replacing agentmemory bridge)
-3. PI_DOCK.md with allowlist enforcement
-4. watches.yaml + scheduler integration
-5. Goals table and resolver skills
+0. ✅ Standalone MCP server (`domain/.pi/mcp-server.ts`) — unlocks the dock model
+1. ✅ Three-layer AGENTS.md + persona declaration at domain creation
+2. ✅ Embedded memory DB (sqlite-vec extension replacing agentmemory bridge)
+3. ✅ PI_DOCK.md with allowlist enforcement
+4. ✅ watches.yaml + scheduler integration
+5. ✅ Goals table and resolver skills
 
-Phase 0 is the prerequisite for the portable VM model. Phases 1–2 are the architectural shift. Phase 3 unlocks host plug-in. Phases 4–5 unlock proactivity.
+All phases shipped. Phase 0 implemented as a standalone server rather than an upstream contribution — unblocks the portable VM model without requiring pi.dev changes.
 
 ---
 
@@ -357,7 +357,15 @@ ollama pull nomic-embed-text
 
 ---
 
-## 14. Compounding loops — v3+ work
+## 14. Authentication — v3+ work
+
+Deferred from v2. Full design in **SPEC-v3.md Section 4**.
+
+Summary: two surfaces (domain auth inward, MCP auth outward) share a unified `PI_WORKER_TOKEN` primitive. Neither ships in v2. The memory DB and MCP server are the prerequisite infrastructure — both now in place.
+
+---
+
+## 15. Compounding loops — v3+ work
 
 Mechanisms that make the system get better over time, not just bigger. Named here so they are not lost.
 
@@ -372,7 +380,7 @@ None of these ship in v2. All of them depend on Phase 2 (memory DB) being in pla
 
 ---
 
-## 15. Multi-device
+## 16. Multi-device
 
 **Phase 1 (sqlite-vec era):** filesystem sync.
 
@@ -388,7 +396,7 @@ LanceDB has native object-storage backends. The worker points their domain at a 
 
 ---
 
-## 16. The packaged product
+## 17. The packaged product
 
 Pi.dev + the five components + three-layer AGENTS.md is the product. This is what a worker (or a framework operator installing on behalf of a worker) gets.
 
@@ -413,7 +421,7 @@ The install script handles all six steps and prompts for values it cannot infer.
 
 ---
 
-## 17. Persona
+## 18. Persona
 
 A persona is mandatory at domain creation. It is not optional.
 

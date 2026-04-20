@@ -91,12 +91,32 @@
 
 <!-- How the connection works. Fill in your actual pi version and MCP endpoint if different from defaults. -->
 
-Pi runs as an MCP server: `pi serve --as-mcp`
+The MCP server lives at `~/.pi/domain/<name>/.pi/mcp-server.ts`. It runs as a standalone stdio process — not inside a pi session.
 
-The host connects and receives structured answers as MCP tool results. Pi exposes the worker's domain and memory as MCP tools and resources per the allowlist above. The host never accesses `memory.db` directly — only receives pi's responses to queries.
+```bash
+# Run directly (requires tsx and @modelcontextprotocol/sdk installed globally)
+npx tsx ~/.pi/domain/<domain-name>/.pi/mcp-server.ts
+```
 
-**Pi version:** [fill in after install — `pi --version`]
-**Default MCP endpoint:** `localhost:3000` (configure in `.pi/settings.json`)
+**Register with Claude Desktop manually** — add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "pi-<domain-name>": {
+      "command": "npx",
+      "args": ["tsx", "/Users/<you>/.pi/domain/<domain-name>/.pi/mcp-server.ts"],
+      "env": {
+        "PI_DOMAIN_NAME": "<domain-name>"
+      }
+    }
+  }
+}
+```
+
+The host connects and receives structured tool results. Raw `memory.db` is never exposed — the server returns query results and structured metadata only, per the allowlist above.
+
+**Prerequisites (install once):** `npm install -g better-sqlite3 sqlite-vec @modelcontextprotocol/sdk tsx`
 
 ---
 

@@ -51,6 +51,7 @@ MASTER-claude-pi-template/
 │   │   └── domain-status.md   ← Cross-project status summary from domain memory
 │   └── .pi/
 │       ├── settings.json      ← Domain-level pi config (model, skills path, extensions path)
+│       ├── mcp-server.ts      ← Standalone MCP server (stdio); exposes domain to Claude Desktop / MCP hosts
 │       └── extensions/
 │           ├── memory-db.ts   ← Embedded memory extension (SQLite + sqlite-vec, replaces HTTP bridge)
 │           └── .env.example   ← Env template for memory-db (copy → .pi/.env)
@@ -294,9 +295,47 @@ One SQLite file at `~/.pi/domain/<name>/memory.db`. No daemon. No Docker.
 - **Export allowlist** — what pi surfaces to hosts (domain name, project names, skills descriptions, memory query answers); default deny on anything else
 - **Host requirements** — what a host must provide: MCP endpoints, tool access, working directory
 
-**MCP is the dock protocol.** When plugging into a host (Claude Desktop, Cursor, an employer's environment), pi runs: `pi serve --as-mcp`. The host connects to pi's MCP server and receives typed answers. The raw memory DB never leaves the worker's machine.
+**MCP is the dock protocol.** The domain ships a standalone MCP server (`domain/.pi/mcp-server.ts`). The host connects to it via stdio and receives typed tool results. The raw memory DB never leaves the worker's machine.
 
 Workers update `PI_DOCK.md` when domain, skills, or active projects change.
+
+### MCP Server
+
+**Location:** `~/.pi/domain/<name>/.pi/mcp-server.ts`
+
+**Transport:** stdio. Run with `npx tsx mcp-server.ts`. Not registered automatically — workers add it to their Claude Desktop config manually.
+
+**Tools exposed (allowlist):**
+
+| Tool | Returns |
+|------|---------|
+| `domain_info` | Domain name, persona name, project count |
+| `list_active_projects` | Project slugs, last activity, observation count |
+| `list_skills` | Skill names and descriptions (no file contents) |
+| `query_memory` | FTS + vector search results — content chunks for the host LLM to synthesize |
+| `get_scratchpad` | Open scratchpad items, optionally filtered by project |
+| `get_domain_status` | Observation counts by kind, pending deferred tasks, active goals |
+
+**Hard-rejected (not on allowlist):**
+
+| Tool | Response |
+|------|---------|
+| `get_raw_observations` | 403-style error explaining the allowlist; references PI_DOCK.md Section B |
+
+**Prerequisites:** `npm install -g better-sqlite3 sqlite-vec @modelcontextprotocol/sdk tsx`
+
+**Manual Claude Desktop registration** — add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "pi-<domain-name>": {
+      "command": "npx",
+      "args": ["tsx", "/Users/<you>/.pi/domain/<domain-name>/.pi/mcp-server.ts"],
+      "env": { "PI_DOMAIN_NAME": "<domain-name>" }
+    }
+  }
+}
+```
 
 ---
 
