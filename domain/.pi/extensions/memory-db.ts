@@ -7,8 +7,9 @@
  *
  * Hooks:
  *   session_start      — open DB, initialize schema, log connection status
- *   before_agent_start — FTS + vector search on current prompt; inject top N slices (16K budget);
- *                        inject open scratchpad items and due deferred tasks
+ *   before_agent_start — FTS + vector search on current prompt; injects results as a `message`
+ *                        (conversation turn, not systemPrompt) so system prompt stays stable for
+ *                        pi's prompt cache. Budget: PI_MEMORY_TOKEN_BUDGET (default 16K tokens).
  *   tool_call          — capture write/edit/bash calls as observation rows
  *   tool_call_error    — capture tool failures as 'error' observation rows
  *   session_compact    — snapshot scratchpad + goals + recent decisions before context compression
@@ -250,8 +251,10 @@ export default function (pi: ExtensionAPI): void {
   /**
    * before_agent_start — fires before every agent turn.
    * Runs FTS + vector search on the current prompt.
-   * Injects top N slices into the system prompt (16K token budget).
-   * Also injects open scratchpad items for the current project.
+   * Injects recall results as a `message` (conversation turn) rather than into
+   * systemPrompt. The system prompt stays stable across all turns so pi's
+   * cache_control breakpoints produce cache hits. Dynamic recall goes in the
+   * user-turn message where it belongs.
    */
   pi.on("before_agent_start", async (event, _ctx) => {
     if (!db) return;
@@ -319,10 +322,14 @@ export default function (pi: ExtensionAPI): void {
 
     if (!injection.trim()) return;
 
+    // Inject as a conversation message, not into systemPrompt.
+    // Stable system prompt → pi's cache_control hits on every turn after the first.
     return {
-      systemPrompt:
-        event.systemPrompt +
-        `\n\n<!-- memory-db recall -->\n${injection.trim()}\n<!-- end memory-db recall -->`,
+      message: {
+        customType: "memory-db-recall",
+        content: `[memory-db recall]\n${injection.trim()}`,
+        display: false,
+      },
     };
   });
 

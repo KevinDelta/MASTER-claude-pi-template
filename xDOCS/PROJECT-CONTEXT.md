@@ -6,6 +6,93 @@
 
 ## What We Built (Changelog)
 
+### Phase 7 — FastMCP Migration + Two-Layer Architecture (2026-04-21)
+
+Implemented the first two items of the v3 infrastructure tranche (SPEC-v3 §5 + §13).
+
+**FastMCP migration (`domain/.pi/mcp-server.ts`):**
+- Full rewrite: ~460 lines → ~280 lines. `@modelcontextprotocol/sdk` removed; `fastmcp` replaces it.
+- All 6 allowlisted tools preserved via `server.addTool()` with Zod parameter schemas.
+- Hard-reject on `get_raw_observations` now throws `UserError(DENY_TEXT)`.
+- HTTP+SSE transport added: `PI_MCP_TRANSPORT=http` binds to `PI_MCP_PORT` (default 3222); `authenticate` callback validates `Authorization: Bearer <PI_WORKER_TOKEN>` on every request. Stdio remains the default.
+- `requireDB()` helper centralises the null-DB case as a `UserError` throw (cleaner than conditional returns in every tool).
+
+**Two-layer architecture (`install.sh` + templates):**
+- `install.sh` step 4b added: builds combined `~/.pi/agent/AGENTS.md` from `global/AGENTS.md` + substituted `domain/AGENTS.md`. Idempotent — strips any existing `# Domain:` section before appending.
+- Alias updated: `--append-system-prompt` flag removed. Domain content is now in global AGENTS.md, pi reads it natively.
+- `domain/.pi/settings.json` — `_comment` field updated to say `REFERENCE ONLY`.
+- `domain/AGENTS.md` — annotation updated to explain two-layer model.
+- `global/AGENTS.md` — annotation updated to say "install.sh builds this file".
+- `npm install -g` in prerequisites: `@modelcontextprotocol/sdk` → `fastmcp`.
+
+**`.env.example` additions:**
+- `PI_MCP_TRANSPORT`, `PI_MCP_PORT`, `PI_WORKER_TOKEN` added with generation hint (`openssl rand -hex 32`).
+
+**Files changed:** `domain/.pi/mcp-server.ts`, `domain/.pi/extensions/.env.example`, `install.sh`, `domain/.pi/settings.json`, `domain/AGENTS.md`, `global/AGENTS.md`, `xDOCS/BLUEPRINT.md`, `xDOCS/PROJECT-CONTEXT.md`
+
+---
+
+### Phase 6 — First E2E Walkthrough + install.sh Bug Fixes (2026-04-21)
+
+Ran the full golden-path walkthrough: install → domain session → memory DB → MCP server. Domain: `supply-chain-1`, persona: `Nova`. Three bugs found and patched manually; install.sh fixes are open items.
+
+**What passed (no intervention needed):**
+- Directory structure deployment and placeholder substitution (Nova, supply-chain-1) ✅
+- `npm install -g better-sqlite3 sqlite-vec` inside installer ✅
+- nomic-embed-text pull via ollama ✅
+- launchd job loaded and running (`com.pi.domain.supply-chain-1.watches`) ✅
+- `memory.db` created with correct schema on first session ✅ — all 7 tables: `_meta`, `observations`, `observations_fts`, `observations_vec`, `scratchpad`, `deferred_tasks`, `goals`; `_meta` row shows correct domain name, timestamp, and embedding model
+- Domain AGENTS.md routing table loaded into Nova's context ✅
+- MCP `domain_info` response correct: domain name, persona, embedding model, project count ✅
+- MCP `get_raw_observations` hard-reject with PI_DOCK allowlist error ✅
+
+**Bug 1: alias missing `--append-system-prompt` and `-e` flags**
+
+`install.sh` generated: `alias nova='PI_DOMAIN_NAME=supply-chain-1 pi'`
+
+Pi does not auto-discover the domain layer from `active-domain` or `PI_DOMAIN_NAME`. Without explicit flags, the domain AGENTS.md and memory-db extension do not load. Nova starts with only global + project context, no domain routing, no memory.
+
+Fix applied manually to `~/.zshrc`:
+```bash
+alias nova='PI_DOMAIN_NAME=supply-chain-1 pi --append-system-prompt ~/.pi/domain/supply-chain-1/AGENTS.md -e ~/.pi/domain/supply-chain-1/.pi/extensions/memory-db.ts'
+```
+
+Note: `--append-system-prompt` with a file path reads the file and injects it into the system prompt. It does not appear in pi's `[Context]` startup panel but the content is present.
+
+**install.sh fix needed:** Generate the full alias with both flags, interpolating the correct domain path.
+
+**Bug 2: NODE_PATH not set — extension fails with `Cannot find module 'better-sqlite3'`**
+
+Pi loads extensions via Node's module resolution. Globally installed npm packages live in `~/.npm-global/lib/node_modules/` (or equivalent), which is not on Node's default search path. Without `NODE_PATH`, the `import Database from "better-sqlite3"` in `memory-db.ts` throws on load and the extension is silently skipped.
+
+Fix applied manually to `~/.zshrc`:
+```bash
+export NODE_PATH="$(npm root -g)"
+```
+
+**install.sh fix needed:** Write this export to the shell RC file during setup, before the alias line.
+
+**Bug 3: domain settings.json not read by pi**
+
+`~/.pi/domain/supply-chain-1/.pi/settings.json` defines `extensions`, `skills`, `env._file` etc. Pi does not read this file automatically — it has its own `pi install` extension registry and does not discover domain settings from `~/.pi/`. The domain `settings.json` is accurate as template documentation/reference but does not apply until the alias explicitly loads it via flags.
+
+No code fix needed (the alias approach is the correct workaround), but the template documentation needs to make this explicit. Workers should not expect `settings.json` to be auto-loaded.
+
+**Bug 4 (doc gap): mcp-server.ts not deployed to domain directory**
+
+`install.sh` does not copy `mcp-server.ts` to `~/.pi/domain/supply-chain-1/.pi/`. The server lives in the repo and must be run from there. The install next-steps output didn't clarify this, causing confusion. By design (the server stays in the repo for easy updates), but the documentation needs to say so explicitly.
+
+**Fix needed in BLUEPRINT.md + install.sh next-steps output:** Add clear statement that mcp-server.ts runs from the repo path, not the deployed domain path.
+
+**Key learnings from this walkthrough:**
+
+- Pi does not auto-discover domain config from `active-domain` or `PI_DOMAIN_NAME`. Domain wiring is explicit, via alias flags.
+- The `[Context]` panel in pi startup only shows files discovered via AGENTS.md/CLAUDE.md discovery — not content injected via `--append-system-prompt`. Don't use the panel as the only source of truth for what's loaded.
+- `npm root -g` is the reliable way to get the global node_modules path; `NODE_PATH` must be exported before pi launches.
+- `pi list` shows registered extensions; `pi install <path>` is the alternative registration mechanism (not used here — alias approach is sufficient for single-domain setups).
+
+---
+
 ### Phase 5 — MCP Server (2026-04-19)
 
 Implemented the `--as-mcp` dock model as a standalone stdio MCP server. Decision: standalone process rather than upstream `pi serve --as-mcp` contribution or pi extension — doesn't block on upstream acceptance, is always available outside pi sessions, and is forward-compatible when upstream support eventually lands.
@@ -192,30 +279,42 @@ CLAUDE.md trimmed to entry-point only (how to use template, repo structure, who-
 
 **Authoring quality is the actual product.** The template is infrastructure. Specific, accurate content files produce specific, useful agents.
 
+**Pi does not auto-discover domain config.** `PI_DOMAIN_NAME` and `~/.pi/active-domain` are not magic — pi doesn't read them to load domain AGENTS.md or extensions. The v3 solution: `install.sh` bakes global + domain content into a single `~/.pi/agent/AGENTS.md` that pi reads natively. The alias now only needs `-e <extension-path>` for the memory-db extension. `domain/.pi/settings.json` is reference/documentation only.
+
+**NODE_PATH is required for global npm packages.** Pi's module resolution doesn't include the npm global path by default. `export NODE_PATH="$(npm root -g)"` in the shell RC is required for extensions that import globally installed packages.
+
 ---
 
 ## Current State
 
 **Phase 1 (Harness Foundation):** Complete.
-
 **Phase 2 (Memory Upgrade):** Complete — agentmemory bridge shipped.
-
-**Phase 3 (SPEC-v2 Domain Layer):** Complete. All five phases shipped.
+**Phase 3 (SPEC-v2 Domain Layer):** Complete.
+**Phase 4 (Team Review Harness Enhancements):** Complete.
+**Phase 5 (MCP Server, stdio):** Complete.
+**Phase 6 (E2E Walkthrough):** Complete — bugs documented and fixed.
+**Phase 7 (FastMCP + Two-Layer Architecture):** Complete — v3 infrastructure tranche #1 and #2 shipped.
 
 **Open items / what's next:**
 
-V2 is complete. V3 scope is defined in `SPEC-v3.md`. Remaining v2 housekeeping:
+V2 is complete. V3 infrastructure tranche is partially shipped. Remaining housekeeping from the e2e walkthrough (Phase 6):
 
-- End-to-end test: run `./install.sh --domain test --persona test-agent --dry-run`, then full install, verify memory-db extension connects and DB is created on first session
-- End-to-end test: stand up an actual pi project from `base/`, run through session start → task → session end, verify memory injection and routing table work correctly
+- ✅ End-to-end test: ran full golden-path walkthrough (install → memory DB → MCP server) — Phase 6
+- ✅ **install.sh fix (Bug 1):** alias now correct — two-layer model means no `--append-system-prompt` needed; domain content in combined global AGENTS.md
+- ✅ **install.sh fix (Bug 2):** `export NODE_PATH="$(npm root -g)"` written to shell RC in step 9
+- ✅ **BLUEPRINT.md fix (Bug 4):** `mcp-server.ts` runs from repo path, not domain directory — clarified in MCP Server section
+- ✅ **Template doc fix:** `domain/.pi/settings.json` marked `REFERENCE ONLY`
+- End-to-end test: stand up an actual pi project from `base/`, run through session start → task → session end, verify memory injection and routing table work correctly (second e2e walkthrough — do with a real project)
 - Context files (`project.md`, `client.md`, etc.) need worked examples showing what "specific enough" looks like
 - `global/AGENTS.md` template could be more opinionated about org-wide routing patterns
 - Domain-specific skills (research, writing, code, ops) could be added to the universal skills library
 
-**V3 first tranche (infrastructure — see SPEC-v3.md for full scope):**
+**V3 remaining tranche (see SPEC-v3.md for full design):**
 
-1. HTTP MCP transport (`PI_MCP_TRANSPORT=http` in `mcp-server.ts`) — prerequisite for auth
-2. Auth (`PI_WORKER_TOKEN`) — domain auth inward + MCP auth outward
-3. Multi-device sync operational guide (iCloud / syncthing for sqlite-vec era; LanceDB migration path)
-
-Subsequent v3 work (model routing, natural-language authoring, compounding loops, package distribution) follows after the infrastructure tranche lands.
+- ✅ **Two-layer architecture** (SPEC-v3 §13) — complete (Phase 7)
+- ✅ **FastMCP migration** (SPEC-v3 §5) — complete (Phase 7); HTTP transport + bearer auth shipped
+- **Multi-device sync operational guide** (SPEC-v3 §6) — iCloud / Syncthing for sqlite-vec era; LanceDB migration path documented
+- **Model routing hooks** (SPEC-v3 §8) — `before_agent_start` hook + domain settings routing rules
+- **Natural-language authoring layer** (SPEC-v3 §7) → package distribution (§10)
+- **Compounding intelligence loops** (SPEC-v3 §11) — requires sustained memory DB usage to tune
+- **RPC watches** (SPEC-v3 §9) — requires pi.dev structured stdin/stdout or wrapper process

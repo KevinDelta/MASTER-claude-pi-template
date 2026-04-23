@@ -98,29 +98,38 @@ MASTER-claude-pi-template/
 
 ---
 
-## Three-Layer Architecture (v2)
+## Effective Load Order (v3)
 
-Pi loads AGENTS.md hierarchically — three layers, each appending and overriding the one above:
+Pi loads AGENTS.md in two layers. The domain layer is merged into global by `install.sh` — pi reads it natively without workarounds.
 
-| Layer | Location | Scope | Contents |
-|-------|----------|-------|----------|
-| **Global** | `~/.pi/agent/AGENTS.md` | Machine-wide | Org identity, baseline tone, universal standards |
-| **Domain** | `~/.pi/domain/<name>/AGENTS.md` | All projects in one declared domain | Domain vocabulary, methods, routing table scaffold, domain-wide rules |
-| **Project** | `<project-root>/AGENTS.md` | One engagement | Client, scope, workspaces, routing overrides, project-specific rules |
+| Layer | Location | How It Gets There | Scope |
+|-------|----------|--------------------|-------|
+| **Global + Domain** | `~/.pi/agent/AGENTS.md` | Built by `install.sh` (global template + domain section) | Machine-wide + active domain |
+| **Project** | `<project-root>/AGENTS.md` | Copied from `base/` template | One engagement |
 
-**Load order:** global → active domain → project
+**Load order:** `~/.pi/agent/AGENTS.md` (global+domain combined) → project
 
-**Active domain:** declared in `~/.pi/active-domain` (plain text file, one line). Switch with `pi domain use <name>`.
+**Combined file structure** (built by `install.sh step 4b`):
+```
+[global/AGENTS.md content — org standards, universal identity]
+
+---
+
+# Domain: <slug>
+
+[domain/AGENTS.md content — vocabulary, methods, routing table]
+```
+
+**Switching domains:** re-run `install.sh --domain <new-name>`. The `# Domain:` section is stripped and rebuilt in-place; global content above it is preserved.
+
+**Active domain pointer:** `~/.pi/active-domain` is still written by `install.sh` for reference. Pi does not read it automatically — the combined AGENTS.md is the authoritative source.
 
 **Composition rules:**
 - Routing rows are matched by the Task Type column's first keyword
-- A domain row overrides a global row with the same key
-- A project row overrides a domain row with the same key
-- Rows without a matching override at lower layers apply unchanged
+- A project row overrides a global+domain row with the same key
+- Rows without a project-level override apply from global+domain unchanged
 
-**Rule of thumb:** Same across all projects → global. Changes between projects → project layer. Never duplicate global rules in the project layer.
-
-**v1 → v2 migration note:** `base/AGENTS.md` is now project-layer only. The global layer block was removed. For projects not using the domain layer (v1-style), the global layer still loads from `~/.pi/agent/AGENTS.md` as before — no change to existing projects.
+**Rule of thumb:** Same across all projects → global section. Domain-specific vocabulary and routing → domain section. Project-specific → project AGENTS.md. Never duplicate global/domain rules in the project layer.
 
 ---
 
@@ -276,7 +285,7 @@ One SQLite file at `~/.pi/domain/<name>/memory.db`. No daemon. No Docker.
 | Hook | Behavior |
 |------|----------|
 | `session_start` | Open DB, initialize schema, log connection status |
-| `before_agent_start` | FTS + vector search on current prompt; inject top N slices (16K budget); inject open scratchpad items |
+| `before_agent_start` | FTS + vector search on current prompt; returns `{ message: { customType: "memory-db-recall", content: ..., display: false } }` — injected as a conversation-turn message, **not** into `systemPrompt`. This keeps the system prompt stable so pi's `cache_control` breakpoints produce cache hits every turn after the first. |
 | `tool_call` | Capture write/edit/bash calls as observation rows; skip read-only and memory tools |
 | `agent_end` | Backfill embeddings for unembedded observations (up to 50 per session); optionally append session summary to MEMORY.md |
 
@@ -301,9 +310,34 @@ Workers update `PI_DOCK.md` when domain, skills, or active projects change.
 
 ### MCP Server
 
-**Location:** `~/.pi/domain/<name>/.pi/mcp-server.ts`
+**Location:** `domain/.pi/mcp-server.ts` in this repo (not deployed to `~/.pi/domain/<name>/`). Run from the repo path.
 
-**Transport:** stdio. Run with `npx tsx mcp-server.ts`. Not registered automatically — workers add it to their Claude Desktop config manually.
+**Implementation:** FastMCP (`fastmcp` npm package). ~280 lines vs the prior ~460-line manual SDK implementation.
+
+**Transport:** stdio (default) or HTTP+SSE (`PI_MCP_TRANSPORT=http`). Controlled by env var at startup.
+
+**Stdio mode** (same machine, Claude Desktop):
+```bash
+PI_DOMAIN_NAME=<name> npx tsx /path/to/MASTER-claude-pi-template/domain/.pi/mcp-server.ts
+```
+
+**HTTP mode** (remote hosts, requires auth):
+```bash
+PI_DOMAIN_NAME=<name> PI_MCP_TRANSPORT=http PI_MCP_PORT=3222 PI_WORKER_TOKEN=<token> \
+  npx tsx /path/to/MASTER-claude-pi-template/domain/.pi/mcp-server.ts
+```
+HTTP mode validates `Authorization: Bearer <PI_WORKER_TOKEN>` on every request. TLS is a reverse-proxy responsibility.
+
+**Env vars:**
+
+| Var | Values | Default |
+|-----|--------|---------|
+| `PI_DOMAIN_NAME` | domain slug | required |
+| `PI_MCP_TRANSPORT` | `stdio` \| `http` | `stdio` |
+| `PI_MCP_PORT` | port number | `3222` |
+| `PI_WORKER_TOKEN` | bearer token string | — (required when HTTP) |
+
+**Generate a token:** `openssl rand -hex 32`
 
 **Tools exposed (allowlist):**
 
@@ -320,17 +354,17 @@ Workers update `PI_DOCK.md` when domain, skills, or active projects change.
 
 | Tool | Response |
 |------|---------|
-| `get_raw_observations` | 403-style error explaining the allowlist; references PI_DOCK.md Section B |
+| `get_raw_observations` | UserError with allowlist explanation; references PI_DOCK.md Section B |
 
-**Prerequisites:** `npm install -g better-sqlite3 sqlite-vec @modelcontextprotocol/sdk tsx`
+**Prerequisites:** `npm install -g fastmcp better-sqlite3 sqlite-vec tsx`
 
-**Manual Claude Desktop registration** — add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+**Manual Claude Desktop registration (stdio mode)** — add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
     "pi-<domain-name>": {
       "command": "npx",
-      "args": ["tsx", "/Users/<you>/.pi/domain/<domain-name>/.pi/mcp-server.ts"],
+      "args": ["tsx", "/path/to/MASTER-claude-pi-template/domain/.pi/mcp-server.ts"],
       "env": { "PI_DOMAIN_NAME": "<domain-name>" }
     }
   }
@@ -367,10 +401,9 @@ Scheduler templates: `scheduler/launchd/` (macOS) and `scheduler/systemd/` (Linu
 
 ## Session Flow (v2)
 
-1. Pi reads `~/.pi/active-domain` → identifies active domain directory
-2. Pi loads `~/.pi/agent/AGENTS.md` (global layer)
-3. Pi loads `~/.pi/domain/<name>/AGENTS.md` (domain layer appends/overrides)
-4. Pi loads `[project]/AGENTS.md` (project layer appends/overrides)
+1. Pi reads `~/.pi/active-domain` → identifies active domain directory (for extension path only)
+2. Pi loads `~/.pi/agent/AGENTS.md` — contains global + domain sections, built by `install.sh`
+3. Pi loads `[project]/AGENTS.md` (project layer appends/overrides)
 5. Pi loads `APPEND_SYSTEM.md` → added to system prompt
 6. Pi loads `SOUL.md` (domain layer — required; project layer — optional override)
 7. Pi reads domain `settings.json` + project `settings.json` (project overrides domain)
@@ -391,7 +424,7 @@ Scheduler templates: `scheduler/launchd/` (macOS) and `scheduler/systemd/` (Linu
 ```bash
 # Install prerequisites
 npm install -g @mariozechner/pi-coding-agent
-npm install -g better-sqlite3 sqlite-vec
+npm install -g fastmcp better-sqlite3 sqlite-vec tsx
 curl -fsSL https://ollama.ai/install.sh | sh
 ollama pull nomic-embed-text
 
@@ -401,6 +434,15 @@ ollama pull nomic-embed-text
 # After install: source your shell RC to activate the persona alias
 source ~/.zshrc  # or ~/.bashrc
 ```
+
+> **What `install.sh` sets up:**
+> - Builds `~/.pi/agent/AGENTS.md` by combining `global/AGENTS.md` + `domain/AGENTS.md` (step 4b). Pi reads this natively — no `--append-system-prompt` flag needed.
+> - Writes `export NODE_PATH="$(npm root -g)"` to your shell RC (required for pi extensions to find globally installed npm packages).
+> - Generates the persona alias: `alias <persona>='PI_DOMAIN_NAME=<domain> pi -e ~/.pi/domain/<domain>/.pi/extensions/memory-db.ts'`
+
+> **Note on `domain/.pi/settings.json`:** This file is `REFERENCE ONLY`. Pi does not auto-load domain settings from `~/.pi/`. It documents the intended config; apply relevant keys to your project `.pi/settings.json` manually.
+
+> **Note on `mcp-server.ts`:** The MCP server runs from the repo — it is NOT copied to `~/.pi/domain/<name>/`. Register the repo path in Claude Desktop or Cursor config. See the MCP Server section above for startup command and env vars.
 
 ### Per project (v2)
 

@@ -1,6 +1,6 @@
 # SPEC v3 — Auth, HTTP Transport, Worker UX, and Intelligence Loops
 
-**Status:** Scoping. No implementation started. See `PROJECT-CONTEXT.md` for build order and priority.
+**Status:** In progress. §5 (FastMCP) and §13 (two-layer architecture) are complete as of 2026-04-21. See `PROJECT-CONTEXT.md` for full changelog and remaining work.
 
 ---
 
@@ -78,9 +78,9 @@ Worker identity should be carried in observation rows when multiple people write
 
 ---
 
-## 5. HTTP MCP transport
+## 5. HTTP MCP transport + FastMCP Migration
 
-The standalone MCP server (v2) uses stdio transport — suitable for Claude Desktop on the same machine. The PI_DOCK.md model describes remote hosts connecting to a worker's domain. That requires HTTP+SSE transport.
+The standalone MCP server (v2) uses stdio transport — suitable for Claude Desktop on the same machine. The PI_DOCK.md model describes remote hosts connecting to a worker's domain. That requires HTTP transport.
 
 **When `PI_MCP_TRANSPORT=http`:**
 - Server binds to `PI_MCP_PORT` (default: 3222)
@@ -88,9 +88,55 @@ The standalone MCP server (v2) uses stdio transport — suitable for Claude Desk
 - CORS: accept only origins declared in PI_DOCK.md Section C
 - TLS at the network layer (reverse proxy responsibility — not in the server itself)
 
-**Implementation:** add transport-switching logic to `domain/.pi/mcp-server.ts`. Stdio remains the default. HTTP mode is opt-in.
-
 **Dependency:** Auth (Section 4) must be designed first. HTTP transport without auth is a security hole.
+
+### Implementation: FastMCP migration
+
+Rather than hand-rolling HTTP transport into the existing `mcp-server.ts`, migrate to **FastMCP** (`fastmcp` npm package, v4.0.0). FastMCP is a thin abstraction layer over `@modelcontextprotocol/sdk` that provides:
+- HTTP transport via a single config flag (`transportType: "httpStream"`)
+- Built-in API key auth via the `authenticate` option
+- ~80% boilerplate reduction (~420 lines → ~80 lines)
+- Tool registration via `server.addTool()` instead of `setRequestHandler` switch blocks
+
+This migration delivers the entire HTTP transport + auth tranche as a refactor of `mcp-server.ts`, not a net-new build. All 7 existing tools and the hard-reject policy are preserved verbatim.
+
+**New env vars:**
+
+| Var | Values | Default |
+|-----|--------|---------|
+| `PI_MCP_TRANSPORT` | `stdio` \| `http` | `stdio` |
+| `PI_MCP_PORT` | port number | `3222` |
+| `PI_WORKER_TOKEN` | bearer token string | — (required when HTTP) |
+
+**Startup pattern:**
+```typescript
+import { FastMCP } from "fastmcp";
+
+const transport = process.env.PI_MCP_TRANSPORT === "http" ? "httpStream" : "stdio";
+
+const server = new FastMCP({
+  name: `pi-${DOMAIN_NAME}`,
+  version: "3.0.0",
+  ...(transport === "httpStream" && {
+    authenticate: async (req) => {
+      const token = req.headers.authorization?.replace("Bearer ", "");
+      if (token !== process.env.PI_WORKER_TOKEN) throw new Error("Unauthorized");
+    },
+  }),
+});
+
+// addTool() for each of the 6 allowlisted tools + hard-reject on get_raw_observations
+
+server.start(
+  transport === "httpStream"
+    ? { transportType: "httpStream", httpStream: { port: Number(process.env.PI_MCP_PORT ?? 3222) } }
+    : { transportType: "stdio" }
+);
+```
+
+**install.sh change:** replace `@modelcontextprotocol/sdk` with `fastmcp` in the `npm install -g` prerequisites. FastMCP bundles the SDK and Zod.
+
+**Files changed:** `domain/.pi/mcp-server.ts` (full rewrite), `domain/.pi/extensions/.env.example` (3 new vars), `install.sh` (prerequisites), `xDOCS/BLUEPRINT.md` (MCP server section).
 
 ---
 
@@ -225,20 +271,99 @@ Items from Pi_review.md that are too speculative or heavy for v3:
 
 ---
 
-## 13. Build order guidance
+## 13. Architecture simplification: two-layer model
+
+V2 specified a three-layer AGENTS.md architecture (global → domain → project). During the first e2e walkthrough (2026-04-21) we discovered pi does not natively support the domain layer — it does not read `active-domain` or `PI_DOMAIN_NAME` to auto-discover `~/.pi/domain/<name>/AGENTS.md`. The domain layer was wired via `--append-system-prompt` in the persona alias, which is a workaround, not a first-class mechanism.
+
+**Decision:** merge domain AGENTS.md content into the global layer. The effective architecture becomes two layers that pi supports natively.
+
+### Before (v2 as designed, three layers)
+
+```
+~/.pi/agent/AGENTS.md          ← global (org standards)         pi native ✅
+~/.pi/domain/<name>/AGENTS.md  ← domain (--append-system-prompt) workaround ⚠️
+<project>/AGENTS.md            ← project                         pi native ✅
+```
+
+### After (v3, two effective layers)
+
+```
+~/.pi/agent/AGENTS.md          ← global + domain (combined by install.sh)  pi native ✅
+<project>/AGENTS.md            ← project                                    pi native ✅
+```
+
+The domain directory (`~/.pi/domain/<name>/`) is unchanged — it continues to hold memory.db, SOUL.md, context files, skills, watches, and the extension. Only AGENTS.md moves.
+
+### How install.sh builds the combined global layer
+
+install.sh concatenates `global/AGENTS.md` (org standards) and `domain/AGENTS.md` (domain vocabulary, methods, routing table) into `~/.pi/agent/AGENTS.md` with a `# Domain: <name>` header divider. The operation is idempotent: install.sh truncates any existing `# Domain:` section before appending, so re-runs and domain switches are clean.
+
+```
+~/.pi/agent/AGENTS.md structure after install:
+
+  [content of global/AGENTS.md]
+
+  ---
+
+  # Domain: supply-chain-1
+
+  [content of domain/AGENTS.md — substituted]
+```
+
+### Alias simplification
+
+The `--append-system-prompt` flag is removed from the persona alias. Domain content is now in global AGENTS.md, which pi reads natively.
+
+**Before:**
+```bash
+alias nova='PI_DOMAIN_NAME=supply-chain-1 pi \
+  --append-system-prompt ~/.pi/domain/supply-chain-1/AGENTS.md \
+  -e ~/.pi/domain/supply-chain-1/.pi/extensions/memory-db.ts'
+```
+
+**After:**
+```bash
+alias nova='PI_DOMAIN_NAME=supply-chain-1 pi \
+  -e ~/.pi/domain/supply-chain-1/.pi/extensions/memory-db.ts'
+```
+
+`PI_DOMAIN_NAME` is still required (memory-db extension uses it to open the correct DB). `-e` is still required (extension is not globally registered — domain-scoped only).
+
+### domain/.pi/settings.json
+
+This file is reference/documentation only — pi does not auto-load it. A `REFERENCE ONLY` comment is added to make this explicit so future workers don't expect it to apply automatically.
+
+### Multi-domain support
+
+The `# Domain:` section header enables clean domain switching: install.sh for a second domain replaces from that header to end-of-file, leaving org-wide global standards intact.
+
+### Template repo changes
+
+- `domain/AGENTS.md` — annotation updated; content unchanged; now understood as "the domain section appended to global by install.sh"
+- `global/AGENTS.md` — annotation updated to note domain content is appended below
+- `install.sh` — Step 3: build combined AGENTS.md instead of deploying domain AGENTS.md separately; Step 9: clean alias without `--append-system-prompt`
+- `xDOCS/BLUEPRINT.md` — architecture section updated to describe two effective layers
+
+---
+
+## 14. Build order guidance
 
 Not a sprint plan — see `PROJECT-CONTEXT.md` for the ordered task list. This is dependency sequencing only.
 
 ```
-HTTP transport → Auth → Multi-device sync docs (can parallel)
+Two-layer architecture (§13) — no dependencies; do first, unblocks alias cleanup
       ↓
-Model routing hooks (independent)
+FastMCP migration (§5) — delivers HTTP transport + auth in one move
       ↓
-Natural-language authoring → Package distribution
+Multi-device sync docs (§6) — can parallel with FastMCP
       ↓
-Compounding loops (requires sustained memory DB usage to tune)
+Model routing hooks (§8) — independent
       ↓
-RPC watches (requires pi.dev cooperation or wrapper process)
+Natural-language authoring (§7) → Package distribution (§10)
+      ↓
+Compounding loops (§11) — requires sustained memory DB usage to tune
+      ↓
+RPC watches (§9) — requires pi.dev cooperation or wrapper process
 ```
 
-The first tranche (HTTP transport + Auth + multi-device) is pure infrastructure. It unblocks remote host scenarios and safe multi-device use without changing the worker-facing UX at all. Ship that first.
+The first two items (two-layer architecture + FastMCP) are pure infrastructure changes with no worker-facing UX impact. They fix known gaps from the e2e walkthrough and pull the v3 HTTP+auth requirement forward as a refactor. Ship these first.

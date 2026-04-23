@@ -1,26 +1,18 @@
 # [Org Name] — Global Agent Configuration
 
-<!-- INSTALL: Copy this file to ~/.pi/agent/AGENTS.md
-     Pi loads it before every project session, for every project, on this machine.
-     Keep it minimal. Only put things here that are true across ALL projects.
-     Project-specific details belong in the project's AGENTS.md — not here.
+<!-- INSTALL: install.sh builds ~/.pi/agent/AGENTS.md by combining this file with domain/AGENTS.md.
+     Do not copy this file manually — run install.sh.
 
-     When in doubt: if it would change between projects, it's a project-level concern.
-
-     THREE-LAYER LOAD ORDER (v2):
+     V3 TWO-LAYER LOAD ORDER:
      Pi loads AGENTS.md in this sequence:
-       1. Global    → ~/.pi/agent/AGENTS.md          (THIS FILE — machine-wide)
-       2. Domain    → ~/.pi/domain/<name>/AGENTS.md  (worker's active domain)
-       3. Project   → <project-root>/AGENTS.md       (engagement-specific)
+       1. Global+Domain → ~/.pi/agent/AGENTS.md   (this file + domain section, combined by install.sh)
+       2. Project       → <project-root>/AGENTS.md (engagement-specific)
 
-     Each layer appends and overrides the one above.
-     Routing rows are matched by the Task Type column's first keyword.
-     A domain row overrides a global row with the same key.
-     A project row overrides a domain row with the same key.
+     Domain content appears below a "# Domain: <name>" header appended by install.sh.
+     Switching domains re-runs install.sh, which replaces the domain section in-place.
 
-     The active domain is declared in ~/.pi/active-domain (plain text, one line).
-     Workers switch domains with: pi domain use <name>
-     Most workers run one domain at a time. -->
+     Keep global content minimal — only things true across ALL domains and projects.
+     Domain-specific vocabulary and routing belongs in domain/AGENTS.md, not here. -->
 
 ---
 

@@ -1,8 +1,9 @@
 # AGENTS.md — {{DOMAIN_NAME}} (Domain Layer)
 
-<!-- DOMAIN LAYER — deploys to ~/.pi/domain/{{DOMAIN_NAME}}/AGENTS.md
-     Pi load order: global (~/.pi/agent/AGENTS.md) → THIS FILE → project (<project-root>/AGENTS.md)
-     Each layer appends and overrides the one above.
+<!-- DOMAIN LAYER — install.sh appends this file to ~/.pi/agent/AGENTS.md after the global section.
+     V3 two-layer model: global + domain are combined into ~/.pi/agent/AGENTS.md by install.sh.
+     Pi reads that combined file natively. No --append-system-prompt workaround needed.
+     Pi load order: ~/.pi/agent/AGENTS.md (global+domain combined) → project (<project-root>/AGENTS.md)
      WHAT BELONGS HERE:
      - Domain vocabulary and methods shared across all projects in this domain
      - Routing table scaffold — rows that are true for every project in this domain

@@ -1,5 +1,5 @@
 {
-  "_comment": "Domain-level pi settings. Apply to all projects in this domain. Project .pi/settings.json can override any key. Deployed to ~/.pi/domain/<domain-name>/.pi/settings.json by install.sh.",
+  "_comment": "REFERENCE ONLY — pi does not auto-load this file. Domain settings are not natively supported by pi; this file documents intent. Copy relevant keys into your project .pi/settings.json or apply them manually. Deployed to ~/.pi/domain/<domain-name>/.pi/settings.json by install.sh for reference.",
 
   "_comment_model": "Model selection. Domain-level default. Override per project.",
   "model": "claude-opus-4-7",

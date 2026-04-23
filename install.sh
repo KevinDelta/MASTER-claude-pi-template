@@ -5,13 +5,14 @@
 #   1. Checks prerequisites (pi, node, ollama)
 #   2. Creates domain directory at ~/.pi/domain/<domain-name>/
 #   3. Deploys domain templates (AGENTS.md, SOUL.md, watches.yaml, memory extension)
-#   4. Deploys global AGENTS.md to ~/.pi/agent/
-#   5. Deploys PI_DOCK.md to ~/.pi/
+#   4. Substitutes placeholders in deployed files
+#  4b. Builds combined ~/.pi/agent/AGENTS.md (global + domain section)
+#   5. Creates .pi/.env for memory-db
 #   6. Writes ~/.pi/active-domain pointer file
-#   7. Pulls nomic-embed-text via ollama (unless --skip-ollama)
-#   8. Creates persona CLI alias in shell RC file
-#   9. Installs OS scheduler for watches (unless --skip-scheduler)
-#  10. Prints next steps
+#   7. Notes memory.db creation path
+#   8. Pulls nomic-embed-text via ollama (unless --skip-ollama)
+#   9. Creates persona CLI alias in shell RC file
+#  10. Installs OS scheduler for watches (unless --skip-scheduler)
 #
 # Usage:
 #   ./install.sh --domain <name> --persona <name> [options]
@@ -129,9 +130,9 @@ fi
 command -v node &>/dev/null || die "node not found. Install Node.js 18+ before continuing."
 info "node: $(node --version)"
 
-# npm packages for memory-db extension
-info "Installing npm packages for memory-db extension..."
-run "npm install -g better-sqlite3 sqlite-vec" || warn "npm install failed — memory-db extension may not work until packages are installed"
+# npm packages for memory-db extension and MCP server
+info "Installing npm packages for memory-db extension and MCP server..."
+run "npm install -g better-sqlite3 sqlite-vec fastmcp tsx" || warn "npm install failed — memory-db extension may not work until packages are installed"
 
 # ─── step 2: directory setup ──────────────────────────────────────────────────
 
@@ -166,9 +167,6 @@ for skill in "$SCRIPT_DIR/domain/skills/"*.md; do
   [[ -f "$skill" ]] && deploy "$skill" "$DOMAIN_DIR/skills/$(basename "$skill")"
 done
 
-# Deploy global AGENTS.md
-deploy "$SCRIPT_DIR/global/AGENTS.md" "$AGENT_DIR/AGENTS.md"
-
 # Deploy PI_DOCK.md
 deploy "$SCRIPT_DIR/PI_DOCK.md" "$PI_HOME/PI_DOCK.md"
 
@@ -201,6 +199,42 @@ for f in \
 do
   subst_file "$f"
 done
+
+# ─── step 4b: build combined global+domain AGENTS.md ─────────────────────────
+#
+# V3 two-layer architecture: domain AGENTS.md content is appended to global
+# AGENTS.md so pi reads it natively — no --append-system-prompt workaround needed.
+#
+# Structure of ~/.pi/agent/AGENTS.md after install:
+#   [global/AGENTS.md content]
+#   ---
+#   # Domain: <slug>
+#   [domain/AGENTS.md content — already substituted in step 4]
+#
+# Re-runs are idempotent: any existing # Domain: section is stripped and rebuilt.
+
+info "Step 4b — Building combined ~/.pi/agent/AGENTS.md..."
+
+COMBINED_AGENTS="$AGENT_DIR/AGENTS.md"
+
+if $DRY_RUN; then
+  echo "  [dry-run] Would build $COMBINED_AGENTS from global + domain/$DOMAIN_SLUG"
+else
+  mkdir -p "$AGENT_DIR"
+  if [[ -f "$COMBINED_AGENTS" ]] && grep -q "^# Domain:" "$COMBINED_AGENTS" 2>/dev/null; then
+    # Strip existing # Domain: section (preserve preceding global content)
+    awk '/^# Domain:/{found=1} found{next} /^---$/{buf=$0; next} {if(buf){print buf; buf=""}; print}' \
+      "$COMBINED_AGENTS" | \
+      awk 'NF{found=NR} {lines[NR]=$0} END{for(i=1;i<=found;i++) print lines[i]}' \
+      > "${COMBINED_AGENTS}.tmp"
+    mv "${COMBINED_AGENTS}.tmp" "$COMBINED_AGENTS"
+  else
+    cp "$SCRIPT_DIR/global/AGENTS.md" "$COMBINED_AGENTS"
+  fi
+  printf '\n\n---\n\n# Domain: %s\n\n' "$DOMAIN_SLUG" >> "$COMBINED_AGENTS"
+  cat "$DOMAIN_DIR/AGENTS.md" >> "$COMBINED_AGENTS"
+  success "Combined AGENTS.md built: ~/.pi/agent/AGENTS.md"
+fi
 
 # ─── step 5: .pi/.env for memory-db ───────────────────────────────────────────
 
@@ -255,8 +289,16 @@ fi
 
 info "Step 9/10 — Creating persona CLI alias '$PERSONA_SLUG'..."
 
-ALIAS_LINE="alias $PERSONA_SLUG='PI_DOMAIN_NAME=$DOMAIN_SLUG pi'"
+# Alias: sets PI_DOMAIN_NAME and loads the memory-db extension.
+# Domain content is now in ~/.pi/agent/AGENTS.md (built in step 4b) —
+# pi reads it natively. No --append-system-prompt needed.
+ALIAS_LINE="alias ${PERSONA_SLUG}='PI_DOMAIN_NAME=${DOMAIN_SLUG} pi -e ${DOMAIN_DIR}/.pi/extensions/memory-db.ts'"
 ALIAS_COMMENT="# Pi persona alias: $PERSONA_NAME — added by install.sh ($INSTALL_DATE)"
+
+# NODE_PATH: required so pi's Node.js module resolution can find globally
+# installed npm packages (better-sqlite3, sqlite-vec, etc.) when loading extensions.
+NODE_PATH_EXPORT='export NODE_PATH="$(npm root -g)"'
+NODE_PATH_COMMENT="# NODE_PATH: required for pi extensions to find globally installed npm packages"
 
 # Detect shell RC file
 if [[ -f "$HOME/.zshrc" ]]; then
@@ -267,8 +309,17 @@ else
   SHELL_RC="$HOME/.profile"
 fi
 
-if ! grep -qF "$ALIAS_LINE" "$SHELL_RC" 2>/dev/null; then
-  run "{ echo ''; echo '$ALIAS_COMMENT'; echo \"$ALIAS_LINE\"; } >> '$SHELL_RC'"
+# Write NODE_PATH export (idempotent — skip if already present)
+if ! grep -qF 'NODE_PATH' "$SHELL_RC" 2>/dev/null; then
+  run "printf '\n%s\n%s\n' '$NODE_PATH_COMMENT' '$NODE_PATH_EXPORT' >> '$SHELL_RC'"
+  success "Added NODE_PATH export to $SHELL_RC"
+else
+  info "NODE_PATH already in $SHELL_RC — skipping"
+fi
+
+# Write persona alias (idempotent — skip if alias name already present)
+if ! grep -qF "alias ${PERSONA_SLUG}=" "$SHELL_RC" 2>/dev/null; then
+  run "printf '\n%s\n%s\n' '$ALIAS_COMMENT' \"$ALIAS_LINE\" >> '$SHELL_RC'"
   success "Added alias '$PERSONA_SLUG' to $SHELL_RC"
   warn "Run 'source $SHELL_RC' or open a new terminal to activate the alias"
 else
@@ -355,6 +406,11 @@ echo "    $PI_HOME/PI_DOCK.md        — fill in carried items and host requirem
 echo ""
 echo "  Per project — add to <project-root>/.pi/.env:"
 echo "    PI_PROJECT_ID=<project-slug>"
+echo ""
+echo "  MCP server (optional — connect to Claude Desktop, Cursor, etc.):"
+echo "    Run from the template repo, NOT from the deployed domain directory:"
+echo "    PI_DOMAIN_NAME=$DOMAIN_SLUG npx tsx $SCRIPT_DIR/domain/.pi/mcp-server.ts"
+echo "    Register this path in your host's MCP config (see BLUEPRINT.md)."
 echo ""
 echo "  Delete all annotation comments from template files before going live."
 echo ""
