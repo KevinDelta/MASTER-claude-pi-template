@@ -146,6 +146,28 @@ function initDB(dbPath: string): Database.Database {
       check_cron     TEXT,
       resolver_skill TEXT
     );
+
+    -- FTS5 external-content tables do NOT auto-sync with the source table.
+    -- These triggers keep observations_fts consistent on every write.
+    CREATE TRIGGER IF NOT EXISTS observations_fts_ai
+      AFTER INSERT ON observations BEGIN
+        INSERT INTO observations_fts(rowid, content, project, workspace, kind)
+        VALUES (new.id, new.content, new.project, new.workspace, new.kind);
+      END;
+
+    CREATE TRIGGER IF NOT EXISTS observations_fts_ad
+      AFTER DELETE ON observations BEGIN
+        INSERT INTO observations_fts(observations_fts, rowid, content, project, workspace, kind)
+        VALUES ('delete', old.id, old.content, old.project, old.workspace, old.kind);
+      END;
+
+    CREATE TRIGGER IF NOT EXISTS observations_fts_au
+      AFTER UPDATE ON observations BEGIN
+        INSERT INTO observations_fts(observations_fts, rowid, content, project, workspace, kind)
+        VALUES ('delete', old.id, old.content, old.project, old.workspace, old.kind);
+        INSERT INTO observations_fts(rowid, content, project, workspace, kind)
+        VALUES (new.id, new.content, new.project, new.workspace, new.kind);
+      END;
   `);
 
   // Seed _meta on first create
@@ -208,6 +230,30 @@ async function computeEmbedding(text: string): Promise<number[] | null> {
   } catch {
     return null; // ollama unavailable — FTS still works
   }
+}
+
+// ─── secret redaction ─────────────────────────────────────────────────────────
+
+const REDACT_PATTERNS: Array<[RegExp, string]> = [
+  // Known API key prefixes (sk-, ghp_, ghs_, xoxb-, AKIA, AIza, ya29.)
+  [/\b(sk|ghp|ghs|github_pat|xoxb|xoxp|AKIA[A-Z0-9]{16}|AIza|ya29\.)[A-Za-z0-9_\-]{8,}/g, "[REDACTED:api-key]"],
+  // Bearer tokens in header-style strings
+  [/bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, "Bearer [REDACTED:bearer]"],
+  // Private key blocks
+  [/-----BEGIN [A-Z ]+ KEY-----[\s\S]*?-----END [A-Z ]+ KEY-----/g, "[REDACTED:private-key]"],
+  // Connection strings with embedded credentials (postgres://, mysql://, etc.)
+  [/:\/\/[^:@\s"']+:[^@\s"']+@/g, "://[REDACTED:credentials]@"],
+  // .env-style assignments where the key name signals a secret
+  [/\b(password|passwd|secret|token|api_key|apikey|auth_key|private_key|access_key|client_secret)\s*[:=]\s*["']?[^\s"',}{]{6,}["']?/gi,
+    "$1=[REDACTED:secret]"],
+];
+
+function redactSecrets(text: string): string {
+  let out = text;
+  for (const [pattern, replacement] of REDACT_PATTERNS) {
+    out = out.replace(pattern, replacement);
+  }
+  return out;
 }
 
 // ─── observation capture ──────────────────────────────────────────────────────
@@ -342,12 +388,13 @@ export default function (pi: ExtensionAPI): void {
     if (!db || !AUTO_CAPTURE) return;
     if (SKIP_CAPTURE_TOOLS.has(event.toolName)) return;
 
-    const content = `Tool: ${event.toolName}\nArgs: ${JSON.stringify(event.input).slice(0, 800)}`;
+    const rawArgs = JSON.stringify(event.input);
+    const content = redactSecrets(`Tool: ${event.toolName}\nArgs: ${rawArgs}`).slice(0, 800);
     const meta: Record<string, unknown> = {
       tool: event.toolName,
       workspace: WORKSPACE,
       phase: PHASE,
-      inputSummary: JSON.stringify(event.input).slice(0, 200),
+      inputSummary: redactSecrets(rawArgs).slice(0, 200),
     };
     insertObservation(db, PROJECT_ID, WORKSPACE, "tool_call", content, meta);
   });
@@ -359,8 +406,8 @@ export default function (pi: ExtensionAPI): void {
    */
   pi.on("tool_call_error", async (event, _ctx) => {
     if (!db) return;
-    const errorMsg = String((event as Record<string, unknown>).error ?? "unknown error").slice(0, 500);
-    const content = `Tool error: ${event.toolName}\nError: ${errorMsg}\nArgs: ${JSON.stringify(event.input ?? {}).slice(0, 400)}`;
+    const errorMsg = redactSecrets(String((event as Record<string, unknown>).error ?? "unknown error")).slice(0, 500);
+    const content = `Tool error: ${event.toolName}\nError: ${errorMsg}\nArgs: ${redactSecrets(JSON.stringify(event.input ?? {})).slice(0, 400)}`;
     insertObservation(db, PROJECT_ID, WORKSPACE, "error", content, {
       tool: event.toolName,
       error: errorMsg.slice(0, 200),

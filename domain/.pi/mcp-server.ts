@@ -54,6 +54,16 @@ const SKILLS_DIR = path.join(DOMAIN_DIR, "skills");
 const TRANSPORT = process.env.PI_MCP_TRANSPORT === "http" ? "httpStream" : "stdio";
 const PORT = Number(process.env.PI_MCP_PORT ?? 3222);
 
+// Fail closed: HTTP mode without a token is an open server — reject at startup.
+if (TRANSPORT === "httpStream" && !process.env.PI_WORKER_TOKEN) {
+  process.stderr.write(
+    "mcp-server: PI_WORKER_TOKEN must be set when PI_MCP_TRANSPORT=http.\n" +
+    "Generate one with: openssl rand -hex 32\n" +
+    "Set it in ~/.pi/domain/<name>/.pi/.env before starting the server.\n"
+  );
+  process.exit(1);
+}
+
 // ─── db helpers ────────────────────────────────────────────────────────────────
 
 function openDB(): Database.Database | null {
