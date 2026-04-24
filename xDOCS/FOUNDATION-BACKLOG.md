@@ -11,7 +11,7 @@ The central bet is only true if the system is:
 1. **Correct** — memory is reliably captured and retrievable.
 2. **Safe** — sensitive data is protected and exports are policy-bounded.
 3. **Portable** — workers can move and restore memory without loss.
-4. **Operable** — behavior is observable, testable, and resilient under load.
+4. **Operable** — behavior is observable, testable, and resilient under load..
 
 ---
 
