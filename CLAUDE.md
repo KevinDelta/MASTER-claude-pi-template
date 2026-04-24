@@ -36,7 +36,8 @@ MASTER-claude-pi-template/
 ├── CLAUDE.md              ← This file — Claude Code project instructions
 ├── BLUEPRINT.md           ← Authoritative technical reference (v1 + v2)
 ├── SPEC-v2.md             ← v2 specification: domain layer, embedded DB, dock, proactivity
-├── PROJECT-CONTEXT.md     ← Dev changelog and current state (Claude Code only)
+├── .dev-tracking/BACKLOG.md ← Current state and tasks (Claude Code only)
+├── xDOCS/CHANGELOG.md       ← Dev changelog
 ├── install.sh             ← One-command v2 installer (--domain, --persona)
 ├── PI_DOCK.md             ← Template: deploy to ~/.pi/PI_DOCK.md (host interface)
 │
@@ -106,7 +107,7 @@ MASTER-claude-pi-template/
 
 **To understand the system:** read `BLUEPRINT.md` first.
 
-**To understand current project state and open items:** read `PROJECT-CONTEXT.md`.
+**To understand current project state and open items:** read `.dev-tracking/BACKLOG.md`. For past updates, read `xDOCS/CHANGELOG.md`.
 
 **Key files when making structural changes:**
 
@@ -132,7 +133,8 @@ MASTER-claude-pi-template/
 | `BLUEPRINT.md` | ✓ (harness-dev tasks) | ✓ (technical reference) |
 | `SPEC-v2.md` | — | ✓ (v2 design spec) |
 | `CLAUDE.md` | — | ✓ (project instructions) |
-| `PROJECT-CONTEXT.md` | — | ✓ (dev context) |
+| `.dev-tracking/BACKLOG.md` | — | ✓ (dev context) |
+| `xDOCS/CHANGELOG.md` | — | ✓ (dev context) |
 | `CLIENT-ONBOARDING-RUNBOOK.md` | — | ✓ (onboarding ops, gitignored) |
 | `skills/*.md` | ✓ (via routing table) | reference |
 | `domain/.pi/settings.json` | ✓ (domain harness config) | reference |

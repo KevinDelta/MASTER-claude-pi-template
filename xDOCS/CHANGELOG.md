@@ -1,6 +1,6 @@
-# MASTER-claude-pi-template — Project Context
+# MASTER-claude-pi-template — Changelog
 
-> **Note:** This file is dev context for Claude Code sessions working on this template repo. The pi agent does not read this file. For technical reference, read `BLUEPRINT.md`. For Claude Code project instructions, read `CLAUDE.md`.
+> **Note:** This file tracks the historical implementation phases of the template. For technical reference, read `BLUEPRINT.md`. For current tasks, read `../.dev-tracking/BACKLOG.md`.
 
 ---
 
@@ -246,75 +246,3 @@ Memory Architecture section now describes two-layer system. Repo structure block
 CLAUDE.md trimmed to entry-point only (how to use template, repo structure, who-reads-what table). PROJECT-CONTEXT.md (this file) stripped of reference content — BLUEPRINT.md owns that.
 
 ---
-
-## Key Design Decisions
-
-| Decision | What | Why |
-| ---------- | ------ | ----- |
-| YAML frontmatter required on skills | `name` + `description` fields | Pi can't discover or describe skills without them |
-| `defaultThinkingLevel` is a string | `"medium"` not `{ "level": "medium" }` | Pi's actual type; object caused silent parse failure |
-| `skills`/`extensions` are arrays | `["skills/*.md"]` not `{ "paths": [...] }` | Same issue — real pi schema takes flat arrays |
-| ExtensionAPI two-param handlers | `async (_event, ctx) =>` | Pi's real signature; one-param would receive event, not ctx |
-| agentmemory interaction via HTTP only | Never touch iii-sdk directly | iii-sdk is proprietary Anthropic infrastructure; MCP/HTTP is the stable interface |
-| Binary store is gitignored | `memory/.agentmemory/` excluded | Regenerable from observations; MEMORY.md is the canonical committed record |
-| Bridge checks health before acting | `available` flag gated | Ensures pi-memory continues uninterrupted if agentmemory is down |
-| CONTEXT.md has Functions + Workflow | Stable process sections added | Gives the agent action vocabulary and sequencing without duplicating routing tables |
-| No routing tables in CONTEXT.md | Decision: not added | Wrong time horizon — routing is architecture, CONTEXT.md is volatile state |
-| Global/project in one AGENTS.md | Both sections, clear delineation | Full picture in one template file; split for deploy |
-| Custom skills always | Write our own, draw from community for conventions | Skills must match org-specific standards and vocabulary |
-
----
-
-## What We Learned
-
-**Pi's schema is unforgiving silently.** Wrong types for `defaultThinkingLevel` (object vs string) and `skills` (object vs array) fail without error messages — the config just doesn't apply. Always verify against actual pi source.
-
-**The routing table IS the session discipline.** Without it, agents guess what to load. With it, every session starts from identical complete context.
-
-**Context files and memory serve different time horizons.** `context/` = stable project facts. `workspaces/CONTEXT.md` = current work state. `memory/` = accumulated knowledge. None substitutes for another.
-
-**Auto-capture reduces manual overhead significantly.** When the agentmemory bridge captures tool call observations automatically, the session-end memory-write task shrinks to decisions/lessons only — not a full narrative log.
-
-**Global/project separation is load-bearing.** Without it, org standards drift into individual projects and diverge. Update once, every project inherits.
-
-**Authoring quality is the actual product.** The template is infrastructure. Specific, accurate content files produce specific, useful agents.
-
-**Pi does not auto-discover domain config.** `PI_DOMAIN_NAME` and `~/.pi/active-domain` are not magic — pi doesn't read them to load domain AGENTS.md or extensions. The v3 solution: `install.sh` bakes global + domain content into a single `~/.pi/agent/AGENTS.md` that pi reads natively. The alias now only needs `-e <extension-path>` for the memory-db extension. `domain/.pi/settings.json` is reference/documentation only.
-
-**NODE_PATH is required for global npm packages.** Pi's module resolution doesn't include the npm global path by default. `export NODE_PATH="$(npm root -g)"` in the shell RC is required for extensions that import globally installed packages.
-
----
-
-## Current State
-
-**Phase 1 (Harness Foundation):** Complete.
-**Phase 2 (Memory Upgrade):** Complete — agentmemory bridge shipped.
-**Phase 3 (SPEC-v2 Domain Layer):** Complete.
-**Phase 4 (Team Review Harness Enhancements):** Complete.
-**Phase 5 (MCP Server, stdio):** Complete.
-**Phase 6 (E2E Walkthrough):** Complete — bugs documented and fixed.
-**Phase 7 (FastMCP + Two-Layer Architecture):** Complete — v3 infrastructure tranche #1 and #2 shipped.
-
-**Open items / what's next:**
-
-V2 is complete. V3 infrastructure tranche is partially shipped. Remaining housekeeping from the e2e walkthrough (Phase 6):
-
-- ✅ End-to-end test: ran full golden-path walkthrough (install → memory DB → MCP server) — Phase 6
-- ✅ **install.sh fix (Bug 1):** alias now correct — two-layer model means no `--append-system-prompt` needed; domain content in combined global AGENTS.md
-- ✅ **install.sh fix (Bug 2):** `export NODE_PATH="$(npm root -g)"` written to shell RC in step 9
-- ✅ **BLUEPRINT.md fix (Bug 4):** `mcp-server.ts` runs from repo path, not domain directory — clarified in MCP Server section
-- ✅ **Template doc fix:** `domain/.pi/settings.json` marked `REFERENCE ONLY`
-- End-to-end test: stand up an actual pi project from `base/`, run through session start → task → session end, verify memory injection and routing table work correctly (second e2e walkthrough — do with a real project)
-- Context files (`project.md`, `client.md`, etc.) need worked examples showing what "specific enough" looks like
-- `global/AGENTS.md` template could be more opinionated about org-wide routing patterns
-- Domain-specific skills (research, writing, code, ops) could be added to the universal skills library
-
-**V3 remaining tranche (see SPEC-v3.md for full design):**
-
-- ✅ **Two-layer architecture** (SPEC-v3 §13) — complete (Phase 7)
-- ✅ **FastMCP migration** (SPEC-v3 §5) — complete (Phase 7); HTTP transport + bearer auth shipped
-- **Multi-device sync operational guide** (SPEC-v3 §6) — iCloud / Syncthing for sqlite-vec era; LanceDB migration path documented
-- **Model routing hooks** (SPEC-v3 §8) — `before_agent_start` hook + domain settings routing rules
-- **Natural-language authoring layer** (SPEC-v3 §7) → package distribution (§10)
-- **Compounding intelligence loops** (SPEC-v3 §11) — requires sustained memory DB usage to tune
-- **RPC watches** (SPEC-v3 §9) — requires pi.dev structured stdin/stdout or wrapper process

@@ -1,6 +1,6 @@
 # SPEC v3 — Auth, HTTP Transport, Worker UX, and Intelligence Loops
 
-**Status:** In progress. §5 (FastMCP) and §13 (two-layer architecture) are complete as of 2026-04-21. See `PROJECT-CONTEXT.md` for full changelog and remaining work.
+**Status:** In progress. §5 (FastMCP) and §13 (two-layer architecture) are complete as of 2026-04-21. See `CHANGELOG.md` for full changelog and `../.dev-tracking/BACKLOG.md` for remaining work.
 
 ---
 
@@ -348,7 +348,7 @@ The `# Domain:` section header enables clean domain switching: install.sh for a 
 
 ## 14. Build order guidance
 
-Not a sprint plan — see `PROJECT-CONTEXT.md` for the ordered task list. This is dependency sequencing only.
+Not a sprint plan — see `../.dev-tracking/BACKLOG.md` for the ordered task list. This is dependency sequencing only.
 
 ```
 Two-layer architecture (§13) — no dependencies; do first, unblocks alias cleanup
