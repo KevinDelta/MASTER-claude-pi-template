@@ -100,6 +100,26 @@ CREATE TABLE goals (
 
 ---
 
+## MEMORY.md Entry Conventions
+
+Each entry in `MEMORY.md` carries three optional metadata fields on the line immediately following the entry body. They make entries navigable without a query tool and support semantic filtering.
+
+| Field | Values | Purpose |
+|---|---|---|
+| `status:` | `active` \| `superseded` | `superseded` = don't delete, mark and add a replacement entry |
+| `belongs_to:` | `domain` \| `<project-slug>` | Scope — domain-wide truth vs a project lesson promoted to domain level |
+| `related_to:` | comma-separated paths or skill names | Explicit pointers to context files, skills, or other entries |
+
+Example entry:
+```
+[2026-04-27] #decision DECISION: All auth tokens stored encrypted at rest | REASONING: compliance requirement flagged in audit | CONTEXT: Security review session
+status:active belongs_to:domain related_to:context/stack.md, skills/security-review.md
+```
+
+`MEMORY.md` itself carries file-level frontmatter (`domain:`, `scope:`, `established:`) — leave those alone.
+
+---
+
 ## What Goes Where
 
 | Information | Where to put it | How it gets there |

@@ -53,22 +53,31 @@ Focus manual writes on `#decision`, `#lesson`, `#preference`, `#pattern`. Auto-c
 
 **Format:**
 ```
-#[tag] [[topic-link]] [Title or summary — one line]
-[1-3 sentences of specifics: what, why, what was ruled out / what to avoid]
+[YYYY-MM-DD] #[tag] TYPE: [what] | REASONING: [why] | CONTEXT: [what triggered it]
+status:[active|superseded] belongs_to:[domain|project-slug] related_to:[context/file.md, skill-name]
 ```
 
-Tag vocabulary:
-- `#decision` — architectural, process, or tool choices
-- `#pattern` — recurring approaches that work
-- `#preference` — client/team style preferences
-- `#lesson` — something learned the hard way
-- `#bug` — known issue or active workaround
+Required fields per entry:
+- `#tag` — category: `#decision`, `#pattern`, `#preference`, `#lesson`, `#bug`, `#constraint`
+- `status:` — `active` (default) or `superseded` (never delete; mark superseded and add a replacement entry)
+- `belongs_to:` — `domain` for cross-project truths; `<project-slug>` for project-scoped entries promoted here
+
+Optional but encouraged:
+- `related_to:` — comma-separated pointers to context files, skills, or other entries that are connected. Makes entries navigable without a query tool.
 
 **How to write (via tool):**
 ```
 memory_write(
   file: "MEMORY.md",
-  content: "#decision [[database]] Chose SQLite for local dev, PostgreSQL for prod.\nMismatch between envs was causing false test failures. Now parity across both."
+  content: "[2026-04-27] #decision DECISION: Chose SQLite for local dev, PostgreSQL for prod | REASONING: parity between envs; mismatch was causing false test failures | CONTEXT: debug session revealed divergent migration state\nstatus:active belongs_to:domain related_to:context/stack.md"
+)
+```
+
+**Marking an entry superseded:**
+```
+memory_write(
+  file: "MEMORY.md",
+  content: "<!-- [2026-01-15 entry above] status:superseded — replaced 2026-04-27, see new entry below -->"
 )
 ```
 

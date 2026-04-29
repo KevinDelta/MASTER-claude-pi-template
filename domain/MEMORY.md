@@ -1,3 +1,9 @@
+---
+domain: {{DOMAIN_NAME}}
+scope: domain
+established: {{ESTABLISHED_DATE}}
+---
+
 # Domain Memory — {{DOMAIN_NAME}}
 
 <!-- This is the curated, human-readable companion to memory.db.
@@ -12,9 +18,11 @@
      - Project-specific decisions (those live in <project-root>/context/decisions.md)
      - Active checklists (those live in the scratchpad table in memory.db)
      - Session logs (those live as observation rows in memory.db)
-     FORMAT:
-     Use #tags to categorize entries: #decision, #pattern, #preference, #lesson, #constraint
-     Append-only — never delete entries; add a "superseded by [date]" note if something changes.
+     ENTRY FORMAT:
+     [YYYY-MM-DD] #tag TYPE: [what] | REASONING: [why] | CONTEXT: [what triggered it]
+     status:[active|superseded] belongs_to:[domain|project-slug] related_to:[context/file.md, other-entry]
+     Use #tags: #decision, #pattern, #preference, #lesson, #constraint
+     Append-only — set status:superseded and note the replacement rather than deleting entries.
      ESTABLISHED: {{ESTABLISHED_DATE}} -->
 
 ---
@@ -26,7 +34,8 @@
      Only write when a direction was chosen over real alternatives. -->
 
 <!-- Example:
-[2026-01-15] DECISION: All client deliverables use Google Docs, not PDFs | REASONING: clients can comment inline; version history is automatic | CONTEXT: Client asked to track changes on a delivered report, PDF workflow failed #decision
+[2026-01-15] #decision DECISION: All client deliverables use Google Docs, not PDFs | REASONING: clients can comment inline; version history is automatic | CONTEXT: Client asked to track changes on a delivered report, PDF workflow failed
+status:active belongs_to:domain related_to:context/clients.md
 -->
 
 ---
@@ -38,7 +47,8 @@
      Format: [YYYY-MM-DD] PATTERN: [what] | EVIDENCE: [which projects confirmed it] -->
 
 <!-- Example:
-[2026-02-10] PATTERN: Start every strategy engagement with a stakeholder map before any analysis | EVIDENCE: WynDelta, Meridian, TechCo engagements — skipping this led to rework in all three #pattern
+[2026-02-10] #pattern PATTERN: Start every strategy engagement with a stakeholder map before any analysis | EVIDENCE: WynDelta, Meridian, TechCo engagements — skipping this led to rework in all three
+status:active belongs_to:domain related_to:skills/domain-status.md
 -->
 
 ---
@@ -49,7 +59,8 @@
      How things are done here, regardless of client or project. -->
 
 <!-- Example:
-[2026-01-20] PREFERENCE: Executive summaries are always 3 bullets or fewer, never prose paragraphs | REASONING: decision-makers read bullets; prose gets skipped #preference
+[2026-01-20] #preference PREFERENCE: Executive summaries are always 3 bullets or fewer, never prose paragraphs | REASONING: decision-makers read bullets; prose gets skipped
+status:active belongs_to:domain
 -->
 
 ---
@@ -60,5 +71,6 @@
      Format: [YYYY-MM-DD] LESSON: [what] | CONTEXT: [what prompted it] -->
 
 <!-- Example:
-[2026-03-05] LESSON: New project context files drafted from domain memory take 20 min vs 2 hrs from blank | CONTEXT: First time using domain-bootstrap skill on Acme project #lesson
+[2026-03-05] #lesson LESSON: New project context files drafted from domain memory take 20 min vs 2 hrs from blank | CONTEXT: First time using domain-bootstrap skill on Acme project
+status:active belongs_to:domain related_to:skills/domain-bootstrap.md
 -->
