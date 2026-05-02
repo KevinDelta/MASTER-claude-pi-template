@@ -1,0 +1,13 @@
+{
+  // Optional project-local OpenClaw reference config.
+  // The domain install owns the main agent/gateway config. Use this only for
+  // project-specific overrides that cannot live in AGENTS.md.
+  agent: {
+    thinkingDefault: "medium",
+    timeoutSeconds: 1800,
+  },
+  routing: {
+    // Project routes must still resolve through AGENTS.md before work starts.
+    requireAgentsRoutingTable: true,
+  },
+}

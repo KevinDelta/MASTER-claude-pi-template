@@ -1,14 +1,22 @@
 # Active Context
 
-**Current Phase:** Restructuring the meta-project for better tracking and iteration (Dogfooding).
+**Current Phase:** OpenClaw runtime refactor.
 
-## Work in Progress
-- [x] Splitting `PROJECT-CONTEXT.md` into `CHANGELOG.md`, `DECISIONS.md`, and `LEARNINGS.md`.
-- [x] Consolidating all tasks and epics into `BACKLOG.md`.
-- [x] Update references to `PROJECT-CONTEXT.md` and `FOUNDATION-BACKLOG.md` across the repo.
+## Completed In This Phase
 
-## Blocked / Pending
-- None.
+- Replaced Pi runtime templates with OpenClaw workspace/config/plugin templates.
+- Deleted `watches.yaml` and scheduler templates; heartbeat is now the recurring-work surface.
+- Replaced `PI_DOCK.md` with `DOCK.md`.
+- Ported memory behavior to an OpenClaw `domain-memory` plugin template.
+- Strengthened routing-table requirements for direct, channel, heartbeat, and project work.
+
+## Open Risks
+
+- Need real-run validation against a disposable OpenClaw domain.
+- Need confirmation of plugin config readback shape in OpenClaw runtime.
+- Need a local memory plugin smoke test.
 
 ## Next Steps
-- Pick the top item from `BACKLOG.md` (e.g., P0-A1 Enforce required token in HTTP mode) and execute it.
+
+- Run the installer against a disposable domain and verify `openclaw agents list --bindings`.
+- Add a temp-DB smoke test for the domain-memory plugin.

@@ -23,7 +23,7 @@ With domain memory: context files are drafted from accumulated domain knowledge 
 ### 1. Identify the new project
 
 Ask (or confirm from context):
-- Project slug (will be used as `PI_PROJECT_ID` in `.pi/.env`)
+- Project slug (used as `PROJECT_ID` in the project env source)
 - Project name and one-sentence description
 - Client (if applicable)
 - What kind of work — which domain workspace template applies (research, drafting, analysis, delivery)
@@ -91,7 +91,7 @@ Only write files after the worker reviews and confirms.
 
 After context files are written:
 1. Add the project slug to `domain/context/domain.md` under Active Projects
-2. Confirm `PI_PROJECT_ID=<slug>` is set in `<project-root>/.pi/.env`
+2. Confirm `PROJECT_ID=<slug>` is set in the project env source
 3. Suggest creating an initial scratchpad entry:
 ```sql
 INSERT INTO scratchpad (project, item)

@@ -6,6 +6,41 @@
 
 ## What We Built (Changelog)
 
+### Phase 8.1 — Streamlined Self-Serve Wizard (2026-04-30)
+
+Reworked the unified onboarding wizard to align with SPEC-v3 §7 (natural-language authoring layer). Cut the full ARA consulting pipeline; the wizard is now worker self-serve.
+
+**What changed:**
+- **8 sections → 5** — "Who you are", "Your work types", "Impact & goals" (optional), "Your setup", "Generate". Removed: Process Mapping BPM detail, Prioritization matrix (composite scoring), Agent Design Briefs (SLAs, IT blockers, rollback conditions), Pilot Run Plans.
+- **Plain-language UX** — "Burning Platform" → "What you're trying to fix", "Process Mapping" → "Your work types", "Harness Configuration" → "Your setup", "Domain slug" → "Short name (used in file paths)". Pattern dropdown uses conversational descriptions ("Watches for things and alerts me") instead of technical labels.
+- **Work-types model** — `state.workTypes[{ id, name, description, pattern }]` replaces `state.agents[]` (full brief). One work type = one workspace = one routing row. Generators fall back to legacy `agents[]` if a v1/v2 JSON is imported.
+- **Condensed impact section** — free-text fields only: goal narrative, estimated time/cost saved, urgency. No integration complexity, change risk, or tech readiness dropdowns.
+- **Advanced options collapsed** — org rules, project rules, and hard stops hidden behind a `<details>` toggle in §4. Slug and project directory remain prominent.
+- **State schema v3** — `meta.schemaVersion` bumped to 3. `migrateToV3()` handles v2→v3 and all 7 v1 shapes. Backwards compatible with ADUSA JSON.
+- **Runbook updated** — `CLIENT-ONBOARDING-RUNBOOK.md` revised for 5-section flow, v3 language, updated time targets (~1 hr self-serve, ~1.5 hrs guided).
+
+**Files changed:** `Intake-mapping/wyndelta-onboarding.html`, `xDOCS/CLIENT-ONBOARDING-RUNBOOK.md`
+
+---
+
+### Phase 8 — Unified Onboarding Intake (2026-04-29)
+
+Replaced the 7-tool modular HTML intake flow with a single-page wizard (`Intake-mapping/wyndelta-onboarding.html`).
+
+**What changed:**
+- **Single shared state** — one `state` object across all 8 sections; no JSON hand-passing between tools. Field-name drift (`client` / `companyName` / `clientRef` / `c-client`) resolved to one canonical source.
+- **8 wizard sections** — Client & Qualification, Process Mapping (repeatable inline), Prioritization (auto-scored, live-ranked), Agent Briefs (repeatable), Pilot Plans (repeatable), Synthesis, Harness Config, Generate.
+- **Autosave** — persists to `localStorage` under `wyndelta-onboarding:<slug>` on every field change.
+- **Master JSON** — global export/import in the header. Legacy migrator detects the 7 old export shapes and folds them into v2 state — existing client artifacts (`clients/ADUSA/`) remain migratable.
+- **Full domain tree generator** — produces `domain/` (AGENTS.md, SOUL.md, MEMORY.md, watches.yaml, context/domain.md, context/clients.md) + `project/` (AGENTS.md, context/\*, memory/MEMORY.md, workspaces/\*/CONTEXT.md) + `setup-client.sh` + bundle README. All in one JSZip download.
+- **`setup-client.sh`** — generated script calls `install.sh --domain --persona`, overlays all files, removes example workspaces, runs `git init`. No manual `cp` or python snippet needed.
+- **Project directory field (§7)** — worker specifies the exact target path on the install machine; the generated script hardcodes it rather than defaulting to `~/coding/` (Kevin's convention, not portable to client machines).
+- **Old tools retired** to `Intake-mapping/legacy/` with a migration README. Runbook collapsed from 10 steps to 4.
+
+**Target onboarding time:** ~2 hrs (down from ~5.5 hrs first run, ~3 hrs second run).
+
+---
+
 ### Phase 7 — FastMCP Migration + Two-Layer Architecture (2026-04-21)
 
 Implemented the first two items of the v3 infrastructure tranche (SPEC-v3 §5 + §13).

@@ -24,9 +24,9 @@ If you only read and discussed without producing output or making decisions, mem
 
 ## Auto-Capture vs Manual Curation
 
-`memory-db.ts` auto-captures tool calls (write/edit/bash) as observation rows in the domain DB. This covers the episodic record of *what happened* — which files were modified, what commands ran, what operations took place.
+The OpenClaw `domain-memory` plugin does not assume Pi-style lifecycle auto-capture. It provides explicit tools for writing durable observations. Treat automatic capture as optional future enhancement, not a guarantee.
 
-**Auto-capture handles:** the "what" — the factual record of actions taken.
+**Explicit observation writes handle:** the "what" — factual records worth keeping.
 
 **Manual curation still required for:** the "why" — context that can't be inferred from tool call logs:
 - `#decision` entries: *why* something was chosen, *what was ruled out*, *what constraint drove it*
@@ -65,12 +65,9 @@ Required fields per entry:
 Optional but encouraged:
 - `related_to:` — comma-separated pointers to context files, skills, or other entries that are connected. Makes entries navigable without a query tool.
 
-**How to write (via tool):**
+**How to write to the curated file:**
 ```
-memory_write(
-  file: "MEMORY.md",
-  content: "[2026-04-27] #decision DECISION: Chose SQLite for local dev, PostgreSQL for prod | REASONING: parity between envs; mismatch was causing false test failures | CONTEXT: debug session revealed divergent migration state\nstatus:active belongs_to:domain related_to:context/stack.md"
-)
+Edit `MEMORY.md` directly when the entry is durable and human-readable.
 ```
 
 **Marking an entry superseded:**
@@ -101,17 +98,19 @@ The scratchpad table in the domain DB is injected before every agent turn automa
 
 **How to write (via tool):**
 ```
-scratchpad(
-  action: "add",
-  item: "Follow up on client review of Section 4 draft"
+observation_write(
+  kind: "note",
+  content: "Scratchpad: Follow up on client review of Section 4 draft",
+  project: "my-project-slug"
 )
 ```
 
 Check off a completed item:
 ```
-scratchpad(
-  action: "complete",
-  item: "Follow up on client review of Section 4 draft"
+observation_write(
+  kind: "log",
+  content: "Completed scratchpad item: Follow up on client review of Section 4 draft",
+  project: "my-project-slug"
 )
 ```
 
@@ -133,4 +132,4 @@ Before closing any productive session:
 - **Do not log everything.** Dense memory is harder to search than sparse memory.
 - **Do not duplicate context/ files.** Project description, client profile, stack — don't copy them here.
 - **Do not write process summaries.** "We had a productive session" is noise. What was decided is signal.
-- **Do not write ephemeral details.** Debug traces, exact command outputs — observations table captures those automatically.
+- **Do not write ephemeral details.** Debug traces and exact command outputs are usually noise unless a routing row or user asks to preserve them.

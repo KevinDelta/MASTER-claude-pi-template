@@ -1,8 +1,8 @@
 # AGENTS.md — [Project Name]
 
 <!-- PROJECT LAYER — lives in <project-root>/AGENTS.md
-     Pi load order: global (~/.pi/agent/AGENTS.md) → domain (~/.pi/domain/<name>/AGENTS.md) → THIS FILE
-     Each layer appends and overrides the one above.
+     OpenClaw domain workspace loads global + domain instructions first.
+     Project work then reads THIS FILE and applies project routing overrides.
 
      WHAT BELONGS HERE:
      - This project's description, client, and scope
@@ -13,8 +13,8 @@
      Rule of thumb: if the same across all projects in this domain → domain layer.
      If it changes between projects → here.
 
-     HARNESS SETTINGS (model, tool permissions, memory path, extensions):
-     Those live in .pi/settings.json — not here. -->
+     HARNESS SETTINGS (model, channel routing, heartbeat, plugins, memory path):
+     Those live in OpenClaw config and the domain workspace — not here. -->
 
 ---
 
@@ -44,7 +44,13 @@
 
 <!-- Every task type the agent will do needs a row.
      Task arrives → agent checks table → loads what it says → starts from context.
-     If a task type isn't here, the agent checks the domain routing table, then guesses.
+     If a task type isn't here, the agent checks the domain routing table, then asks before guessing.
+     Routing is mandatory for direct CLI turns, channel-routed turns, and heartbeat follow-up work.
+
+     ROUTING BOUNDARY:
+     - OpenClaw native routing decides whether this project/domain agent receives the message.
+     - This table decides how the selected agent performs the work.
+     Do not encode channel/account/peer bindings here. Put those in OpenClaw config.
 
      HOW OVERRIDES WORK:
      - Domain routing rows apply unless a project row matches the same Task Type first keyword
@@ -52,11 +58,11 @@
      - Always include Session start and Session end rows if this project needs project-specific behavior
 
      MEMORY NOTE:
-     In v2, domain memory lives in ~/.pi/domain/<name>/memory.db and MEMORY.md.
-     Session start reads MEMORY.md for full orientation (the DB handles keyword/semantic recall).
+     Domain memory lives in ~/.openclaw/workspaces/<name>/memory.db and MEMORY.md.
+     Session start reads MEMORY.md for full orientation. Use domain-memory plugin tools for keyword/semantic recall.
      Remove the session-start row only if you want the domain default to apply unchanged.
 
-     PI_PROJECT_ID must be set in .pi/.env so observations are tagged to this project. -->
+     PROJECT_ID must be set in the project env source so observations are tagged to this project. -->
 
 | Task Type | Workspace | Read | Load Skills |
 |-----------|-----------|------|-------------|
@@ -71,7 +77,7 @@
 | **Build / code** — write, edit, or debug code | /workspaces/[workspace-c] | `context/stack.md` + `[workspace-c]/CONTEXT.md` | — |
 | **Analyze / synthesize** — process data, extract patterns, produce findings | /workspaces/[workspace-b] | `context/project.md` + `[workspace-b]/CONTEXT.md` | — |
 | **Status / report** — summarize progress, produce a status update | — | `context/project.md` | `stop-slop.md` |
-| **Harness** — modify AGENTS.md, skills, extensions, or settings | — | `BLUEPRINT.md` | `harness-dev.md` |
+| **Harness** — modify AGENTS.md, skills, plugins, OpenClaw config, or settings | — | `BLUEPRINT.md` | `harness-dev.md` |
 | **Session end** — update state and write memory | — | — | `memory-write.md` + `context-update.md` |
 
 ---
@@ -94,10 +100,11 @@
 
 ---
 
-## Skills Available
+## Routed Skills
 
-<!-- Domain skills are auto-discovered from ~/.pi/domain/<name>/skills/*.md.
-     The routing table loads specific skills per task type.
+<!-- Domain skills are loaded from ~/.openclaw/workspaces/<name>/skills/*.md.
+     OpenClaw exposes configured skill directories to the agent.
+     This table does not perform discovery; it documents when routing rows should use each skill.
      List project-level skills here. Domain-level skills are listed in the domain AGENTS.md. -->
 
 | Skill | When It Loads |
@@ -115,7 +122,7 @@
 
 <!-- Hard stops — actions the agent must never take without explicit user instruction.
      These extend (not replace) global and domain out-of-bounds.
-     Enforced by permissions-config.json when pi-permission-system is installed. -->
+     Enforced by OpenClaw/host permissions when configured. Keep TOOLS.md aligned with this list. -->
 
 - Never delete files or directories without explicit confirmation
 - Never force-push to any branch (`git push --force`)

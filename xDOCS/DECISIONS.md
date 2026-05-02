@@ -1,15 +1,14 @@
 # Key Design Decisions
 
 | Decision | What | Why |
-| ---------- | ------ | ----- |
-| YAML frontmatter required on skills | `name` + `description` fields | Pi can't discover or describe skills without them |
-| `defaultThinkingLevel` is a string | `"medium"` not `{ "level": "medium" }` | Pi's actual type; object caused silent parse failure |
-| `skills`/`extensions` are arrays | `["skills/*.md"]` not `{ "paths": [...] }` | Same issue — real pi schema takes flat arrays |
-| ExtensionAPI two-param handlers | `async (_event, ctx) =>` | Pi's real signature; one-param would receive event, not ctx |
-| agentmemory interaction via HTTP only | Never touch iii-sdk directly | iii-sdk is proprietary Anthropic infrastructure; MCP/HTTP is the stable interface |
-| Binary store is gitignored | `memory/.agentmemory/` excluded | Regenerable from observations; MEMORY.md is the canonical committed record |
-| Bridge checks health before acting | `available` flag gated | Ensures pi-memory continues uninterrupted if agentmemory is down |
+|----------|------|-----|
+| OpenClaw is the default runtime | Gateway, agents, channels, identity, heartbeat, plugins | Deletes custom runtime/process code and matches the portable-agent goal |
+| Routing table remains primary | Every CLI, channel, heartbeat, and project task resolves through `AGENTS.md` | Prevents workspace memory from becoming vague implicit context |
+| Heartbeat replaces watches | `HEARTBEAT.md` owns recurring work; no `watches.yaml` or OS scheduler templates | Removes cron/scheduler layer and keeps proactivity in OpenClaw |
+| Dock is harness-neutral | `DOCK.md`, not `PI_DOCK.md` | Export policy should survive runtime changes |
+| SQLite memory stays | `memory.db` plus domain-memory plugin | Preserves cross-project recall and status while OpenClaw handles runtime |
+| Memory use is explicit | `domain_memory_query`, `scratchpad_list`, `observation_write`, `memory_maintenance` | Avoids depending on Pi lifecycle hooks that OpenClaw may not mirror |
+| Raw observations denied | `raw_observations` tool always refuses by default | Keeps local memory/export boundary clear |
+| Skills keep YAML frontmatter | `name` + `description` fields | Makes skill routing and discovery stable across runtimes |
 | CONTEXT.md has Functions + Workflow | Stable process sections added | Gives the agent action vocabulary and sequencing without duplicating routing tables |
-| No routing tables in CONTEXT.md | Decision: not added | Wrong time horizon — routing is architecture, CONTEXT.md is volatile state |
-| Global/project in one AGENTS.md | Both sections, clear delineation | Full picture in one template file; split for deploy |
-| Custom skills always | Write our own, draw from community for conventions | Skills must match org-specific standards and vocabulary |
+| No routing tables in CONTEXT.md | Routing remains in `AGENTS.md` | Routing is architecture; CONTEXT.md is volatile state |

@@ -1,6 +1,6 @@
 ---
 name: goals-resolver
-description: Check declared goals against observation history. Compute the delta between ideal state and observed state. Propose specific recovery actions. Load when a watch fires for a goal-referenced entry, or when asked to review domain goal progress.
+description: Check declared goals against observation history. Compute the delta between ideal state and observed state. Propose specific recovery actions. Load when heartbeat runs a goal review, or when asked to review domain goal progress.
 ---
 
 # Goals Resolver
@@ -8,9 +8,9 @@ description: Check declared goals against observation history. Compute the delta
 ## When to Use
 
 Load this skill when:
-- A watch with a `goal:` field fires (the watch task says "compare observed state to goal")
+- Heartbeat runs a goal review from `HEARTBEAT.md`
 - The worker asks to review progress on a declared goal
-- A weekly-sync watch needs to surface goal status alongside project summaries
+- A weekly sync heartbeat needs to surface goal status alongside project summaries
 
 ## Process
 
@@ -114,4 +114,4 @@ Delta: 6 hours short of the 20-hour target this week. Pattern: no deep work on T
 
 Recovery proposal:
 1. Block Tuesday 9am–12pm and Wednesday 9am–12pm in calendar (6 hours total)
-2. Set a watch condition for Tuesday evenings: if no deep-work observations by 6pm, surface a reminder
+2. Add a heartbeat condition: if no deep-work observations by the configured review window, surface a reminder

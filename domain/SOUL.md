@@ -2,7 +2,7 @@
 
 <!-- REQUIRED at domain creation. Not optional.
      A persona is what makes the framework feel like an advocate rather than a configured CLI.
-     Workers do not form a working relationship with a tool named "pi."
+     Workers do not form a working relationship with a generic runtime name.
      They form one with an assistant they named.
      Fill this in once at domain creation. It does not change unless you choose to evolve it.
      Be specific. "Helpful and professional" is not a persona — it's a placeholder.

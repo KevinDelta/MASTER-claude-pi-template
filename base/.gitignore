@@ -2,8 +2,9 @@
 memory/.agentmemory/
 memory/.agentmemory-export.json
 
-# pi session state
-.pi/.session/
+# OpenClaw/project environment overrides
+.env
+openclaw/.env
 
-# environment overrides (copy .pi/.env.example → .pi/.env and fill in)
-.pi/.env
+# OpenClaw local session/cache material if copied into a project
+.openclaw/

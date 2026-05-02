@@ -1,18 +1,20 @@
 # AGENTS.md — {{DOMAIN_NAME}} (Domain Layer)
 
-<!-- DOMAIN LAYER — install.sh appends this file to ~/.pi/agent/AGENTS.md after the global section.
-     V3 two-layer model: global + domain are combined into ~/.pi/agent/AGENTS.md by install.sh.
-     Pi reads that combined file natively. No --append-system-prompt workaround needed.
-     Pi load order: ~/.pi/agent/AGENTS.md (global+domain combined) → project (<project-root>/AGENTS.md)
+<!-- DOMAIN LAYER — install.sh appends this file to ~/.openclaw/workspaces/<domain>/AGENTS.md after the global section.
+     OpenClaw treats that workspace as the domain agent's memory and instruction surface.
+     Load model: ~/.openclaw/workspaces/<domain>/AGENTS.md (global+domain combined)
+     -> project (<project-root>/AGENTS.md) when project work is routed.
      WHAT BELONGS HERE:
      - Domain vocabulary and methods shared across all projects in this domain
      - Routing table scaffold — rows that are true for every project in this domain
+     - Work-routing requirements for heartbeat and channel-originated turns
      - Domain-wide rules and constraints beyond the global layer
      - Workspace template descriptions (structures projects inherit)
      WHAT DOES NOT BELONG HERE:
-     - Global org standards (those live in ~/.pi/agent/AGENTS.md)
+     - Global org standards (those live in the global section above this one)
      - Project-specific routing, workspaces, or rules (those live in <project-root>/AGENTS.md)
      - Client-specific preferences (those live in <project-root>/context/client.md)
+     - OpenClaw channel/account/peer bindings (those live in OpenClaw config)
      HOW OVERRIDES WORK:
      - Routing rows are matched by the Task Type column's first keyword
      - A project routing row with the same Task Type key overrides the domain row
@@ -63,16 +65,28 @@
 <!-- Routing rows that apply to all projects in this domain unless overridden.
      Projects override rows by matching the Task Type column's first keyword.
      Add rows for task types that are universal to this domain's work.
-     Domain session-start reads domain-level memory. Projects extend or override this.
-     Domain-level memory lives in ~/.pi/domain/{{DOMAIN_NAME}}/MEMORY.md and memory.db -->
+
+     ROUTING BOUNDARY:
+     - OpenClaw native routing decides which agent/workspace/session receives a message.
+     - This table decides what the selected agent reads, which workspace it uses,
+       and which skills/tools apply to the work.
+     Do not encode channel/account/peer bindings here. Put those in OpenClaw config.
+
+     Every entrypoint resolves through this table before acting:
+     - direct openclaw agent turns
+     - channel-routed turns after OpenClaw has selected this agent
+     - heartbeat turns
+     - project-scoped turns
+     Domain-level memory lives in ~/.openclaw/workspaces/{{DOMAIN_NAME}}/MEMORY.md and memory.db -->
 
 | Task Type | Workspace | Read | Load Skills |
 |-----------|-----------|------|-------------|
-| **Session start** — orient before any work | — | `~/.pi/domain/{{DOMAIN_NAME}}/MEMORY.md` | `memory-query.md` |
-| **Domain status** — cross-project summary, weekly review | — | `~/.pi/domain/{{DOMAIN_NAME}}/MEMORY.md` | `domain-status.md` |
-| **Goal review** — check domain goals against observed state | — | `~/.pi/domain/{{DOMAIN_NAME}}/MEMORY.md` | `goals-resolver.md` |
+| **Session start** — orient before any work | — | `MEMORY.md` + `HEARTBEAT.md` when recurring | `memory-query.md` |
+| **Heartbeat** — recurring proactive check | — | `HEARTBEAT.md` + `MEMORY.md` | `memory-query.md` + `domain-status.md` |
+| **Domain status** — cross-project summary, weekly review | — | `MEMORY.md` | `domain-status.md` |
+| **Goal review** — check domain goals against observed state | — | `MEMORY.md` + `HEARTBEAT.md` | `goals-resolver.md` |
 | **Session end** — update state and write memory | — | — | `memory-write.md` + `context-update.md` |
-| **Harness** — modify AGENTS.md, skills, extensions, settings | — | `BLUEPRINT.md` | `harness-dev.md` |
+| **Harness** — modify AGENTS.md, skills, plugins, OpenClaw config | — | `BLUEPRINT.md` | `harness-dev.md` |
 
 <!-- EXTENDING THIS TABLE IN PROJECTS:
      If a project needs a different session-start row, add one in the project AGENTS.md
@@ -107,26 +121,27 @@
 
 ---
 
-## Skills Available
+## Routed Skills
 
-<!-- Domain-level skills are auto-discovered from ~/.pi/domain/{{DOMAIN_NAME}}/skills/*.md
-     Universal skills are auto-discovered from the project's skills/ directory.
-     Routing table determines when each loads.
+<!-- Domain-level skills are loaded from ~/.openclaw/workspaces/{{DOMAIN_NAME}}/skills/*.md
+     Universal/project skills are exposed by OpenClaw skill configuration.
+     This table does not perform discovery; it documents when routing rows should use each skill.
      Add rows as domain-specific skills are created. -->
 
 | Skill | When It Loads |
 |-------|--------------|
 | `domain-status.md` | Weekly reviews, cross-project summaries, domain health checks |
-| `goals-resolver.md` | Goal-referenced watches; comparing observed state to declared goals |
+| `goals-resolver.md` | Heartbeat goal reviews; comparing observed state to declared goals |
 | `[domain-skill].md` | [When to load it] |
 
 ---
 
 ## Out of Bounds
 
-<!-- Hard stops at the domain level. Enforced by permissions-config.json when
-     pi-permission-system is installed. These extend (not replace) global out-of-bounds. -->
+<!-- Hard stops at the domain level. Enforced by OpenClaw/host permissions when configured.
+     These extend (not replace) global out-of-bounds. -->
 
 - Never share materials from one project directory with another project without explicit confirmation
-- Never modify memory.db schema directly — use the memory-db extension's provided functions
+- Never modify memory.db schema directly — use the domain-memory plugin's provided tools
+- Never bypass the routing table for heartbeat, channel, or project work
 - [Domain-specific hard stop]

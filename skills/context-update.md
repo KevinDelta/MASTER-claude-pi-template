@@ -91,7 +91,7 @@ Before closing a session:
 
 ## Pi.dev Session-End Protocol
 
-When running with pi.dev, run `memory-write` skill alongside this skill at session end.
+When ending productive OpenClaw work, run `memory-write` alongside this skill.
 
 **Order:**
 1. Update workspace CONTEXT.md (this skill) — current task state per workspace

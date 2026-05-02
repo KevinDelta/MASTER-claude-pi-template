@@ -7,7 +7,7 @@ description: Surface relevant domain memory before doing work. Load at session s
 
 ## Purpose
 
-Surface relevant context from the domain memory DB before doing work. `memory-db.ts` injects context before every agent turn automatically — but knowing what you're getting, how to ask for more, and when to read MEMORY.md directly makes the memory layer genuinely useful rather than invisible.
+Surface relevant context from the domain memory DB before doing work. The OpenClaw `domain-memory` plugin exposes explicit memory tools; use them deliberately from routing rows instead of assuming invisible lifecycle injection.
 
 ## When to Use
 
@@ -18,25 +18,25 @@ Load at session start. Also apply when:
 
 ---
 
-## What memory-db.ts Gives You Automatically
+## What the domain-memory Plugin Gives You
 
-Before every agent turn, `memory-db.ts` prepends to the system prompt (up to 16K tokens total):
+Use explicit tools:
 
-1. **Open scratchpad items** — what's actively being tracked across projects
-2. **FTS keyword search results** — observations from the domain DB matching your current prompt
-3. **Vector search results** — semantically similar observations (requires ollama + nomic-embed-text)
-4. **MEMORY.md content** — curated decisions, patterns, preferences (domain-level)
+1. `domain_memory_query` - FTS + vector search over bounded, redacted observation excerpts
+2. `scratchpad_list` - open cross-session items
+3. `domain_status` - project activity and aggregate memory health
+4. `memory_maintenance` - heartbeat embedding backfill and health checks
 
-Auto-injection surfaces relevant memory without you asking. If something isn't appearing that should, use explicit retrieval below.
+This makes recall visible and auditable. Do not pretend memory was injected if you did not query or read it.
 
 ---
 
 ## Session Start — Full Orientation
 
-At session start, read domain MEMORY.md directly for complete orientation. Auto-injection gives keyword-relevant slices; reading MEMORY.md gives the full picture of what the domain knows.
+At session start, read domain MEMORY.md directly for complete orientation. Plugin search gives keyword-relevant slices; reading MEMORY.md gives the full picture of what the domain knows.
 
 ```
-read("~/.pi/domain/<name>/MEMORY.md")
+read("~/.openclaw/workspaces/<name>/MEMORY.md")
 ```
 
 After reading, state what applies to today's work before proceeding:
@@ -49,17 +49,16 @@ This makes retrieval visible and auditable. If a memory is stale or wrong, corre
 
 ## Explicit Search
 
-When auto-injection isn't surfacing something expected — or when you need a specific past decision:
+When you need a specific past decision or pattern:
 
-**FTS keyword search (fast, always available):**
-The domain DB's FTS5 index is searched automatically before every turn. If you need to trigger it explicitly:
+**FTS/vector search through the plugin:**
 ```
-memory_db_search(query: "pricing exceptions client discount", mode: "fts")
+domain_memory_query(query: "pricing exceptions client discount")
 ```
 
-**Vector/semantic search (requires ollama):**
+**Semantic query (uses vector search when ollama is available):**
 ```
-memory_db_search(query: "how we approach out-of-scope requests", mode: "vector")
+domain_memory_query(query: "how we approach out-of-scope requests")
 ```
 
 **Read a specific project's observation log:**
@@ -102,6 +101,6 @@ Expected for:
 ## Signs Memory Is Being Misused
 
 - Consulting memory for things already in context/ files (duplicate reads)
-- Ignoring auto-injected context and re-reading everything manually (redundant)
-- Never checking if auto-injection missed something relevant (blind trust in FTS)
+- Claiming memory was checked when no memory tool or file read was used
+- Never checking whether explicit recall missed something relevant
 - Reading full domain memory on every turn regardless of task type (wasteful)

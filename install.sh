@@ -1,39 +1,39 @@
 #!/usr/bin/env bash
-# install.sh — MASTER-claude-pi-template v2 installer
+# install.sh - MASTER OpenClaw domain installer
 #
-# Sets up a pi domain on this machine:
-#   1. Checks prerequisites (pi, node, ollama)
-#   2. Creates domain directory at ~/.pi/domain/<domain-name>/
-#   3. Deploys domain templates (AGENTS.md, SOUL.md, watches.yaml, memory extension)
-#   4. Substitutes placeholders in deployed files
-#  4b. Builds combined ~/.pi/agent/AGENTS.md (global + domain section)
-#   5. Creates .pi/.env for memory-db
-#   6. Writes ~/.pi/active-domain pointer file
-#   7. Notes memory.db creation path
-#   8. Pulls nomic-embed-text via ollama (unless --skip-ollama)
-#   9. Creates persona CLI alias in shell RC file
-#  10. Installs OS scheduler for watches (unless --skip-scheduler)
+# Sets up an OpenClaw-backed domain workspace on this machine:
+#   1. Checks prerequisites (node, openclaw, ollama)
+#   2. Creates ~/.openclaw/workspaces/<domain-name>/
+#   3. Deploys domain templates (AGENTS.md, SOUL.md, HEARTBEAT.md, MEMORY.md, context, skills, DOCK.md)
+#   4. Builds routing-first AGENTS.md from global + domain sections
+#   5. Installs the domain-memory OpenClaw plugin
+#   6. Creates workspace env/config reference files
+#   7. Registers an OpenClaw agent for the domain workspace
+#   8. Configures heartbeat defaults through OpenClaw config
+#   9. Pulls nomic-embed-text via ollama unless skipped
+#  10. Creates a persona shell function that calls openclaw agent
 #
 # Usage:
 #   ./install.sh --domain <name> --persona <name> [options]
 #
 # Options:
-#   --domain <name>      Domain directory name under ~/.pi/domain/ (required)
-#   --persona <name>     Persona name; creates CLI alias (required)
-#   --skip-ollama        Skip ollama install and model pull
-#   --skip-scheduler     Skip launchd/systemd scheduler setup
-#   --yes                Skip confirmation prompts
-#   --dry-run            Print what would happen without executing
+#   --domain <name>       Domain workspace name under ~/.openclaw/workspaces/ (required)
+#   --persona <name>      Persona name; creates CLI function (required)
+#   --model <provider/id> Primary model (default: anthropic/claude-sonnet-4-5)
+#   --thinking <level>    off|minimal|low|medium|high|xhigh (default: medium)
+#   --heartbeat <dur>     OpenClaw heartbeat interval (default: 30m)
+#   --skip-ollama         Skip ollama install/model pull
+#   --skip-gateway        Skip openclaw onboard --install-daemon
+#   --yes                 Skip confirmation prompts
+#   --dry-run             Print what would happen without executing
 
 set -euo pipefail
-
-# ─── colors ───────────────────────────────────────────────────────────────────
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 info()    { echo -e "${BLUE}[install]${NC} $*"; }
 success() { echo -e "${GREEN}[install]${NC} $*"; }
@@ -41,50 +41,45 @@ warn()    { echo -e "${YELLOW}[warn]${NC}    $*"; }
 error()   { echo -e "${RED}[error]${NC}   $*" >&2; }
 die()     { error "$*"; exit 1; }
 
-# ─── argument parsing ─────────────────────────────────────────────────────────
-
 DOMAIN_NAME=""
 PERSONA_NAME=""
+MODEL="anthropic/claude-sonnet-4-5"
+THINKING="medium"
+HEARTBEAT_EVERY="30m"
 SKIP_OLLAMA=false
-SKIP_SCHEDULER=false
+SKIP_GATEWAY=false
 YES=false
 DRY_RUN=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --domain)    DOMAIN_NAME="$2"; shift 2 ;;
-    --persona)   PERSONA_NAME="$2"; shift 2 ;;
-    --skip-ollama)    SKIP_OLLAMA=true; shift ;;
-    --skip-scheduler) SKIP_SCHEDULER=true; shift ;;
-    --yes)       YES=true; shift ;;
-    --dry-run)   DRY_RUN=true; shift ;;
+    --domain) DOMAIN_NAME="$2"; shift 2 ;;
+    --persona) PERSONA_NAME="$2"; shift 2 ;;
+    --model) MODEL="$2"; shift 2 ;;
+    --thinking) THINKING="$2"; shift 2 ;;
+    --heartbeat) HEARTBEAT_EVERY="$2"; shift 2 ;;
+    --skip-ollama) SKIP_OLLAMA=true; shift ;;
+    --skip-gateway) SKIP_GATEWAY=true; shift ;;
+    --yes) YES=true; shift ;;
+    --dry-run) DRY_RUN=true; shift ;;
     *) die "Unknown argument: $1" ;;
   esac
 done
 
-[[ -z "$DOMAIN_NAME" ]] && {
-  read -rp "Domain name (e.g. gtm-strategy, research, ops): " DOMAIN_NAME
-}
-[[ -z "$PERSONA_NAME" ]] && {
-  read -rp "Persona name (e.g. Kai, Morgan, Ash): " PERSONA_NAME
-}
+[[ -z "$DOMAIN_NAME" ]] && read -rp "Domain name (e.g. gtm-strategy, research, ops): " DOMAIN_NAME
+[[ -z "$PERSONA_NAME" ]] && read -rp "Persona name (e.g. Kai, Morgan, Ash): " PERSONA_NAME
 
 [[ -z "$DOMAIN_NAME" ]] && die "--domain is required"
 [[ -z "$PERSONA_NAME" ]] && die "--persona is required"
 
-# Sanitize: lowercase, hyphens only
 DOMAIN_SLUG="$(echo "$DOMAIN_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-')"
 PERSONA_SLUG="$(echo "$PERSONA_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-')"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PI_HOME="$HOME/.pi"
-DOMAIN_DIR="$PI_HOME/domain/$DOMAIN_SLUG"
-AGENT_DIR="$PI_HOME/agent"
-LOG_DIR="$PI_HOME/logs"
+OPENCLAW_HOME="$HOME/.openclaw"
+WORKSPACE_DIR="$OPENCLAW_HOME/workspaces/$DOMAIN_SLUG"
+PLUGIN_DIR="$OPENCLAW_HOME/plugins/domain-memory-$DOMAIN_SLUG"
 INSTALL_DATE="$(date '+%Y-%m-%d')"
-OS="$(uname -s)"
-
-# ─── dry-run wrapper ──────────────────────────────────────────────────────────
 
 run() {
   if $DRY_RUN; then
@@ -94,18 +89,19 @@ run() {
   fi
 }
 
-# ─── summary ──────────────────────────────────────────────────────────────────
-
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Pi Domain Installer"
+echo "  OpenClaw Domain Installer"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Domain:  $DOMAIN_SLUG"
-echo "  Persona: $PERSONA_NAME ($PERSONA_SLUG)"
-echo "  Target:  $DOMAIN_DIR"
-echo "  Ollama:  $(if $SKIP_OLLAMA; then echo 'skip'; else echo 'install nomic-embed-text'; fi)"
-echo "  Sched:   $(if $SKIP_SCHEDULER; then echo 'skip'; else echo "$OS scheduler"; fi)"
-$DRY_RUN && echo "  Mode:    DRY RUN — no changes will be made"
+echo "  Domain:    $DOMAIN_SLUG"
+echo "  Persona:   $PERSONA_NAME ($PERSONA_SLUG)"
+echo "  Workspace: $WORKSPACE_DIR"
+echo "  Model:     $MODEL"
+echo "  Thinking:  $THINKING"
+echo "  Heartbeat: $HEARTBEAT_EVERY"
+echo "  Gateway:   $(if $SKIP_GATEWAY; then echo 'skip'; else echo 'onboard/install daemon'; fi)"
+echo "  Ollama:    $(if $SKIP_OLLAMA; then echo 'skip'; else echo 'install nomic-embed-text'; fi)"
+$DRY_RUN && echo "  Mode:      DRY RUN - no changes will be made"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -114,34 +110,23 @@ if ! $YES && ! $DRY_RUN; then
   [[ "$confirm" =~ ^[Yy]$ ]] || { info "Aborted."; exit 0; }
 fi
 
-# ─── step 1: prerequisite checks ──────────────────────────────────────────────
+info "Step 1/10 - Checking prerequisites..."
 
-info "Step 1/10 — Checking prerequisites..."
-
-# pi
-if ! command -v pi &>/dev/null; then
-  warn "pi not found. Installing @mariozechner/pi-coding-agent..."
-  run "npm install -g @mariozechner/pi-coding-agent"
-else
-  info "pi: $(pi --version 2>/dev/null || echo 'found')"
-fi
-
-# node
-command -v node &>/dev/null || die "node not found. Install Node.js 18+ before continuing."
+command -v node &>/dev/null || die "node not found. OpenClaw requires Node.js 22.16+ or 24+."
 info "node: $(node --version)"
 
-# npm packages for memory-db extension and MCP server
-info "Installing npm packages for memory-db extension and MCP server..."
-run "npm install -g better-sqlite3 sqlite-vec fastmcp tsx" || warn "npm install failed — memory-db extension may not work until packages are installed"
+if ! command -v openclaw &>/dev/null; then
+  warn "openclaw not found. Installing openclaw@latest..."
+  run "npm install -g openclaw@latest"
+else
+  info "openclaw: $(openclaw --version 2>/dev/null || echo 'found')"
+fi
 
-# ─── step 2: directory setup ──────────────────────────────────────────────────
+info "Installing native dependencies for domain-memory plugin..."
+run "npm install -g better-sqlite3 sqlite-vec @sinclair/typebox" || warn "npm install failed - plugin dependencies may need manual install"
 
-info "Step 2/10 — Creating directory structure..."
-run "mkdir -p '$DOMAIN_DIR/skills' '$DOMAIN_DIR/context' '$DOMAIN_DIR/.pi/extensions' '$AGENT_DIR' '$LOG_DIR'"
-
-# ─── step 3: deploy templates ─────────────────────────────────────────────────
-
-info "Step 3/10 — Deploying domain templates..."
+info "Step 2/10 - Creating OpenClaw workspace..."
+run "mkdir -p '$WORKSPACE_DIR/skills' '$WORKSPACE_DIR/context' '$OPENCLAW_HOME/plugins'"
 
 deploy() {
   local src="$1" dst="$2"
@@ -152,31 +137,35 @@ deploy() {
   run "cp '$src' '$dst'"
 }
 
-deploy "$SCRIPT_DIR/domain/AGENTS.md"        "$DOMAIN_DIR/AGENTS.md"
-deploy "$SCRIPT_DIR/domain/SOUL.md"          "$DOMAIN_DIR/SOUL.md"
-deploy "$SCRIPT_DIR/domain/MEMORY.md"        "$DOMAIN_DIR/MEMORY.md"
-deploy "$SCRIPT_DIR/domain/watches.yaml"     "$DOMAIN_DIR/watches.yaml"
-deploy "$SCRIPT_DIR/domain/context/domain.md"   "$DOMAIN_DIR/context/domain.md"
-deploy "$SCRIPT_DIR/domain/context/clients.md"  "$DOMAIN_DIR/context/clients.md"
-deploy "$SCRIPT_DIR/domain/.pi/settings.json"          "$DOMAIN_DIR/.pi/settings.json"
-deploy "$SCRIPT_DIR/domain/.pi/extensions/memory-db.ts" "$DOMAIN_DIR/.pi/extensions/memory-db.ts"
-deploy "$SCRIPT_DIR/domain/.pi/extensions/.env.example" "$DOMAIN_DIR/.pi/extensions/.env.example"
+info "Step 3/10 - Deploying domain templates..."
+deploy "$SCRIPT_DIR/domain/SOUL.md" "$WORKSPACE_DIR/SOUL.md"
+deploy "$SCRIPT_DIR/domain/MEMORY.md" "$WORKSPACE_DIR/MEMORY.md"
+deploy "$SCRIPT_DIR/domain/HEARTBEAT.md" "$WORKSPACE_DIR/HEARTBEAT.md"
+deploy "$SCRIPT_DIR/domain/context/domain.md" "$WORKSPACE_DIR/context/domain.md"
+deploy "$SCRIPT_DIR/domain/context/clients.md" "$WORKSPACE_DIR/context/clients.md"
+deploy "$SCRIPT_DIR/domain/openclaw/openclaw.domain.json5" "$WORKSPACE_DIR/openclaw.domain.json5"
+deploy "$SCRIPT_DIR/domain/openclaw/.env.example" "$WORKSPACE_DIR/.env.example"
+deploy "$SCRIPT_DIR/DOCK.md" "$WORKSPACE_DIR/DOCK.md"
 
-# Copy domain skills if any exist (skip .gitkeep)
 for skill in "$SCRIPT_DIR/domain/skills/"*.md; do
-  [[ -f "$skill" ]] && deploy "$skill" "$DOMAIN_DIR/skills/$(basename "$skill")"
+  [[ -f "$skill" ]] && deploy "$skill" "$WORKSPACE_DIR/skills/$(basename "$skill")"
 done
 
-# Deploy PI_DOCK.md
-deploy "$SCRIPT_DIR/PI_DOCK.md" "$PI_HOME/PI_DOCK.md"
-
-# ─── step 4: substitute placeholders ──────────────────────────────────────────
-
-info "Step 4/10 — Substituting placeholders in deployed files..."
+info "Step 4/10 - Building routing-first AGENTS.md..."
+COMBINED_AGENTS="$WORKSPACE_DIR/AGENTS.md"
+if $DRY_RUN; then
+  echo "  [dry-run] Would build $COMBINED_AGENTS from global + domain templates"
+else
+  {
+    cat "$SCRIPT_DIR/global/AGENTS.md"
+    printf '\n\n---\n\n# Domain: %s\n\n' "$DOMAIN_SLUG"
+    cat "$SCRIPT_DIR/domain/AGENTS.md"
+  } > "$COMBINED_AGENTS"
+fi
 
 subst_file() {
   local file="$1"
-  [[ -f "$file" ]] || return
+  [[ -f "$file" ]] || return 0
   run "sed -i.bak \
     -e 's|{{DOMAIN_NAME}}|$DOMAIN_SLUG|g' \
     -e 's|{{PERSONA_NAME}}|$PERSONA_NAME|g' \
@@ -189,118 +178,84 @@ subst_file() {
 }
 
 for f in \
-  "$DOMAIN_DIR/AGENTS.md" \
-  "$DOMAIN_DIR/SOUL.md" \
-  "$DOMAIN_DIR/MEMORY.md" \
-  "$DOMAIN_DIR/context/domain.md" \
-  "$DOMAIN_DIR/context/clients.md" \
-  "$DOMAIN_DIR/.pi/settings.json" \
-  "$PI_HOME/PI_DOCK.md"
+  "$WORKSPACE_DIR/AGENTS.md" \
+  "$WORKSPACE_DIR/SOUL.md" \
+  "$WORKSPACE_DIR/MEMORY.md" \
+  "$WORKSPACE_DIR/HEARTBEAT.md" \
+  "$WORKSPACE_DIR/context/domain.md" \
+  "$WORKSPACE_DIR/context/clients.md" \
+  "$WORKSPACE_DIR/openclaw.domain.json5" \
+  "$WORKSPACE_DIR/.env.example" \
+  "$WORKSPACE_DIR/DOCK.md"
 do
   subst_file "$f"
 done
 
-# ─── step 4b: build combined global+domain AGENTS.md ─────────────────────────
-#
-# V3 two-layer architecture: domain AGENTS.md content is appended to global
-# AGENTS.md so pi reads it natively — no --append-system-prompt workaround needed.
-#
-# Structure of ~/.pi/agent/AGENTS.md after install:
-#   [global/AGENTS.md content]
-#   ---
-#   # Domain: <slug>
-#   [domain/AGENTS.md content — already substituted in step 4]
-#
-# Re-runs are idempotent: any existing # Domain: section is stripped and rebuilt.
+success "AGENTS.md built with global + domain routing layers"
 
-info "Step 4b — Building combined ~/.pi/agent/AGENTS.md..."
+info "Step 5/10 - Installing domain-memory plugin template..."
+run "mkdir -p '$PLUGIN_DIR'"
+run "cp -R '$SCRIPT_DIR/domain/openclaw/plugins/domain-memory/.' '$PLUGIN_DIR/'"
 
-COMBINED_AGENTS="$AGENT_DIR/AGENTS.md"
-
-if $DRY_RUN; then
-  echo "  [dry-run] Would build $COMBINED_AGENTS from global + domain/$DOMAIN_SLUG"
-else
-  mkdir -p "$AGENT_DIR"
-  if [[ -f "$COMBINED_AGENTS" ]] && grep -q "^# Domain:" "$COMBINED_AGENTS" 2>/dev/null; then
-    # Strip existing # Domain: section (preserve preceding global content)
-    awk '/^# Domain:/{found=1} found{next} /^---$/{buf=$0; next} {if(buf){print buf; buf=""}; print}' \
-      "$COMBINED_AGENTS" | \
-      awk 'NF{found=NR} {lines[NR]=$0} END{for(i=1;i<=found;i++) print lines[i]}' \
-      > "${COMBINED_AGENTS}.tmp"
-    mv "${COMBINED_AGENTS}.tmp" "$COMBINED_AGENTS"
-  else
-    cp "$SCRIPT_DIR/global/AGENTS.md" "$COMBINED_AGENTS"
-  fi
-  printf '\n\n---\n\n# Domain: %s\n\n' "$DOMAIN_SLUG" >> "$COMBINED_AGENTS"
-  cat "$DOMAIN_DIR/AGENTS.md" >> "$COMBINED_AGENTS"
-  success "Combined AGENTS.md built: ~/.pi/agent/AGENTS.md"
+if command -v openclaw &>/dev/null || $DRY_RUN; then
+  run "openclaw plugins install -l '$PLUGIN_DIR'" || warn "Plugin link failed - add $PLUGIN_DIR to plugins.load.paths manually"
 fi
 
-# ─── step 5: .pi/.env for memory-db ───────────────────────────────────────────
-
-info "Step 5/10 — Creating domain .env file..."
-
-ENV_FILE="$DOMAIN_DIR/.pi/.env"
+info "Step 6/10 - Creating workspace env..."
+ENV_FILE="$WORKSPACE_DIR/.env"
 if [[ ! -f "$ENV_FILE" ]]; then
-  run "cat > '$ENV_FILE' << 'ENVEOF'
-PI_DOMAIN_NAME=$DOMAIN_SLUG
-PI_MEMORY_TOKEN_BUDGET=16000
-PI_MEMORY_TOP_N=10
-OLLAMA_URL=http://localhost:11434
-PI_MEMORY_SYNC_MD=false
-PI_MEMORY_AUTO_CAPTURE=true
-ENVEOF"
+  run "cp '$WORKSPACE_DIR/.env.example' '$ENV_FILE'"
+  run "sed -i.bak \
+    -e 's|OPENCLAW_DOMAIN_NAME=my-domain|OPENCLAW_DOMAIN_NAME=$DOMAIN_SLUG|g' \
+    -e 's|DOMAIN_MEMORY_DB_PATH=~/.openclaw/workspaces/my-domain/memory.db|DOMAIN_MEMORY_DB_PATH=$WORKSPACE_DIR/memory.db|g' \
+    -e 's|DOMAIN_MEMORY_PATH=~/.openclaw/workspaces/my-domain/MEMORY.md|DOMAIN_MEMORY_PATH=$WORKSPACE_DIR/MEMORY.md|g' \
+    '$ENV_FILE' && rm -f '${ENV_FILE}.bak'"
   success "Created $ENV_FILE"
 else
-  info ".env already exists — skipping"
+  info ".env already exists - skipping"
 fi
 
-# ─── step 6: active-domain pointer ────────────────────────────────────────────
+run "echo '$DOMAIN_SLUG' > '$OPENCLAW_HOME/active-domain'"
 
-info "Step 6/10 — Writing active-domain pointer..."
-run "echo '$DOMAIN_SLUG' > '$PI_HOME/active-domain'"
-success "Active domain set to: $DOMAIN_SLUG"
+info "Step 7/10 - Registering OpenClaw agent..."
+if command -v openclaw &>/dev/null || $DRY_RUN; then
+  run "openclaw agents add '$DOMAIN_SLUG' --workspace '$WORKSPACE_DIR' --non-interactive" || warn "Agent may already exist - check: openclaw agents list"
+  run "openclaw agents set-identity --agent '$DOMAIN_SLUG' --from-identity" || warn "Identity sync skipped - fill SOUL.md and run set-identity manually"
+fi
 
-# ─── step 7: memory.db note ───────────────────────────────────────────────────
+info "Step 8/10 - Configuring OpenClaw defaults..."
+if command -v openclaw &>/dev/null || $DRY_RUN; then
+  run "openclaw config set agents.defaults.model.primary '$MODEL'" || warn "Could not set model default"
+  run "openclaw config set agents.defaults.thinkingDefault '$THINKING'" || warn "Could not set thinking default"
+  run "openclaw config set agents.defaults.heartbeat.every '$HEARTBEAT_EVERY'" || warn "Could not set heartbeat interval"
+  run "openclaw config set agents.defaults.heartbeat.target 'last'" || warn "Could not set heartbeat target"
+  run "openclaw config set agents.defaults.heartbeat.isolatedSession true" || warn "Could not set heartbeat isolation"
+  run "openclaw config set agents.defaults.heartbeat.prompt 'Read HEARTBEAT.md if it exists. OpenClaw includes only due tasks from its native tasks block; follow those task prompts strictly. Resolve every recurring task through the AGENTS.md routing table before acting. If nothing needs attention, reply HEARTBEAT_OK.'" || warn "Could not set heartbeat prompt"
+  run "openclaw config set skills.load.extraDirs '[\"$WORKSPACE_DIR/skills\"]'" || warn "Could not set skills extraDirs"
+fi
 
-info "Step 7/10 — Memory DB path..."
-info "memory.db will be created at: $DOMAIN_DIR/memory.db"
-info "(Created automatically on first pi session start via memory-db extension)"
-
-# ─── step 8: ollama + nomic-embed-text ────────────────────────────────────────
+if $SKIP_GATEWAY; then
+  info "Step 8b - Skipping gateway onboarding (--skip-gateway)"
+else
+  info "Step 8b - Ensuring OpenClaw gateway daemon..."
+  run "openclaw onboard --install-daemon" || warn "Gateway onboarding failed - run: openclaw onboard --install-daemon"
+fi
 
 if $SKIP_OLLAMA; then
-  info "Step 8/10 — Skipping ollama (--skip-ollama)"
+  info "Step 9/10 - Skipping ollama (--skip-ollama)"
 else
-  info "Step 8/10 — Ensuring ollama + nomic-embed-text..."
-
+  info "Step 9/10 - Ensuring ollama + nomic-embed-text..."
   if ! command -v ollama &>/dev/null; then
     info "Installing ollama..."
     run "curl -fsSL https://ollama.ai/install.sh | sh"
   else
     info "ollama: found"
   fi
-
-  info "Pulling nomic-embed-text (this may take a few minutes on first run)..."
-  run "ollama pull nomic-embed-text" || warn "ollama pull failed — FTS recall will still work; vector recall requires nomic-embed-text"
+  run "ollama pull nomic-embed-text" || warn "ollama pull failed - FTS recall still works; vector recall requires nomic-embed-text"
 fi
 
-# ─── step 9: persona CLI alias ────────────────────────────────────────────────
+info "Step 10/10 - Creating persona shell alias '$PERSONA_SLUG'..."
 
-info "Step 9/10 — Creating persona CLI alias '$PERSONA_SLUG'..."
-
-# Alias: sets PI_DOMAIN_NAME and loads the memory-db extension.
-# Domain content is now in ~/.pi/agent/AGENTS.md (built in step 4b) —
-# pi reads it natively. No --append-system-prompt needed.
-ALIAS_LINE="alias ${PERSONA_SLUG}='PI_DOMAIN_NAME=${DOMAIN_SLUG} pi -e ${DOMAIN_DIR}/.pi/extensions/memory-db.ts'"
-ALIAS_COMMENT="# Pi persona alias: $PERSONA_NAME — added by install.sh ($INSTALL_DATE)"
-
-# NODE_PATH: required so pi's Node.js module resolution can find globally
-# installed npm packages (better-sqlite3, sqlite-vec, etc.) when loading extensions.
-NODE_PATH_EXPORT='export NODE_PATH="$(npm root -g)"'
-NODE_PATH_COMMENT="# NODE_PATH: required for pi extensions to find globally installed npm packages"
-
-# Detect shell RC file
 if [[ -f "$HOME/.zshrc" ]]; then
   SHELL_RC="$HOME/.zshrc"
 elif [[ -f "$HOME/.bashrc" ]]; then
@@ -309,108 +264,43 @@ else
   SHELL_RC="$HOME/.profile"
 fi
 
-# Write NODE_PATH export (idempotent — skip if already present)
-if ! grep -qF 'NODE_PATH' "$SHELL_RC" 2>/dev/null; then
-  run "printf '\n%s\n%s\n' '$NODE_PATH_COMMENT' '$NODE_PATH_EXPORT' >> '$SHELL_RC'"
-  success "Added NODE_PATH export to $SHELL_RC"
-else
-  info "NODE_PATH already in $SHELL_RC — skipping"
-fi
+ALIAS_COMMENT="# OpenClaw persona alias: $PERSONA_NAME - added by install.sh ($INSTALL_DATE)"
+ALIAS_LINE="alias ${PERSONA_SLUG}='openclaw agent --agent ${DOMAIN_SLUG} --message'"
 
-# Write persona alias (idempotent — skip if alias name already present)
 if ! grep -qF "alias ${PERSONA_SLUG}=" "$SHELL_RC" 2>/dev/null; then
   run "printf '\n%s\n%s\n' '$ALIAS_COMMENT' \"$ALIAS_LINE\" >> '$SHELL_RC'"
   success "Added alias '$PERSONA_SLUG' to $SHELL_RC"
-  warn "Run 'source $SHELL_RC' or open a new terminal to activate the alias"
+  warn "Run 'source $SHELL_RC' or open a new terminal to activate it"
 else
-  info "Alias '$PERSONA_SLUG' already in $SHELL_RC"
+  info "Alias '$PERSONA_SLUG' already exists in $SHELL_RC"
 fi
-
-# ─── step 10: OS scheduler ────────────────────────────────────────────────────
-
-if $SKIP_SCHEDULER; then
-  info "Step 10/10 — Skipping scheduler (--skip-scheduler)"
-else
-  info "Step 10/10 — Installing OS scheduler for watches..."
-
-  PI_BIN="$(command -v pi 2>/dev/null || echo '/usr/local/bin/pi')"
-  WATCHES_PATH="$DOMAIN_DIR/watches.yaml"
-  PATH_VALUE="$PATH"
-
-  if [[ "$OS" == "Darwin" ]]; then
-    PLIST_SRC="$SCRIPT_DIR/scheduler/launchd/com.pi.domain.watches.plist"
-    PLIST_DEST="$HOME/Library/LaunchAgents/com.pi.domain.$DOMAIN_SLUG.watches.plist"
-
-    run "mkdir -p '$HOME/Library/LaunchAgents'"
-    run "sed \
-      -e 's|{{DOMAIN_NAME}}|$DOMAIN_SLUG|g' \
-      -e 's|{{PI_BIN}}|$PI_BIN|g' \
-      -e 's|{{WATCHES_PATH}}|$WATCHES_PATH|g' \
-      -e 's|{{LOG_DIR}}|$LOG_DIR|g' \
-      -e 's|{{HOME}}|$HOME|g' \
-      -e 's|{{PATH}}|$PATH_VALUE|g' \
-      '$PLIST_SRC' > '$PLIST_DEST'"
-
-    run "launchctl load '$PLIST_DEST'" || warn "launchctl load failed — run manually: launchctl load $PLIST_DEST"
-    success "launchd job loaded: com.pi.domain.$DOMAIN_SLUG.watches"
-
-  elif [[ "$OS" == "Linux" ]]; then
-    SYSTEMD_DIR="$HOME/.config/systemd/user"
-    SVC_NAME="pi-domain-$DOMAIN_SLUG-watches"
-
-    run "mkdir -p '$SYSTEMD_DIR'"
-
-    run "sed \
-      -e 's|{{DOMAIN_NAME}}|$DOMAIN_SLUG|g' \
-      -e 's|{{PI_BIN}}|$PI_BIN|g' \
-      -e 's|{{WATCHES_PATH}}|$WATCHES_PATH|g' \
-      -e 's|{{LOG_DIR}}|$LOG_DIR|g' \
-      -e 's|{{HOME}}|$HOME|g' \
-      -e 's|{{USER}}|$(whoami)|g' \
-      '$SCRIPT_DIR/scheduler/systemd/pi-domain-watches.service' > '$SYSTEMD_DIR/$SVC_NAME.service'"
-
-    run "sed \
-      -e 's|{{DOMAIN_NAME}}|$DOMAIN_SLUG|g' \
-      '$SCRIPT_DIR/scheduler/systemd/pi-domain-watches.timer' > '$SYSTEMD_DIR/$SVC_NAME.timer'"
-
-    run "systemctl --user daemon-reload"
-    run "systemctl --user enable --now '$SVC_NAME.timer'" || warn "systemctl enable failed — run manually: systemctl --user enable --now $SVC_NAME.timer"
-    success "systemd timer enabled: $SVC_NAME.timer"
-
-  else
-    warn "Unsupported OS for scheduler setup: $OS. Install manually using templates in scheduler/"
-  fi
-fi
-
-# ─── done ─────────────────────────────────────────────────────────────────────
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 success "Installation complete!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  Domain:         $DOMAIN_DIR"
-echo "  Active domain:  $PI_HOME/active-domain → $DOMAIN_SLUG"
-echo "  Memory DB:      $DOMAIN_DIR/memory.db (created on first session)"
-echo "  Logs:           $LOG_DIR/pi-watches.log"
+echo "  Workspace:      $WORKSPACE_DIR"
+echo "  Active domain:  $OPENCLAW_HOME/active-domain -> $DOMAIN_SLUG"
+echo "  Memory DB:      $WORKSPACE_DIR/memory.db (created by domain-memory tools)"
+echo "  Plugin:         $PLUGIN_DIR"
 echo ""
-echo "  To start a session:"
-echo "    $PERSONA_SLUG         (after sourcing your shell RC)"
-echo "    PI_DOMAIN_NAME=$DOMAIN_SLUG pi   (without alias)"
+echo "  Start a local turn:"
+echo "    openclaw agent --agent $DOMAIN_SLUG --message \"status\" --local"
 echo ""
-echo "  Files that still need your content:"
-echo "    $DOMAIN_DIR/AGENTS.md      — fill in domain identity, vocabulary, methods"
-echo "    $DOMAIN_DIR/SOUL.md        — fill in persona voice, identity, relationship"
-echo "    $DOMAIN_DIR/context/domain.md — fill in what this domain is and does"
-echo "    $PI_HOME/PI_DOCK.md        — fill in carried items and host requirements"
+echo "  Use persona alias:"
+echo "    $PERSONA_SLUG \"summarize active work\""
 echo ""
-echo "  Per project — add to <project-root>/.pi/.env:"
-echo "    PI_PROJECT_ID=<project-slug>"
+echo "  Files that still need worker-specific content:"
+echo "    $WORKSPACE_DIR/AGENTS.md"
+echo "    $WORKSPACE_DIR/SOUL.md"
+echo "    $WORKSPACE_DIR/context/domain.md"
+echo "    $WORKSPACE_DIR/DOCK.md"
 echo ""
-echo "  MCP server (optional — connect to Claude Desktop, Cursor, etc.):"
-echo "    Run from the template repo, NOT from the deployed domain directory:"
-echo "    PI_DOMAIN_NAME=$DOMAIN_SLUG npx tsx $SCRIPT_DIR/domain/.pi/mcp-server.ts"
-echo "    Register this path in your host's MCP config (see BLUEPRINT.md)."
+echo "  Project setup:"
+echo "    Copy base/ into the project root."
+echo "    Copy base/openclaw/.env.example to a project env source and set PROJECT_ID."
 echo ""
-echo "  Delete all annotation comments from template files before going live."
+echo "  Heartbeat owns recurring work:"
+echo "    Edit $WORKSPACE_DIR/HEARTBEAT.md; do not create watches.yaml or scheduler jobs."
 echo ""

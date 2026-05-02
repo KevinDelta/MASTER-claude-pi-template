@@ -1,0 +1,16 @@
+{
+  "id": "domain-memory",
+  "name": "Domain Memory",
+  "description": "Local SQLite/sqlite-vec memory tools for domain-scoped OpenClaw agents.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {
+      "domainName": { "type": "string" },
+      "dbPath": { "type": "string" },
+      "memoryPath": { "type": "string" },
+      "ollamaUrl": { "type": "string" },
+      "memoryTopN": { "type": "number" }
+    }
+  }
+}

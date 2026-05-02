@@ -8,7 +8,7 @@ description: Produce a cross-project status summary from domain memory. Load for
 ## When to Use
 
 Load this skill when:
-- The weekly-sync watch fires
+- The weekly sync heartbeat runs
 - The worker asks "what's the status across projects?" or "where do things stand?"
 - Starting a planning session that needs cross-project context
 
@@ -16,7 +16,7 @@ Load this skill when:
 
 ### 1. Load domain context
 
-Read `~/.pi/domain/<name>/MEMORY.md` for high-level domain orientation.
+Read `~/.openclaw/workspaces/<name>/MEMORY.md` for high-level domain orientation.
 
 Check the active projects list in `context/domain.md`.
 

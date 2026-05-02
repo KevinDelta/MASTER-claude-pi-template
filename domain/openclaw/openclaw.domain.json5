@@ -1,0 +1,99 @@
+{
+  // Reference template for ~/.openclaw/openclaw.json.
+  // install.sh uses OpenClaw CLI commands where possible and copies this file
+  // into the domain workspace as documentation for the installed agent.
+  logging: { level: "info" },
+
+  gateway: {
+    port: 18789,
+    bind: "loopback",
+    auth: {
+      token: "${OPENCLAW_GATEWAY_TOKEN}",
+    },
+    reload: { mode: "hybrid" },
+  },
+
+  session: {
+    dmScope: "per-channel-peer",
+    reset: {
+      mode: "daily",
+      atHour: 4,
+      idleMinutes: 120,
+    },
+  },
+
+  agents: {
+    defaults: {
+      workspace: "~/.openclaw/workspaces/{{DOMAIN_NAME}}",
+      model: {
+        primary: "anthropic/claude-sonnet-4-5",
+        fallbacks: ["openai/gpt-5.2"],
+      },
+      thinkingDefault: "medium",
+      timeoutSeconds: 1800,
+      heartbeat: {
+        every: "30m",
+        target: "last",
+        lightContext: false,
+        isolatedSession: true,
+        prompt: "Read HEARTBEAT.md if it exists. OpenClaw includes only due tasks from its native tasks block; follow those task prompts strictly. Resolve every recurring task through the AGENTS.md routing table before acting. If nothing needs attention, reply HEARTBEAT_OK.",
+        ackMaxChars: 300,
+      },
+    },
+    list: [
+      {
+        id: "{{DOMAIN_NAME}}",
+        default: true,
+        workspace: "~/.openclaw/workspaces/{{DOMAIN_NAME}}",
+        heartbeat: {
+          every: "30m",
+          target: "last",
+        },
+      },
+    ],
+  },
+
+  skills: {
+    load: {
+      extraDirs: [
+        "~/.openclaw/workspaces/{{DOMAIN_NAME}}/skills",
+      ],
+    },
+  },
+
+  plugins: {
+    enabled: true,
+    load: {
+      paths: [
+        "~/.openclaw/plugins/domain-memory-{{DOMAIN_NAME}}",
+      ],
+    },
+    entries: {
+      "domain-memory": {
+        enabled: true,
+        config: {
+          domainName: "{{DOMAIN_NAME}}",
+          dbPath: "~/.openclaw/workspaces/{{DOMAIN_NAME}}/memory.db",
+          memoryPath: "~/.openclaw/workspaces/{{DOMAIN_NAME}}/MEMORY.md",
+          ollamaUrl: "http://localhost:11434",
+          memoryTopN: 10,
+        },
+      },
+    },
+  },
+
+  channels: {
+    // OpenClaw native routing belongs here: channel/account/peer bindings decide
+    // which agent receives a message. Do not encode those bindings in AGENTS.md;
+    // AGENTS.md starts after this routing step and decides how work is performed.
+    //
+    // Configure channel allowlists explicitly before enabling remote access.
+    // Example:
+    // telegram: {
+    //   enabled: true,
+    //   botToken: "${TELEGRAM_BOT_TOKEN}",
+    //   dmPolicy: "allowlist",
+    //   allowFrom: ["tg:123456789"],
+    // },
+  },
+}

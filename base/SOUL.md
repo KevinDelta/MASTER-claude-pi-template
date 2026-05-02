@@ -1,12 +1,12 @@
 # Soul — [Project Name]
 
-<!-- What goes here: Pi-specific persona and communication style customization.
+<!-- What goes here: OpenClaw project-specific persona and communication style customization.
      SOUL.md shapes HOW the agent communicates — its voice, tone, and personality.
      It does not change what the agent does, only how it presents itself.
 
      SOUL.md is optional. Most projects don't need one.
      Add it when: the agent has a defined persona (customer-facing bot, brand voice work,
-     a specific named assistant role within your org), or when default pi tone
+     a specific named assistant role within your org), or when default agent tone
      doesn't match the project's communication expectations.
 
      If you don't need persona customization, delete this file. -->

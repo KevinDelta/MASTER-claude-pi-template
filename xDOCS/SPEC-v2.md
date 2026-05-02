@@ -1,6 +1,6 @@
-# SPEC v2 — Domain Layer, Embedded Memory DB, Dock Interface, Proactivity
+# SPEC v2 — Legacy Pi Runtime: Domain Layer, Embedded Memory DB, Dock Interface, Proactivity
 
-**Status:** Fully implemented. Domain template, memory-db extension, PI_DOCK.md, watches, scheduler, install.sh, and standalone MCP server all shipped. One open item: multi-device sync not yet documented. See Section 10 build order and `../.dev-tracking/BACKLOG.md` for open items.
+**Status:** Legacy reference. This spec documents the previous Pi.dev implementation. The active runtime spec is `SPEC-v3.md`, which replaces Pi runtime assumptions with OpenClaw, `DOCK.md`, `HEARTBEAT.md`, and the domain-memory OpenClaw plugin.
 
 ---
 

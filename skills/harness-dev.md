@@ -1,212 +1,167 @@
 ---
 name: harness-dev
-description: Dev flow for building and iterating on a pi agent harness. Load when working on AGENTS.md, settings.json, skills, or extensions — not when doing project work inside the harness.
+description: Dev flow for building and iterating on the OpenClaw agent harness. Load when working on AGENTS.md, HEARTBEAT.md, DOCK.md, skills, plugins, OpenClaw config, or installer behavior.
 ---
 
 # harness-dev
 
 ## Purpose
 
-Guide the process of building, modifying, and testing the pi agent harness itself. The harness is the infrastructure the agent runs on — AGENTS.md, settings.json, skills, extensions. This skill is meta: it's loaded when you're working on the harness, not when you're using it.
+Guide changes to the agent harness itself: routing tables, workspace templates, skills, OpenClaw config, heartbeat, dock policy, and plugins. This skill is meta; use it when changing the harness, not when doing normal project work inside it.
 
-## When to Use
+## Non-Negotiable Direction
 
-- Adding or modifying a skill file
-- Updating the routing table in AGENTS.md
-- Changing tool permissions or model config in settings.json
-- Writing or installing an extension
-- Debugging unexpected agent behavior
-- Onboarding a new project from the base/ template
+The routing table is the cognition contract. Strengthen it whenever the framework gains a new capability.
+
+There are two routing layers. Keep them separate:
+
+| Layer | Owner | Decides |
+|-------|-------|---------|
+| Native routing | OpenClaw config/bindings | Which agent, workspace, session, channel, account, or peer receives the message |
+| Work routing | `AGENTS.md` routing table | What the selected agent reads, which workspace it uses, and which skills/tools apply |
+
+Every new work entrypoint must have an `AGENTS.md` routing answer:
+- direct CLI task after the agent is selected
+- channel-originated task after OpenClaw has selected the agent
+- heartbeat task after OpenClaw has started the heartbeat turn
+- project workflow
+- memory maintenance task
+- dock/export request
+
+If a capability cannot point to a routing row, the capability is not ready.
+
+If a requirement is about channel/account/peer matching, session scope, delivery target, or agent selection, do not put it in `AGENTS.md`. Put it in OpenClaw config.
 
 ---
 
-## Adding a Skill
+## Adding Or Modifying A Skill
 
-### File structure
+Skills remain Markdown files with YAML frontmatter:
 
 ```markdown
 ---
 name: skill-name-with-hyphens
-description: One sentence. What it does and when to load it. This appears in the system prompt — make it specific enough that the agent knows exactly when this skill applies.
+description: One sentence. What it does and when to load it.
 ---
-
-# skill-name
-
-## Purpose
-[What this skill does and why it exists]
-
-## When to Use
-[Specific conditions — not "when relevant" but "when writing client-facing deliverables that will be reviewed by stakeholders"]
-
----
-
-## [Content sections]
 ```
 
-### Naming rules
-- 1–64 lowercase alphanumeric characters plus hyphens
-- No leading, trailing, or consecutive hyphens
-- Name must match what the routing table references
+Rules:
+- Use lowercase alphanumeric names with hyphens.
+- Keep descriptions specific enough for routing.
+- Add or update a routing-table row that names the skill.
+- Configure the skill directory through OpenClaw `skills.load.extraDirs`.
 
-### Location
-- Universal skills (apply to many projects): `skills/` in this repo
-- Project-specific skills: `skills/` in the project root (same path configured in `settings.json → skills.paths`)
-
-### Connecting to the routing table
-After creating the skill, add it to the routing table in AGENTS.md:
-
-```
-| [task type] | /[workspace] | [context files] | [skill-name].md |
-```
-
-### Testing skill discovery
-Start a pi session and run `/skills` — it lists all discovered skills with their descriptions. If your skill is missing, check:
-1. Frontmatter has `name` and `description`
-2. The file path matches the glob in `settings.json → skills.paths`
-3. No YAML syntax errors in the frontmatter
+Verification:
+- Confirm the installed workspace has the skill under `~/.openclaw/workspaces/<domain>/skills/`.
+- Run an OpenClaw turn that matches the routing row and verify the agent uses the skill before acting.
 
 ---
 
-## Modifying the Routing Table
+## Modifying Routing Tables
 
-The routing table in AGENTS.md is a contract. Every row maps a task type to everything the agent needs to do that work. Changing it changes how the agent orients to every task of that type.
+When adding a new route, define:
+- task key and trigger language,
+- workspace,
+- files to read,
+- skills/tools to use,
+- what memory query/write behavior is expected,
+- whether the route can be invoked after a heartbeat or channel binding selects this agent.
 
-### When to add a row
-- A new type of work is being done in the project that wasn't covered before
-- The agent is loading the wrong context for a specific task type
-- A task type consistently produces output that needs a different skill
+Acceptance check:
+- Direct CLI work routes correctly.
+- Channel-originated work routes correctly after OpenClaw selects the agent.
+- Heartbeat work routes correctly if recurring.
+- Project-specific overrides do not duplicate global/domain rules.
+- No channel/account/peer binding is encoded in `AGENTS.md`.
 
-### When to modify a row
-- A workspace was renamed
-- A context file was added that should be read before this task type
-- A skill was added that applies to this work
-
-### What "Workspace" means
-The workspace column is the directory the agent should work in. If the task doesn't have a specific workspace (session start, session end), use `—`.
-
-### Verify after changes
-After modifying the routing table: start a fresh pi session, describe a task matching the changed row, and observe whether the agent loads the correct files before producing output. If it doesn't read the right context, the row description may not be specific enough.
-
----
-
-## Updating settings.json
-
-### Safe changes (no restart needed if hot-reload is active)
-- `defaultThinkingLevel` — takes effect on next turn
-- `tools` permission policies — takes effect on next tool call
-
-### Changes that require session restart
-- `model.name` — requires reload to switch providers
-- `skills.paths` — requires reload to re-discover skills
-- `extensions.paths` — requires reload to register extension hooks
-- `memory.dir` — requires reload to update the path pi uses
-
-### Thinking level tradeoffs
-
-| Level | Use When |
-|-------|---------|
-| `off` / `minimal` | Routine edits, formatting tasks, simple lookups |
-| `low` | Standard development work |
-| `medium` | Multi-file tasks, spec writing, architectural decisions |
-| `high` / `xhigh` | Complex system design, ambiguous requirements, debugging hard problems |
-
-Higher thinking levels increase latency and token cost. Don't default to `xhigh` for everything.
+Do not add broad catch-all rows to hide missing design. Missing rows are useful pressure.
 
 ---
 
-## Installing and Writing Extensions
+## Updating OpenClaw Config
 
-### Install a community extension
+Active machine config lives at:
 
-```bash
-# From GitHub (most common)
-pi install git:github.com/user/repo
-
-# From npm
-pi install npm:package-name
+```
+~/.openclaw/openclaw.json
 ```
 
-Installed extensions land in `~/.pi/agent/extensions/` (global) or `.pi/extensions/` (project). Hot-reload with `/reload`.
+Template/reference config lives at:
 
-### Write a custom extension
-
-Minimal skeleton — saves to `.pi/extensions/my-extension.ts`:
-
-```typescript
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-
-export default function(pi: ExtensionAPI) {
-  // Inject context before every agent turn
-  pi.on("before_agent_start", async (_event, ctx) => {
-    ctx.ui.notify("Session ready.", "info");
-  });
-
-  // Intercept tool calls
-  pi.on("tool_call", async (_event, ctx) => {
-    if (_event.tool === "bash" && _event.input?.command?.startsWith("rm -rf")) {
-      ctx.block("Destructive delete blocked. Use explicit file paths.");
-    }
-  });
-
-  // React to session start (reason: "startup" | "reload" | "new" | "resume" | "fork")
-  pi.on("session_start", async (_event, ctx) => {
-    console.log("Session started:", _event.reason);
-  });
-}
+```
+domain/openclaw/openclaw.domain.json5
 ```
 
-Hot-reload after saving: `/reload` in the active pi session.
+Common changes:
+- model: `agents.defaults.model.primary`
+- thinking: `agents.defaults.thinkingDefault`
+- heartbeat cadence: `agents.defaults.heartbeat.every`
+- heartbeat prompt: `agents.defaults.heartbeat.prompt`
+- skills: `skills.load.extraDirs`
+- plugins: `plugins.load.paths` and `plugins.entries`
+- channels: channel allowlists and route bindings
 
-### Debug an extension
+Use `openclaw config set ...` when possible. For complex JSON5 edits, update the template and document the manual merge.
 
-Add `console.log` statements — output appears in the pi terminal. For more complex debugging, use `ctx.injectMessage` to make the extension's state visible to the agent:
+Do not mirror channel bindings in `AGENTS.md`. At most, add a task row for the kind of work that arrives after the binding selects this agent.
 
-```typescript
-pi.on("before_agent_start", async (ctx) => {
-  ctx.injectMessage("system", `[debug] Extension loaded. Memory dir: ${process.env.PI_MEMORY_DIR}`);
-});
+---
+
+## Heartbeat Changes
+
+Recurring work belongs in the native `tasks:` block in `HEARTBEAT.md`, not `watches.yaml` or OS scheduler files.
+
+Before adding heartbeat behavior:
+- Add or update the corresponding routing row.
+- Add or update a named `tasks:` entry with an interval and a concise prompt.
+- Put idempotence checks in the task prompt when exact cron behavior is not required.
+- Decide whether the result is worker-facing, memory-only, or both.
+- Use `observation_write` for structured recurring outputs.
+
+Heartbeat work should be conservative. If there is no meaningful delta, return `HEARTBEAT_OK`.
+
+---
+
+## Plugin Changes
+
+OpenClaw plugins live under:
+
+```
+domain/openclaw/plugins/
 ```
 
-Remove debug output before treating the extension as production.
+The current local plugin is `domain-memory`, which owns SQLite/sqlite-vec memory tools.
+
+When adding plugin tools:
+- Register tools through `definePluginEntry`.
+- Keep tool names stable and descriptive.
+- Enforce `DOCK.md` export policy in the tool itself; policy text is not enforcement.
+- Return summaries, aggregates, or bounded/redacted excerpts unless the worker explicitly adds an admin/raw export path.
+- Add tool usage expectations to the routing table or relevant skill.
+- Add heartbeat behavior only through `HEARTBEAT.md`.
+
+Do not rely on Pi lifecycle hooks. If OpenClaw lifecycle hooks are introduced later, add them as an optimization after explicit tool behavior works.
 
 ---
 
 ## Debugging Unexpected Agent Behavior
 
-When the agent does something unexpected, work through this sequence:
-
-### 1. Check what context was loaded
-
-Ask the agent directly: "What did you read before starting this task?" The agent should name the files from the routing table. If it names the wrong files (or nothing), the routing table row may be ambiguous.
-
-### 2. Check skill loading
-
-Run `/skills` to see discovered skills. If a skill is missing, check the frontmatter and the `skills.paths` config.
-
-### 3. Check memory injection
-
-At session start, `memory-db.ts` injects up to 16K of context from the domain DB. If the agent seems to have wrong information from a past session, check domain `MEMORY.md` and the scratchpad table for stale entries. Update or remove them.
-
-### 4. Check the system prompt
-
-Run `/prompt` (if available in your pi version) to see what's actually in the system prompt. This reveals what APPEND_SYSTEM.md contributed, what skills descriptions are visible, and what memory-db.ts injected.
-
-### 5. Thinking level
-
-If the agent is making shallow decisions on complex tasks, raise `defaultThinkingLevel` to `high` and retry. This often resolves issues where the agent was truncating its reasoning.
+1. Check routing: ask which routing row was selected and which files were read.
+2. Check workspace: verify the turn targeted the intended OpenClaw agent/workspace.
+3. Check skills: verify `skills.load.extraDirs` includes the installed skills directory.
+4. Check heartbeat: read `HEARTBEAT.md`; old chat history is not a source of recurring tasks.
+5. Check memory: use `domain_memory_query`, `domain_status`, and `scratchpad_list`.
+6. Check dock policy: if an export is denied, confirm whether `DOCK.md` allows it.
 
 ---
 
 ## Harness Development Checklist
 
-Before shipping a harness update to a live project:
-
-- [ ] All skills have valid YAML frontmatter (`name` + `description`)
-- [ ] `/skills` lists all expected skills with correct descriptions
-- [ ] Routing table covers every task type the agent will do
-- [ ] AGENTS.md Out of Bounds matches what permissions-config.json enforces
-- [ ] settings.json is valid JSON (no trailing commas, no `_comment` syntax errors)
-- [ ] Any new extensions have been hot-reloaded and tested with `/reload`
-- [ ] CONTEXT.md for each workspace reflects current project state
-- [ ] MEMORY.md has no stale entries that would misinform the agent
-- [ ] Annotation comments removed from all files before going live
+- [ ] Every new capability resolves through a routing row.
+- [ ] Heartbeat behavior is represented as a native `tasks:` entry in `HEARTBEAT.md`.
+- [ ] Skills have valid frontmatter and are named by routing rows.
+- [ ] Plugin tools enforce `DOCK.md` allowlist behavior.
+- [ ] Project `TOOLS.md` matches project out-of-bounds rules.
+- [ ] OpenClaw config templates use env refs for secrets.
+- [ ] `install.sh --dry-run` completes.
+- [ ] No `watches.yaml`, scheduler templates, `.pi/settings.json`, or Pi MCP server paths are reintroduced.
