@@ -201,7 +201,70 @@ OpenClaw Gateway and channel allowlists handle transport/auth. OpenClaw agent bi
 
 ---
 
-## 8. Acceptance criteria
+## 8. Commerce / Stripe
+
+Commerce is an optional framework capability implemented as a future
+`domain-commerce` OpenClaw plugin. It extends the framework from knowledge and
+memory operations into worker-approved receivables, payment links, invoices,
+payment-event tracking, and reimbursable expense billing.
+
+Stripe is the receivables and payment-state rail. It is not a general
+autonomous spending rail.
+
+Core flow:
+
+```
+AGENTS.md routing row
+-> DOCK.md commerce policy
+-> domain-commerce plugin
+-> Stripe Checkout, Payment Links, Invoices, or payment status API
+-> webhook/payment event
+-> bounded event summary in memory.db
+```
+
+Use cases:
+
+- Consulting or freelance invoices for work delivered to a company
+- Ad hoc payment links for services rendered
+- Reimbursable supplies or expenses billed to a client
+- Payment operations such as overdue invoice review, failed payment follow-up, and paid/open revenue summaries
+
+Proposed tools:
+
+| Tool | Purpose | Default Approval |
+|------|---------|------------------|
+| `commerce_catalog_list` | Show approved services, supplies, rates, Stripe price IDs | Not required |
+| `commerce_invoice_draft` | Draft invoice from project/client context | Not required |
+| `commerce_invoice_send` | Finalize/send Stripe invoice | Required |
+| `commerce_payment_link_create` | Create payment link for service or reimbursable item | Required unless explicitly allowlisted |
+| `commerce_checkout_create` | Create one-time Checkout Session | Required |
+| `commerce_payment_status` | Check invoice/session/payment state | Not required |
+| `commerce_event_list` | Summarize recent payment events | Not required, no raw export |
+| `commerce_refund_draft` | Draft refund action | Not required |
+| `commerce_refund_execute` | Execute refund | Always required |
+
+Conceptual routing rows:
+
+- **Commerce / invoice** — draft, review, and send invoices.
+- **Commerce / payment link** — create approved ad hoc payment links.
+- **Commerce / expense rebill** — record reimbursable items and add them to an invoice or payment link.
+- **Commerce / payment status** — summarize paid, open, failed, and overdue payment state.
+- **Commerce / refund** — draft or execute refunds with explicit approval.
+
+Constraints and tradeoffs:
+
+- Use restricted Stripe API keys for plugin/MCP access. Live broad secret keys are out of bounds for agent tools.
+- Hosted Checkout, Payment Links, and Invoices are preferred because the framework should not handle card data.
+- Payment completion must be verified through Stripe webhooks or Stripe API status checks, not success URLs or agent memory alone.
+- Stripe can bill a client for supplies, but it does not buy supplies from third-party vendors. Actual purchasing requires a future procurement/card/vendor integration.
+- Stripe MCP is useful for exploration/admin, but production use should prefer a narrow OpenClaw plugin that enforces `DOCK.md`.
+- Financial actions create external side effects, so approval gates are stricter than memory/query tools.
+- Payment event summaries can enter `memory.db`; raw Stripe event payloads, customer PII, tax details, and full financial records are not exported by default.
+- Machine payments/x402 and instant agent checkout are future tracks, not v1 assumptions.
+
+---
+
+## 9. Acceptance criteria
 
 - `install.sh --dry-run` completes.
 - Fresh install creates an OpenClaw domain workspace.
@@ -211,5 +274,8 @@ OpenClaw Gateway and channel allowlists handle transport/auth. OpenClaw agent bi
 - Existing skills load through OpenClaw skill dirs.
 - `domain-memory` plugin tools initialize/query `memory.db`.
 - `raw_observations` is denied.
+- Commerce docs describe Stripe as receivables/payment-state, not autonomous spending.
+- Proposed commerce tools have explicit approval defaults.
+- Raw payment events are denied by default.
 - Project template uses `PROJECT_ID`, not Pi env vars.
 - Harness docs tell future agents not to reintroduce Pi runtime paths.

@@ -125,6 +125,7 @@ Composition rules:
 | Recurring work | heartbeat | `HEARTBEAT.md` |
 | Skills | `skills.load.extraDirs` | `skills/*.md` |
 | Custom memory tools | plugin SDK | `domain/openclaw/plugins/domain-memory/` |
+| Optional commerce tools | plugin SDK + Stripe APIs | `domain/openclaw/plugins/domain-commerce/` |
 | Export policy | plugin tools + gateway/channel auth | `DOCK.md` |
 | Project tool policy | host/OpenClaw permissions + instruction | `TOOLS.md` |
 
@@ -206,6 +207,70 @@ Heartbeat is interval/condition-based, not cron-shaped. OpenClaw decides which n
 - require worker approval for requests outside the allowlist.
 
 Portability is part of this policy: the worker owns the workspace files, skills, plugin source/config, Markdown memory, and `memory.db`. A future LanceDB backend may replace the vector/index substrate, but it must preserve default-deny export and worker-owned portability.
+
+---
+
+## Commerce / Stripe
+
+Commerce is an optional framework capability. Stripe is the receivables and
+payment-state rail; it is not a general autonomous spending rail.
+
+Core flow:
+
+```
+AGENTS.md routing row
+-> DOCK.md commerce policy
+-> domain-commerce plugin
+-> Stripe Checkout, Payment Links, Invoices, or payment status API
+-> webhook/payment event
+-> bounded event summary in memory.db
+```
+
+Target use cases:
+
+- Consulting or freelance invoices for work delivered to a client
+- Ad hoc service payment links
+- Reimbursable supplies or expenses billed back to a client
+- Payment-event operations such as overdue invoice review, failed payment follow-up, and revenue/status summaries
+
+The production path should be a narrow OpenClaw `domain-commerce` plugin with
+explicit approval gates. Stripe MCP is useful for exploration and admin work,
+but it is too broad to be the default production surface unless a worker
+explicitly approves that mode.
+
+Proposed commerce tools:
+
+| Tool | Purpose | Default Approval |
+|------|---------|------------------|
+| `commerce_catalog_list` | Show approved services, supplies, rates, Stripe price IDs | Not required |
+| `commerce_invoice_draft` | Draft invoice from project/client context | Not required |
+| `commerce_invoice_send` | Finalize/send Stripe invoice | Required |
+| `commerce_payment_link_create` | Create payment link for service or reimbursable item | Required unless explicitly allowlisted |
+| `commerce_checkout_create` | Create one-time Checkout Session | Required |
+| `commerce_payment_status` | Check invoice/session/payment state | Not required |
+| `commerce_event_list` | Summarize recent payment events | Not required, no raw export |
+| `commerce_refund_draft` | Draft refund action | Not required |
+| `commerce_refund_execute` | Execute refund | Always required |
+
+Conceptual routing rows:
+
+| Task Type | Purpose |
+|-----------|---------|
+| **Commerce / invoice** | Draft, review, and send invoices |
+| **Commerce / payment link** | Create approved ad hoc payment links |
+| **Commerce / expense rebill** | Record reimbursable items and add them to an invoice or payment link |
+| **Commerce / payment status** | Summarize paid, open, failed, and overdue payment state |
+| **Commerce / refund** | Draft or execute refunds with explicit approval |
+
+Constraints and tradeoffs:
+
+- Use restricted Stripe API keys. Live broad secret keys are out of bounds for agent tools.
+- Hosted Checkout, Payment Links, and Invoices are preferred because the framework should not handle card data.
+- Payment completion must be verified through Stripe webhooks or Stripe API status checks, not success URLs or agent memory alone.
+- Stripe can bill a client for supplies, but it does not buy supplies from third-party vendors. Actual purchasing requires a future procurement/card/vendor integration.
+- Financial actions create external side effects, so approval gates are stricter than memory/query tools.
+- Payment event summaries can enter `memory.db`; raw Stripe event payloads, customer PII, tax details, and full financial records are not exported by default.
+- Machine payments/x402 and instant agent checkout are future tracks, not v1 assumptions.
 
 ---
 

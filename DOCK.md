@@ -61,7 +61,9 @@ this file alone.
 | Who may contact the agent | OpenClaw Gateway auth and channel allowlists |
 | Which workspace a sender reaches | OpenClaw agent bindings and session policy |
 | Which memory views are available | Domain-memory plugin tool schemas and query limits |
+| Which financial actions may run | Domain-commerce plugin schemas, restricted Stripe keys, and approval gates |
 | Raw observation export | `raw_observations` tool denial unless worker replaces policy |
+| Raw payment event export | Commerce tool denial unless the worker replaces policy |
 | File/project access | Routing table plus OpenClaw/host filesystem permissions |
 | Portable memory ownership | Local workspace files plus local `memory.db` |
 
@@ -135,7 +137,61 @@ worker-owned portability contract.
 
 ---
 
-## F. Version Log
+## F. Commerce Boundary
+
+Commerce is optional. When enabled, Stripe is the receivables and payment-state
+rail for the worker's domain. The framework owns routing, approval, dock policy,
+local memory, and payment-event summaries. Stripe owns payment processing and
+authoritative payment state.
+
+Commerce policy covers what financial actions the agent may initiate, not only
+what information it may expose.
+
+**Allowed reads by default:**
+- Approved service/supply catalog entries and configured rates
+- Payment status summaries for authorized projects
+- Outstanding invoice summaries for authorized projects
+- Bounded payment-event summaries, not raw Stripe event payloads
+
+**Default-deny financial actions:**
+- Sending or finalizing invoices
+- Creating live payment links
+- Creating Checkout Sessions
+- Executing refunds
+- Initiating purchases, spend, card activity, or vendor orders
+- Changing Stripe products, prices, tax settings, or bank/payout configuration
+
+All live money-moving actions require explicit worker approval unless the worker
+adds a narrower allowlist with amount, project, client, and action limits.
+
+**Commerce tools proposed for the optional `domain-commerce` plugin:**
+
+| Tool | Purpose | Default Approval |
+|------|---------|------------------|
+| `commerce_catalog_list` | Show approved services, supplies, rates, Stripe price IDs | Not required |
+| `commerce_invoice_draft` | Draft invoice from project/client context | Not required |
+| `commerce_invoice_send` | Finalize/send Stripe invoice | Required |
+| `commerce_payment_link_create` | Create payment link for service or reimbursable item | Required unless explicitly allowlisted |
+| `commerce_checkout_create` | Create one-time Checkout Session | Required |
+| `commerce_payment_status` | Check invoice/session/payment state | Not required |
+| `commerce_event_list` | Summarize recent payment events | Not required, no raw export |
+| `commerce_refund_draft` | Draft refund action | Not required |
+| `commerce_refund_execute` | Execute refund | Always required |
+
+**Stripe constraints:**
+- Use restricted Stripe API keys for plugin/MCP access. Live broad secret keys are out of bounds for agent tools.
+- Hosted Checkout, Payment Links, and Invoices are preferred because the framework should not handle card data.
+- Payment completion must be verified through Stripe webhooks or Stripe API status checks, not success URLs or memory alone.
+- Stripe can bill a client for supplies, but it does not buy supplies from third-party vendors. Actual purchasing requires a future procurement/card/vendor integration.
+- Raw Stripe event payloads, customer PII, tax details, and full financial records are not exported by default.
+
+Stripe MCP may be used for admin or exploration when explicitly approved. The
+production framework path is a narrow OpenClaw `domain-commerce` plugin that
+enforces this dock policy.
+
+---
+
+## G. Version Log
 
 | Date | Change | Notes |
 |------|--------|-------|
