@@ -85,6 +85,10 @@
 | **Heartbeat** — recurring proactive check | — | `HEARTBEAT.md` + `MEMORY.md` | `memory-query.md` + `domain-status.md` |
 | **Domain status** — cross-project summary, weekly review | — | `MEMORY.md` | `domain-status.md` |
 | **Goal review** — check domain goals against observed state | — | `MEMORY.md` + `HEARTBEAT.md` | `goals-resolver.md` |
+| **Commerce / invoice** — draft, review, finalize, or send invoices | — | `DOCK.md` + `context/clients.md` | `memory-query.md` |
+| **Commerce / payment link** — create approved ad hoc payment links or Checkout Sessions | — | `DOCK.md` + `context/clients.md` | `memory-query.md` |
+| **Commerce / payment status** — summarize paid, open, failed, or overdue payment state | — | `DOCK.md` | `memory-query.md` |
+| **Commerce / refund** — draft or execute refunds | — | `DOCK.md` + `context/clients.md` | `memory-query.md` |
 | **Session end** — update state and write memory | — | — | `memory-write.md` + `context-update.md` |
 | **Harness** — modify AGENTS.md, skills, plugins, OpenClaw config | — | `BLUEPRINT.md` | `harness-dev.md` |
 
@@ -144,4 +148,6 @@
 - Never share materials from one project directory with another project without explicit confirmation
 - Never modify memory.db schema directly — use the domain-memory plugin's provided tools
 - Never bypass the routing table for heartbeat, channel, or project work
+- Never create Checkout Sessions, Payment Links, send invoices, or execute refunds without the approval gates declared in `DOCK.md`
+- Never handle raw card data, export raw Stripe event payloads, or use live broad Stripe secret keys in agent tools
 - [Domain-specific hard stop]

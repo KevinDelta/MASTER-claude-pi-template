@@ -1,0 +1,17 @@
+{
+  "id": "domain-commerce",
+  "name": "Domain Commerce",
+  "description": "Narrow Stripe commerce tools with approval gates and dock-safe summaries.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {
+      "domainName": { "type": "string" },
+      "stripeApiKeyEnv": { "type": "string" },
+      "stripeApiVersion": { "type": "string" },
+      "catalogPath": { "type": "string" },
+      "allowPaymentLinksWithoutApproval": { "type": "boolean" },
+      "maxAutoApprovedAmountCents": { "type": "number" }
+    }
+  }
+}

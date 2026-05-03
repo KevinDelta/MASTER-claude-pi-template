@@ -164,10 +164,11 @@ what information it may expose.
 All live money-moving actions require explicit worker approval unless the worker
 adds a narrower allowlist with amount, project, client, and action limits.
 
-**Commerce tools proposed for the optional `domain-commerce` plugin:**
+**Commerce tools exposed by the optional `domain-commerce` plugin:**
 
 | Tool | Purpose | Default Approval |
 |------|---------|------------------|
+| `commerce_policy` | Show current commerce policy, key mode, and approval gates without secrets | Not required |
 | `commerce_catalog_list` | Show approved services, supplies, rates, Stripe price IDs | Not required |
 | `commerce_invoice_draft` | Draft invoice from project/client context | Not required |
 | `commerce_invoice_send` | Finalize/send Stripe invoice | Required |
@@ -184,10 +185,15 @@ adds a narrower allowlist with amount, project, client, and action limits.
 - Payment completion must be verified through Stripe webhooks or Stripe API status checks, not success URLs or memory alone.
 - Stripe can bill a client for supplies, but it does not buy supplies from third-party vendors. Actual purchasing requires a future procurement/card/vendor integration.
 - Raw Stripe event payloads, customer PII, tax details, and full financial records are not exported by default.
+- Deprecated Stripe surfaces are out of bounds for new work: Charges API, Sources API, Tokens API, and legacy Card Element.
+- Payment Links and Checkout Sessions must include an approval reference in metadata when created by the plugin.
+
+The template pins Stripe API requests to `2026-02-25.clover` until a worker
+deliberately upgrades after checking Stripe's current version guidance.
 
 Stripe MCP may be used for admin or exploration when explicitly approved. The
-production framework path is a narrow OpenClaw `domain-commerce` plugin that
-enforces this dock policy.
+production framework path is a narrow OpenClaw `domain-commerce` plugin,
+installed with `install.sh --enable-commerce`, that enforces this dock policy.
 
 ---
 

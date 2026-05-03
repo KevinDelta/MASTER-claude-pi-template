@@ -66,6 +66,8 @@
     load: {
       paths: [
         "~/.openclaw/plugins/domain-memory-{{DOMAIN_NAME}}",
+        // Optional, installed with install.sh --enable-commerce:
+        // "~/.openclaw/plugins/domain-commerce-{{DOMAIN_NAME}}",
       ],
     },
     entries: {
@@ -79,6 +81,20 @@
           memoryTopN: 10,
         },
       },
+      // Optional Stripe workflow plugin. Use restricted Stripe keys (`rk_*`),
+      // keep live broad secret keys out of agent tools, and preserve the
+      // approval gates declared in DOCK.md.
+      // "domain-commerce": {
+      //   enabled: true,
+      //   config: {
+      //     domainName: "{{DOMAIN_NAME}}",
+      //     stripeApiKeyEnv: "STRIPE_RESTRICTED_KEY",
+      //     stripeApiVersion: "2026-02-25.clover",
+      //     catalogPath: "~/.openclaw/workspaces/{{DOMAIN_NAME}}/commerce-catalog.json",
+      //     allowPaymentLinksWithoutApproval: false,
+      //     maxAutoApprovedAmountCents: 0,
+      //   },
+      // },
     },
   },
 

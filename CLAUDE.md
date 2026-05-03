@@ -22,6 +22,16 @@ A template system for building portable, domain-scoped knowledge worker agents. 
 8. Fill in project `AGENTS.md`, `TOOLS.md`, `context/` files, and `workspaces/`
 9. Delete annotation comments before going live
 
+Wizard-based onboarding uses `master.json` as the canonical intake contract:
+
+```bash
+./install.sh --intake-json master.json --project-dir <project-root>
+```
+
+The HTML wizard collects intake and creates a thin setup wrapper. `install.sh`
+remains the single authority for OpenClaw workspace provisioning, global+domain
+`AGENTS.md` composition, plugin setup, heartbeat defaults, and project creation.
+
 The quality of agent output is a direct function of routing-table coverage. Every direct turn, channel route, heartbeat, and project workflow should resolve through an `AGENTS.md` routing row before work begins.
 
 ---
@@ -46,7 +56,9 @@ MASTER-claude-pi-template/
 │   └── openclaw/
 │       ├── openclaw.domain.json5
 │       ├── .env.example
-│       └── plugins/domain-memory/
+│       └── plugins/
+│           ├── domain-memory/
+│           └── domain-commerce/   # optional Stripe workflow plugin
 ├── base/
 │   ├── AGENTS.md
 │   ├── TOOLS.md
@@ -70,6 +82,7 @@ MASTER-claude-pi-template/
 | `domain/AGENTS.md` | Domain-layer routing and operating contract |
 | `domain/HEARTBEAT.md` | Recurring/proactive work; replaces `watches.yaml` |
 | `domain/openclaw/plugins/domain-memory/` | SQLite/sqlite-vec memory plugin for OpenClaw |
+| `domain/openclaw/plugins/domain-commerce/` | Optional Stripe workflow plugin with approval gates |
 | `base/AGENTS.md` | Project-layer routing template |
 | `base/TOOLS.md` | Project tool policy declaration |
 | `DOCK.md` | Host/channel export contract |

@@ -215,6 +215,8 @@ Portability is part of this policy: the worker owns the workspace files, skills,
 Commerce is an optional framework capability. Stripe is the receivables and
 payment-state rail; it is not a general autonomous spending rail.
 
+Detailed implementation notes live in `xDOCS/STRIPE_WORKFLOW.md`.
+
 Core flow:
 
 ```
@@ -238,11 +240,16 @@ explicit approval gates. Stripe MCP is useful for exploration and admin work,
 but it is too broad to be the default production surface unless a worker
 explicitly approves that mode.
 
+Install the optional plugin with `install.sh --enable-commerce`. It pins Stripe
+API requests to `2026-02-25.clover` until a worker deliberately upgrades the
+template after checking Stripe's current version guidance.
+
 Proposed commerce tools:
 
 | Tool | Purpose | Default Approval |
 |------|---------|------------------|
 | `commerce_catalog_list` | Show approved services, supplies, rates, Stripe price IDs | Not required |
+| `commerce_policy` | Show current commerce policy and key mode without secrets | Not required |
 | `commerce_invoice_draft` | Draft invoice from project/client context | Not required |
 | `commerce_invoice_send` | Finalize/send Stripe invoice | Required |
 | `commerce_payment_link_create` | Create payment link for service or reimbursable item | Required unless explicitly allowlisted |
@@ -280,18 +287,31 @@ Constraints and tradeoffs:
 ./install.sh --domain <name> --persona <persona-name>
 ```
 
+Wizard-generated bundles use the intake-driven form:
+
+```bash
+./install.sh --intake-json master.json --project-dir <project-root>
+```
+
 The installer:
 
 1. checks Node/OpenClaw,
 2. creates `~/.openclaw/workspaces/<domain>/`,
 3. deploys domain files,
 4. builds combined `AGENTS.md`,
-5. links the domain-memory plugin,
-6. registers the OpenClaw agent,
-7. configures heartbeat defaults,
-8. optionally onboards the Gateway daemon,
-9. optionally installs/pulls Ollama embeddings,
-10. creates a persona alias.
+5. applies intake through the canonical framework renderer when `--intake-json` is provided,
+6. links the domain-memory plugin,
+7. registers the OpenClaw agent,
+8. configures heartbeat defaults,
+9. optionally onboards the Gateway daemon,
+10. optionally installs/pulls Ollama embeddings,
+11. creates a persona alias,
+12. optionally creates/fills the project repo from `base/`.
+
+The HTML wizard owns intake, not provisioning. Its bundle contains
+`master.json`, a thin `setup-client.sh`, onboarding notes, and a checklist.
+`setup-client.sh` calls `install.sh --intake-json ...`; it must not overwrite
+the installed domain `AGENTS.md` or bypass installer composition.
 
 ---
 

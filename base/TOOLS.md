@@ -17,6 +17,7 @@
 | Network calls | ask | Confirm destination and purpose |
 | Secrets/env files | deny | Never read or print `.env`, auth files, or token-bearing config |
 | Memory tools | allow | Use domain-memory tools according to routing rows |
+| Stripe commerce tools | ask | Reads are allowed only for authorized project scope; money-moving actions require worker approval per domain `DOCK.md` |
 
 ---
 

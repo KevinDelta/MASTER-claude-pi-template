@@ -1,0 +1,16 @@
+{
+  "name": "@domain/openclaw-domain-commerce",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.0"
+  },
+  "openclaw": {
+    "extensions": ["./index.ts"],
+    "compat": {
+      "pluginApi": ">=2026.4.9",
+      "minGatewayVersion": "2026.4.9"
+    }
+  }
+}

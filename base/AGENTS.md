@@ -77,6 +77,8 @@
 | **Build / code** — write, edit, or debug code | /workspaces/[workspace-c] | `context/stack.md` + `[workspace-c]/CONTEXT.md` | — |
 | **Analyze / synthesize** — process data, extract patterns, produce findings | /workspaces/[workspace-b] | `context/project.md` + `[workspace-b]/CONTEXT.md` | — |
 | **Status / report** — summarize progress, produce a status update | — | `context/project.md` | `stop-slop.md` |
+| **Commerce / invoice** — draft billable work or reimbursable expenses | — | `TOOLS.md` + `context/project.md` + `context/client.md` | `memory-query.md` |
+| **Commerce / payment status** — check project-scoped Stripe payment state | — | `TOOLS.md` + `context/project.md` + `context/client.md` | `memory-query.md` |
 | **Harness** — modify AGENTS.md, skills, plugins, OpenClaw config, or settings | — | `BLUEPRINT.md` | `harness-dev.md` |
 | **Session end** — update state and write memory | — | — | `memory-write.md` + `context-update.md` |
 
@@ -129,4 +131,5 @@
 - Never read or modify `.env` files, `auth.json`, or files named `secrets.*`
 - Never hard reset git state (`git reset --hard`)
 - Never send output to an external party (client, email, API) without review
+- Never create project payment links, Checkout Sessions, invoices, or refunds unless domain `DOCK.md` permits the action and the worker has approved required side effects
 - [Project-specific hard stop]

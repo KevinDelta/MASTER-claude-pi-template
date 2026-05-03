@@ -26,13 +26,18 @@ cd ~/.openclaw/templates/master-agent-template
 open Intake-mapping/wyndelta-onboarding.html
 ```
 
-The wizard generates a client/domain bundle and `setup-client.sh`. From the
-template repo root, run:
+The wizard generates a thin client/domain bundle: `master.json`,
+`setup-client.sh`, onboarding notes, and a post-install checklist. From the
+unzipped bundle, run:
 
 ```bash
 bash setup-client.sh
 openclaw agent --agent <domain-slug> --message "status" --local
 ```
+
+`setup-client.sh` calls `install.sh --intake-json master.json --project-dir ...`.
+It does not copy generated Markdown over the OpenClaw workspace; `install.sh` is
+the single provisioning authority.
 
 ## Bootstrap Options
 
@@ -55,6 +60,16 @@ Skip the dry-run smoke check:
 curl -fsSL https://raw.githubusercontent.com/kevindelta/MASTER-claude-pi-template/main/bootstrap.sh | bash -s -- --skip-smoke
 ```
 
+Install optional Stripe commerce tooling during domain setup:
+
+```bash
+./install.sh --domain <domain> --persona <persona> --enable-commerce
+```
+
+The commerce plugin is approval-gated and uses hosted Stripe surfaces. Configure
+restricted Stripe keys in the installed domain environment; never commit filled
+`.env` files.
+
 Equivalent environment overrides:
 
 ```bash
@@ -66,7 +81,9 @@ OPENCLAW_TEMPLATE_DIR=~/.openclaw/templates/master-agent-template
 ## What Gets Installed
 
 `bootstrap.sh` installs the template checkout only. It does not create a live
-domain until the generated `setup-client.sh` or `install.sh` is run.
+domain until the generated `setup-client.sh` or `install.sh` is run. OpenClaw
+onboarding handles runtime readiness; this framework handles domain/project
+context, routing rows, persona, memory policy, and dock/export policy.
 
 The generated setup creates:
 
@@ -83,6 +100,13 @@ The generated setup creates:
 
 Project repos are created from `base/` and use `PROJECT_ID` for memory tagging.
 
+## OpenClaw vs Framework
+
+OpenClaw gets a message to the right agent, workspace, session, channel,
+heartbeat, and plugin surface. This framework tells the selected agent how to
+work through `AGENTS.md`, `SOUL.md`, `MEMORY.md`, `HEARTBEAT.md`, `DOCK.md`,
+context files, skills, and project routing rows.
+
 ## Updating
 
 ```bash
@@ -98,3 +122,4 @@ clean.
 - Do not commit filled `.env` files, client bundles, generated client repos, or secrets.
 - `HEARTBEAT.md` replaces `watches.yaml`; no OS scheduler is part of the active runtime.
 - `DOCK.md` is the policy contract for export, memory, host/channel, and optional commerce boundaries.
+- Stripe workflow constraints are documented in `xDOCS/STRIPE_WORKFLOW.md`.
