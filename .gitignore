@@ -6,11 +6,10 @@
 # To onboard a new client: create clients/{name}/ and populate from the Intake-mapping flow
 clients/
 
-# Intake mapping tooling — proprietary WynDelta discovery forms and workflow tools
-# Not part of the public template; lives locally and is shared privately with the team
-# Tools: client-intake, workflow-mapper, prioritization-matrix, agent-design-brief,
-#        pilot-run-plan, assessment-synthesis, harness-scaffold
-Intake-mapping/
+# Intake mapping legacy tooling — proprietary WynDelta discovery forms and workflow tools.
+# The active onboarding wizard is intentionally public/testable:
+#   Intake-mapping/wyndelta-onboarding.html
+Intake-mapping/legacy/
 
 # Go-to-market strategy for WynDelta
 WynDelta-GTM-Strategy.md

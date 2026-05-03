@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WynDelta — Domain Onboarding</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:#0d0f14; --surface:#13161e; --card:#181c27; --border:#252a38; --border2:#2e3448;
+    --accent:#4f7eff; --accent2:#7c5cff; --green:#2dd4a0; --yellow:#f5c842; --red:#ff5f5f; --orange:#ff8c3a;
+    --muted:#6b7494; --text:#e4e8f4; --text2:#a8b0cc; --radius:10px; --radius-sm:6px;
+    --font:'Inter','Segoe UI',system-ui,sans-serif;
+  }
+  body { font-family:var(--font); background:var(--bg); color:var(--text); min-height:100vh; line-height:1.6; }
+  .shell { display:flex; flex-direction:column; min-height:100vh; }
+
+  header { background:var(--surface); border-bottom:1px solid var(--border); padding:18px 32px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; position:sticky; top:0; z-index:100; }
+  .logo { font-size:15px; font-weight:700; letter-spacing:0.04em; display:flex; align-items:center; gap:10px; }
+  .logo-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent); }
+  .header-subtitle { font-size:12px; color:var(--muted); letter-spacing:0.06em; text-transform:uppercase; }
+  .header-right { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .save-state { font-size:11px; color:var(--muted); margin-right:4px; }
+  .save-state.saved { color:var(--green); }
+
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:var(--radius-sm); font-size:13px; font-weight:600; cursor:pointer; border:none; transition:all 0.15s; font-family:var(--font); }
+  .btn-primary { background:var(--accent); color:#fff; } .btn-primary:hover { background:#3a68e8; }
+  .btn-ghost { background:transparent; color:var(--text2); border:1px solid var(--border2); } .btn-ghost:hover { background:var(--card); color:var(--text); }
+  .btn-green { background:rgba(45,212,160,0.12); color:var(--green); border:1px solid rgba(45,212,160,0.25); } .btn-green:hover { background:rgba(45,212,160,0.2); }
+  .btn-red   { background:rgba(255,95,95,0.12); color:var(--red); border:1px solid rgba(255,95,95,0.25); font-size:11px; padding:4px 10px; } .btn-red:hover { background:rgba(255,95,95,0.2); }
+  .btn-copy  { background:transparent; color:var(--muted); border:1px solid var(--border2); font-size:11px; padding:4px 10px; } .btn-copy:hover { color:var(--text); background:var(--card); }
+  .btn-add   { background:rgba(79,126,255,0.1); color:var(--accent); border:1px dashed rgba(79,126,255,0.4); font-size:12px; padding:8px 14px; } .btn-add:hover { background:rgba(79,126,255,0.18); }
+
+  .progress-bar { background:var(--surface); border-bottom:1px solid var(--border); padding:0 32px; display:flex; overflow-x:auto; scrollbar-width:none; }
+  .progress-bar::-webkit-scrollbar { display:none; }
+  .step-nav { display:flex; align-items:center; gap:8px; padding:14px 18px 14px 0; font-size:12px; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; white-space:nowrap; flex-shrink:0; }
+  .step-nav.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .step-nav.done { color:var(--green); }
+  .step-num { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; background:var(--border); }
+  .step-nav.active .step-num { background:var(--accent); color:#fff; }
+  .step-nav.done .step-num { background:var(--green); color:#0d0f14; }
+
+  main { max-width:900px; margin:0 auto; width:100%; padding:32px; }
+  .section { display:none; } .section.active { display:block; }
+  .section-header { margin-bottom:28px; }
+  .section-title { font-size:22px; font-weight:700; margin-bottom:8px; }
+  .section-desc { font-size:14px; color:var(--text2); line-height:1.7; max-width:680px; }
+
+  .card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:22px 24px; margin-bottom:16px; }
+  .card-title { font-size:12px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:16px; }
+  .item-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; margin-bottom:14px; }
+  .item-card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+  .item-label { font-size:13px; font-weight:700; color:var(--text); }
+  .item-num { display:inline-block; background:rgba(79,126,255,0.15); color:var(--accent); border-radius:12px; padding:2px 10px; font-size:11px; font-weight:700; margin-right:8px; }
+
+  label { display:block; font-size:12px; font-weight:600; color:var(--text2); margin-bottom:6px; letter-spacing:0.02em; }
+  label .hint { font-weight:400; color:var(--muted); font-size:11px; margin-left:6px; }
+  input[type="text"], input[type="email"], select, textarea {
+    width:100%; background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius-sm); padding:10px 13px; font-size:13px; color:var(--text); font-family:var(--font); outline:none; transition:border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,126,255,0.12); }
+  textarea { resize:vertical; min-height:80px; line-height:1.6; }
+  .form-row { margin-bottom:16px; }
+  .form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .form-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+
+  .file-block { margin-bottom:20px; }
+  .file-block-header { display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius-sm) var(--radius-sm) 0 0; padding:10px 14px; }
+  .file-path { font-size:12px; font-weight:600; color:var(--accent); font-family:'Menlo','Monaco',monospace; }
+  .file-desc-sm { font-size:11px; color:var(--muted); margin-top:2px; }
+  .file-body { background:#0a0c12; border:1px solid var(--border2); border-top:none; border-radius:0 0 var(--radius-sm) var(--radius-sm); padding:16px; font-size:12px; line-height:1.7; color:var(--text2); white-space:pre-wrap; font-family:'Menlo','Monaco',monospace; max-height:340px; overflow-y:auto; }
+
+  .info-box { background:rgba(79,126,255,0.07); border:1px solid rgba(79,126,255,0.2); border-radius:var(--radius-sm); padding:12px 16px; font-size:12px; color:var(--text2); margin-bottom:16px; line-height:1.6; }
+  .optional-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:700; letter-spacing:0.05em; background:rgba(107,116,148,0.15); color:var(--muted); border:1px solid var(--border2); margin-left:8px; vertical-align:middle; }
+  .nav-footer { display:flex; justify-content:space-between; align-items:center; margin-top:28px; padding-top:20px; border-top:1px solid var(--border); }
+
+  details summary { cursor:pointer; font-size:12px; font-weight:600; color:var(--muted); letter-spacing:0.04em; padding:10px 0; list-style:none; display:flex; align-items:center; gap:8px; }
+  details summary::before { content:'▸'; font-size:10px; transition:transform 0.15s; }
+  details[open] summary::before { transform:rotate(90deg); }
+  details summary::-webkit-details-marker { display:none; }
+
+  .pattern-select option { padding:4px; }
+
+  .toast { position:fixed; bottom:24px; right:24px; background:var(--card); border:1px solid var(--border2); border-radius:var(--radius-sm); padding:10px 18px; font-size:13px; color:var(--text); box-shadow:0 4px 20px rgba(0,0,0,0.4); opacity:0; transition:opacity 0.3s; z-index:9999; pointer-events:none; }
+  .toast.show { opacity:1; }
+  @media(max-width:680px) { .form-grid-2,.form-grid-3 { grid-template-columns:1fr; } main { padding:20px; } }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<header>
+  <div class="logo">
+    <span class="logo-dot"></span>
+    WynDelta
+    <div class="header-subtitle">Domain Onboarding</div>
+  </div>
+  <div class="header-right">
+    <span class="save-state" id="saveState">unsaved</span>
+    <input type="file" id="masterImportInput" accept=".json" style="display:none" onchange="handleMasterImport(event)" />
+    <button class="btn btn-ghost" onclick="document.getElementById('masterImportInput').click()">↑ Import JSON</button>
+    <button class="btn btn-green" onclick="exportMasterJson()">↓ Export JSON</button>
+    <button class="btn btn-ghost" onclick="resetState()" title="Clear all fields">↺ Reset</button>
+  </div>
+</header>
+
+<nav class="progress-bar">
+  <div class="step-nav active" onclick="goTo(0)"><span class="step-num">1</span> Who you are</div>
+  <div class="step-nav" onclick="goTo(1)"><span class="step-num">2</span> Your work types</div>
+  <div class="step-nav" onclick="goTo(2)"><span class="step-num">3</span> Impact &amp; goals</div>
+  <div class="step-nav" onclick="goTo(3)"><span class="step-num">4</span> Your setup</div>
+  <div class="step-nav" onclick="goTo(4)"><span class="step-num">5</span> Generate</div>
+</nav>
+
+<main>
+
+<!-- ══ §1 WHO YOU ARE ══════════════════════════════════════════════════════ -->
+<div class="section active" id="sec-0">
+  <div class="section-header">
+    <div class="section-title">Who you are</div>
+    <div class="section-desc">Describe yourself and your domain. This becomes the foundation of your agent's identity — how it introduces itself, what context it carries into every session, and what work it understands.</div>
+  </div>
+
+  <div class="card">
+    <div class="form-grid-2">
+      <div class="form-row"><label>Your name or handle</label>
+        <input type="text" data-bind="identity.workerName" placeholder="e.g. Kevin, or just your first name" /></div>
+      <div class="form-row"><label>Domain name <span class="hint">(what this body of work is)</span></label>
+        <input type="text" data-bind="identity.domainName" placeholder="e.g. GTM Consulting, Supply Chain Ops, Research & Analysis" /></div>
+    </div>
+    <div class="form-row"><label>What you do <span class="hint">(1–2 sentences — your work, who it's for, what it produces)</span></label>
+      <textarea data-bind="identity.whatYouDo" placeholder="e.g. I work with 3–5 B2B SaaS clients at a time on go-to-market strategy, positioning, and sales enablement. Every engagement produces actionable playbooks, not research reports."></textarea></div>
+    <div class="form-row"><label>Industry or field</label>
+      <select data-bind="identity.industry">
+        <option value="">— Select —</option>
+        <option>B2B SaaS / Tech</option><option>Manufacturing</option><option>Distribution / 3PL</option>
+        <option>Retail / Wholesale</option><option>Food &amp; Beverage</option><option>Pharma / Life Sciences</option>
+        <option>Automotive</option><option>Financial Services</option><option>Professional Services</option>
+        <option>Healthcare</option><option>Construction / Real Estate</option><option>Media / Content</option>
+        <option>Other</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">What you're trying to fix</div>
+    <div class="form-row">
+      <label>What's manual, slow, or error-prone right now? <span class="hint">(seeds your agent's memory and priorities)</span></label>
+      <textarea data-bind="identity.whatToFix" placeholder="e.g. I spend 6–8 hours a week pulling data from three different systems to build a single weekly report. It's error-prone and delays client decisions by 2 days."></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Tools you work in</div>
+    <div class="form-row"><label>List any systems or tools your work touches <span class="hint">(comma-separated is fine)</span></label>
+      <input type="text" data-bind="identity.tools" placeholder="e.g. Salesforce, HubSpot, Excel, Google Sheets, NetSuite, Notion, Slack" /></div>
+  </div>
+
+  <div class="nav-footer">
+    <span style="font-size:12px;color:var(--muted);">Your progress autosaves in this browser.</span>
+    <button class="btn btn-primary" onclick="goTo(1)">Your work types →</button>
+  </div>
+</div>
+
+<!-- ══ §2 YOUR WORK TYPES ════════════════════════════════════════════════ -->
+<div class="section" id="sec-1">
+  <div class="section-header">
+    <div class="section-title">Your work types</div>
+    <div class="section-desc">Each work type becomes a workspace your agent operates in. Name them as you'd describe your work to a colleague — not as system categories. 2–4 is typical.</div>
+  </div>
+
+  <div class="info-box">Each entry gets its own folder under <code style="color:var(--accent)">workspaces/</code> and a row in the routing table. Your agent will load the right context when you say what you're working on.</div>
+
+  <div id="workTypeList"></div>
+
+  <button class="btn btn-add" onclick="addWorkType()">+ Add work type</button>
+
+  <div class="nav-footer">
+    <button class="btn btn-ghost" onclick="goTo(0)">← Back</button>
+    <button class="btn btn-primary" onclick="goTo(2)">Impact &amp; goals →</button>
+  </div>
+</div>
+
+<!-- ══ §3 IMPACT & GOALS ═════════════════════════════════════════════════ -->
+<div class="section" id="sec-2">
+  <div class="section-header">
+    <div class="section-title">Impact &amp; goals <span class="optional-badge">Optional</span></div>
+    <div class="section-desc">What does success look like? This seeds your agent's memory with targets it can reference and track over time. Skip it now and come back when you have a clearer picture.</div>
+  </div>
+
+  <div class="card">
+    <div class="form-row"><label>What improvement looks like</label>
+      <textarea data-bind="impact.goalNarrative" placeholder="e.g. Reduce the time I spend on weekly reporting from 8 hours to under 1. Free up a full day each week for client-facing work."></textarea></div>
+    <div class="form-grid-2">
+      <div class="form-row"><label>Estimated time or cost saved</label>
+        <input type="text" data-bind="impact.timeSaved" placeholder="e.g. 8 hrs/week, $60K/yr, 1.5 FTE" /></div>
+      <div class="form-row"><label>Target date or urgency</label>
+        <input type="text" data-bind="impact.urgency" placeholder="e.g. Before Q3 close, within 6 weeks" /></div>
+    </div>
+  </div>
+
+  <div class="nav-footer">
+    <button class="btn btn-ghost" onclick="goTo(1)">← Back</button>
+    <button class="btn btn-primary" onclick="goTo(3)">Your setup →</button>
+  </div>
+</div>
+
+<!-- ══ §4 YOUR SETUP ══════════════════════════════════════════════════════ -->
+<div class="section" id="sec-3">
+  <div class="section-header">
+    <div class="section-title">Your setup</div>
+    <div class="section-desc">A few configuration values that drive file paths, the agent's name, and what it will and won't do.</div>
+  </div>
+
+  <div class="card">
+    <div class="form-grid-2">
+      <div class="form-row"><label>Short name <span class="hint">(used in file paths — no spaces)</span></label>
+        <input type="text" data-bind="setup.slug" placeholder="e.g. gtm-consulting, supply-chain-ops" /></div>
+      <div class="form-row"><label>Agent name <span class="hint">(what you call it)</span></label>
+        <input type="text" data-bind="setup.personaName" placeholder="e.g. Atlas, Nova, Mercer" /></div>
+    </div>
+    <div class="form-row"><label>Agent intro line <span class="hint">(one sentence — auto-drafted, edit freely)</span></label>
+      <input type="text" data-bind="setup.persona" placeholder="e.g. You are Atlas, an embedded agent for GTM Consulting work." /></div>
+    <div class="form-row"><label>Project directory <span class="hint">(where setup-client.sh copies files on your machine — absolute path)</span></label>
+      <input type="text" data-bind="setup.projectDir" placeholder="e.g. /Users/you/projects/gtm-consulting" /></div>
+  </div>
+
+  <details>
+    <summary>Advanced options</summary>
+    <div class="card" style="margin-top:12px;">
+      <div class="form-row"><label>Org-wide rules <span class="hint">(one per line — sensible defaults pre-filled)</span></label>
+        <textarea data-bind="setup.orgRules" style="min-height:90px;"></textarea></div>
+      <div class="form-row"><label>Project-specific rules <span class="hint">(one per line)</span></label>
+        <textarea data-bind="setup.projRules" style="min-height:70px;" placeholder="e.g. Always cite the source before writing a recommendation."></textarea></div>
+      <div class="form-row"><label>Hard stops <span class="hint">(things this agent should never do — one per line)</span></label>
+        <textarea data-bind="setup.hardStops" style="min-height:60px;" placeholder="e.g. Never send client-facing communications without review."></textarea></div>
+    </div>
+  </details>
+
+  <div class="nav-footer">
+    <button class="btn btn-ghost" onclick="goTo(2)">← Back</button>
+    <button class="btn btn-primary" onclick="goTo(4); buildAll();">Generate →</button>
+  </div>
+</div>
+
+<!-- ══ §5 GENERATE ════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-4">
+  <div class="section-header">
+    <div class="section-title">Generate</div>
+    <div class="section-desc">Your domain files are ready. Download the ZIP and run the setup script — your agent environment will be live in under a minute.</div>
+  </div>
+
+  <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+    <button class="btn btn-primary" onclick="downloadZip()">⬇ Download ZIP</button>
+    <button class="btn btn-green" onclick="downloadSetupScript()">⬇ Download setup-client.sh</button>
+    <button class="btn btn-ghost" onclick="buildAll(); showToast('Regenerated ✓')">↺ Regenerate</button>
+    <button class="btn btn-ghost" onclick="exportMasterJson()">↓ Export JSON</button>
+  </div>
+
+  <div class="info-box">
+    After downloading: unzip alongside the <code style="color:var(--accent)">MASTER-claude-pi-template</code> repo, then run <code style="color:var(--accent)">bash setup-client.sh</code> from the repo root. Your domain will be installed at <code style="color:var(--accent)" id="slugPreview">~/.openclaw/workspaces/&lt;slug&gt;/</code> and your project repo at the path you entered in §4.
+  </div>
+
+  <div id="generatedFiles">Click Regenerate to build files.</div>
+
+  <div class="nav-footer">
+    <button class="btn btn-ghost" onclick="goTo(3)">← Back</button>
+    <span style="font-size:12px;color:var(--muted);">Run <code style="color:var(--accent)">openclaw agent --agent &lt;slug&gt; --message "status"</code> to smoke-test.</span>
+  </div>
+</div>
+
+</main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════════════════
+   STATE
+   ════════════════════════════════════════════════════════════════════════════ */
+const SCHEMA_VERSION = 3;
+const STORAGE_PREFIX = 'wyndelta-onboarding';
+
+const DEFAULT_ORG_RULES = [
+  'Read AGENTS.md at the start of every session',
+  'Load workspace CONTEXT.md before producing any output',
+  'Ask before taking irreversible action — never assume approval',
+  'Update CONTEXT.md and write to memory at the end of any productive session',
+  'Do not create files outside designated workspace folders',
+].join('\n');
+
+function blankState() {
+  return {
+    meta: { schemaVersion: SCHEMA_VERSION, savedAt: null },
+    identity: {
+      workerName: '', domainName: '', whatYouDo: '',
+      industry: '', whatToFix: '', tools: '',
+    },
+    workTypes: [],   // [{ id, name, description, pattern }]
+    impact: { goalNarrative: '', timeSaved: '', urgency: '' },
+    setup: {
+      slug: '', personaName: '', persona: '', projectDir: '',
+      orgRules: DEFAULT_ORG_RULES, projRules: '', hardStops: '',
+    },
+    generatedFiles: {},
+  };
+}
+
+let state = loadFromStorage() || blankState();
+
+/* ── WORK TYPE FACTORY ─────────────────────────────────────────────────────── */
+function newId() { return 'id-' + Math.random().toString(36).slice(2, 9); }
+function newWorkType() { return { id: newId(), name: '', description: '', pattern: '' }; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   DATA-BINDING + AUTOSAVE
+   ════════════════════════════════════════════════════════════════════════════ */
+function getPath(obj, path) {
+  return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+}
+function setPath(obj, path, val) {
+  const keys = path.split('.');
+  let o = obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (o[keys[i]] == null || typeof o[keys[i]] !== 'object') o[keys[i]] = {};
+    o = o[keys[i]];
+  }
+  o[keys[keys.length - 1]] = val;
+}
+function bindStaticInputs() {
+  document.querySelectorAll('[data-bind]').forEach(el => {
+    const path = el.dataset.bind;
+    const cur  = getPath(state, path);
+    if (cur != null) el.value = cur;
+    el.addEventListener('input',  () => { setPath(state, path, el.value); markDirty(); });
+    el.addEventListener('change', () => { setPath(state, path, el.value); markDirty(); refreshDerived(); });
+  });
+}
+
+let saveTimer = null;
+function markDirty() {
+  const el = document.getElementById('saveState');
+  el.textContent = 'saving…'; el.classList.remove('saved');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToStorage, 400);
+}
+function storageKey() {
+  const slug = (state.setup?.slug || slugify(state.identity?.domainName) || 'draft').slice(0, 80);
+  return `${STORAGE_PREFIX}:${slug}`;
+}
+function saveToStorage() {
+  state.meta.savedAt = new Date().toISOString();
+  try {
+    localStorage.setItem(storageKey(), JSON.stringify(state));
+    const el = document.getElementById('saveState');
+    el.textContent = 'saved ' + new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    el.classList.add('saved');
+  } catch (err) { showToast('Autosave failed: ' + err.message); }
+}
+function loadFromStorage() {
+  let best = null;
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k || !k.startsWith(STORAGE_PREFIX + ':')) continue;
+    try {
+      const v = JSON.parse(localStorage.getItem(k));
+      if (!v) continue;
+      if (!best || (v.meta?.savedAt || '') > (best.meta?.savedAt || '')) best = v;
+    } catch {}
+  }
+  return best;
+}
+function resetState() {
+  if (!confirm('Clear all fields and saved state in this browser?')) return;
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(STORAGE_PREFIX + ':')) localStorage.removeItem(k);
+  }
+  state = blankState();
+  rerenderAll();
+  showToast('State cleared ✓');
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   NAVIGATION
+   ════════════════════════════════════════════════════════════════════════════ */
+function goTo(idx) {
+  document.querySelectorAll('.section').forEach((s,i) => s.classList.toggle('active', i===idx));
+  document.querySelectorAll('.step-nav').forEach((s,i) => {
+    s.classList.remove('active','done');
+    if (i===idx) s.classList.add('active');
+    else if (i<idx) s.classList.add('done');
+  });
+  refreshDerived();
+  if (idx === 4) buildAll();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   §2  WORK TYPES
+   ════════════════════════════════════════════════════════════════════════════ */
+const PATTERN_OPTIONS = [
+  { value:'',             label:'— How does this agent help you? —' },
+  { value:'monitoring',   label:'Watches for things and alerts me (Monitoring)' },
+  { value:'extraction',   label:'Reads documents and pulls out data (Extraction)' },
+  { value:'validation',   label:'Checks rules and flags exceptions (Validation)' },
+  { value:'classification', label:'Routes and sorts incoming work (Classification)' },
+  { value:'orchestration', label:'Coordinates a multi-step process (Orchestration)' },
+  { value:'generation',   label:'Drafts documents or reports (Generation)' },
+];
+
+function addWorkType() { state.workTypes.push(newWorkType()); markDirty(); renderWorkTypes(); }
+function removeWorkType(id) {
+  if (!confirm('Remove this work type?')) return;
+  state.workTypes = state.workTypes.filter(w => w.id !== id);
+  markDirty(); renderWorkTypes();
+}
+
+function renderWorkTypes() {
+  const el = document.getElementById('workTypeList');
+  if (!state.workTypes.length) {
+    el.innerHTML = '<div class="info-box" style="margin-bottom:16px;">No work types yet — click <strong>+ Add work type</strong> to start. Each one becomes a workspace your agent understands.</div>';
+    return;
+  }
+  el.innerHTML = state.workTypes.map((w, i) => `
+    <div class="item-card">
+      <div class="item-card-head">
+        <div><span class="item-num">${i + 1}</span><span class="item-label">${esc(w.name) || 'Untitled work type'}</span></div>
+        <button class="btn btn-red" onclick="removeWorkType('${w.id}')">Remove</button>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-row"><label>Name</label>
+          <input type="text" data-wt="${w.id}.name" value="${esc(w.name)}" placeholder="e.g. Client Reporting, Invoice Reconciliation" /></div>
+        <div class="form-row"><label>What it involves <span class="hint">(one line)</span></label>
+          <input type="text" data-wt="${w.id}.description" value="${esc(w.description)}" placeholder="e.g. Pull data from 3 sources, reconcile, send to client" /></div>
+      </div>
+      <div class="form-row"><label>How this agent helps</label>
+        <select class="pattern-select" data-wt="${w.id}.pattern">
+          ${PATTERN_OPTIONS.map(p => `<option value="${p.value}" ${w.pattern===p.value?'selected':''}>${p.label}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+  `).join('');
+
+  el.querySelectorAll('[data-wt]').forEach(input => {
+    const [wid, field] = input.dataset.wt.split('.');
+    input.addEventListener('input', () => {
+      const w = state.workTypes.find(x => x.id === wid);
+      if (w) { w[field] = input.value; markDirty(); }
+      if (field === 'name') input.closest('.item-card').querySelector('.item-label').textContent = input.value || 'Untitled work type';
+    });
+  });
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   CONTEXT BUILDER
+   ════════════════════════════════════════════════════════════════════════════ */
+function buildContext() {
+  const id     = state.identity || {};
+  const setup  = state.setup || {};
+  const impact = state.impact || {};
+
+  const domainName = id.domainName || '[Domain Name]';
+  const slug       = setup.slug || slugify(domainName) || 'domain';
+  const personaNm  = setup.personaName || 'Atlas';
+  const persona    = setup.persona || `You are ${personaNm}, an embedded agent for ${domainName}.`;
+  const projDir    = setup.projectDir || `~/projects/${slug}`;
+
+  // workTypes is the primary source; fall back to legacy agents[] if present
+  const workTypes = (state.workTypes && state.workTypes.length)
+    ? state.workTypes.map(w => ({ ...w, workspace: slugify(w.name || 'workspace') }))
+    : (state.agents || []).map(a => ({
+        id: a.id, name: a.agentName || a.name || '',
+        description: a.agentPurpose || a.purpose || '',
+        pattern: a.agentPattern || a.pattern || '',
+        workspace: slugify(a.agentName || a.name || 'workspace'),
+      }));
+
+  const tools = (id.tools || '').split(',').map(s => s.trim()).filter(Boolean);
+
+  return {
+    now: new Date().toISOString().split('T')[0],
+    domainName, slug, personaNm, persona, projDir,
+    workerName: id.workerName || '',
+    whatYouDo:  id.whatYouDo  || '',
+    industry:   id.industry   || '',
+    whatToFix:  id.whatToFix  || '',
+    tools, toolsStr: tools.join(', ') || '—',
+    workTypes,
+    impact,
+    setup,
+    identity: id,
+  };
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   FILE GENERATORS
+   ════════════════════════════════════════════════════════════════════════════ */
+function buildAll() {
+  const files = generateAllFiles();
+  state.generatedFiles = files;
+  markDirty();
+  renderGenerated(files);
+  const slugEl = document.getElementById('slugPreview');
+  if (slugEl) slugEl.textContent = `~/.openclaw/workspaces/${buildContext().slug}/`;
+}
+
+function generateAllFiles() {
+  const ctx = buildContext();
+  const out = {};
+  out['domain/AGENTS.md']          = genDomainAgents(ctx);
+  out['domain/SOUL.md']            = genSoul(ctx);
+  out['domain/MEMORY.md']          = genDomainMemory(ctx);
+  out['domain/HEARTBEAT.md']       = genHeartbeat(ctx);
+  out['domain/context/domain.md']  = genDomainContext(ctx);
+  out['domain/context/clients.md'] = genClients(ctx);
+  out['project/AGENTS.md']               = genProjectAgents(ctx);
+  out['project/context/project.md']      = genProjectMd(ctx);
+  out['project/context/client.md']       = genClientMd(ctx);
+  out['project/context/stack.md']        = genStackMd(ctx);
+  out['project/context/decisions.md']    = genDecisions(ctx);
+  out['project/memory/MEMORY.md']        = genProjectMemory(ctx);
+  ctx.workTypes.forEach(w => {
+    out[`project/workspaces/${w.workspace}/CONTEXT.md`] = genWorkspaceContext(w, ctx);
+  });
+  out['setup-client.sh']     = genSetupScript(ctx);
+  out['ONBOARDING-README.md'] = genReadme(ctx);
+  return out;
+}
+
+/* domain/AGENTS.md */
+function genDomainAgents(ctx) {
+  const routingRows = ctx.workTypes.map(w =>
+    `| Work on ${w.name || w.workspace} | /workspaces/${w.workspace} | context/project.md + workspaces/${w.workspace}/CONTEXT.md | ${patternSkill(w.pattern)} |`
+  ).join('\n');
+  const wsLines = ctx.workTypes.map(w =>
+    `- \`/workspaces/${w.workspace}\` — ${w.name}${w.description ? ': ' + truncate(w.description, 90) : ''}`
+  ).join('\n');
+  const orgRules = (ctx.setup.orgRules || DEFAULT_ORG_RULES).split('\n').filter(s => s.trim()).map(s => '- ' + s.trim()).join('\n');
+  const oob      = (ctx.setup.hardStops || '').split('\n').filter(s => s.trim()).map(s => '- ' + s.trim()).join('\n');
+
+  return `# AGENTS.md — ${ctx.domainName} (Domain Layer)
+
+<!-- Generated by WynDelta Domain Onboarding on ${ctx.now}.
+     Deploy to ~/.openclaw/workspaces/${ctx.slug}/AGENTS.md via install.sh. -->
+
+---
+
+## Domain Identity
+
+${ctx.whatYouDo || `${ctx.domainName} — ${ctx.industry || 'knowledge work domain'}.`}
+
+---
+
+## Domain Vocabulary
+
+| Term | Definition |
+|------|-----------|
+| Domain | ${ctx.domainName} — the body of work this agent supports |
+| Workspace | A focused area of work with its own CONTEXT.md and routing |
+
+---
+
+## Domain Methods
+
+- Read workspace CONTEXT.md before producing any output in that area
+- Memory writes happen at session end — never mid-stream without an explicit trigger
+- State uncertainty out loud; don't fill gaps with plausible-sounding guesses
+
+---
+
+## Domain Routing Table
+
+| Task Type | Workspace | Read | Load Skills |
+|-----------|-----------|------|-------------|
+| **Session start** | — | \`~/.openclaw/workspaces/${ctx.slug}/MEMORY.md\` | \`memory-query.md\` |
+${routingRows}
+| **Session end** | — | — | \`memory-write.md\` + \`context-update.md\` |
+| **Domain status** | — | \`~/.openclaw/workspaces/${ctx.slug}/MEMORY.md\` | \`domain-status.md\` |
+
+---
+
+## Domain Workspace Templates
+
+${wsLines || '- `/workspaces/[workspace]` — [description]'}
+
+---
+
+## Domain-Wide Rules
+
+${orgRules}
+
+---
+
+## Out of Bounds
+
+${oob || '- Never share materials from one project directory with another without explicit confirmation\n- Never modify memory.db schema directly'}
+`;
+}
+
+/* domain/SOUL.md */
+function genSoul(ctx) {
+  return `# SOUL.md — ${ctx.personaNm}
+
+<!-- The persona layer. Edit freely — the worker's relationship with this agent is shaped by what's here. -->
+
+---
+
+## Identity
+
+You are **${ctx.personaNm}** — an embedded agent working alongside ${ctx.workerName || 'the worker'} in the ${ctx.domainName} domain.
+${ctx.whatYouDo ? '\n' + ctx.whatYouDo + '\n' : ''}
+${ctx.persona}
+
+---
+
+## Voice
+
+- Direct. Skip preamble. Name things precisely.
+- State uncertainty out loud rather than papering over it.
+- When you don't know, ask one specific question — not three vague ones.
+- Match the worker's register: terse on chat, structured in documents.
+
+---
+
+## Relationship to the Worker
+
+- The worker is the expert on this domain. Your job is to compress their judgment into executable, repeatable form — not to replace it.
+- Never decide on irreversible actions on the worker's behalf without an explicit yes.
+- When you flag something, lead with the action they need to take — not with the analysis.
+
+---
+
+## What You Care About
+
+- Production quality over output volume. One usable artifact beats five drafts.
+- Truthful naming. If something is "mostly working," those are the words you use.
+- Memory hygiene. Every productive session leaves a trace future-you can read.
+`;
+}
+
+/* domain/MEMORY.md */
+function genDomainMemory(ctx) {
+  const lines = [];
+  lines.push(`# Memory Index — ${ctx.domainName}`);
+  lines.push('');
+  lines.push(`<!-- Generated by WynDelta Domain Onboarding on ${ctx.now}. -->`);
+  lines.push('');
+  lines.push('- [domain-identity.md](domain-identity.md) — What this domain is, what it produces');
+  if (ctx.impact.goalNarrative) lines.push('- [goals.md](goals.md) — Target outcomes and improvement narrative');
+  ctx.workTypes.forEach(w => {
+    lines.push(`- [${w.workspace}.md](${w.workspace}.md) — ${w.name} workspace pattern and constraints`);
+  });
+  return lines.join('\n') + '\n';
+}
+
+/* domain/HEARTBEAT.md */
+function genHeartbeat(ctx) {
+  const wsGoalTask = ctx.impact.goalNarrative
+    ? `\n- name: goal-review\n  interval: 24h\n  prompt: "Resolve through the Goal review routing row. If active goals exist and no equivalent review observation has been written for the current review window, compare observed state to each goal definition. If there is a meaningful delta, run the resolver skill and propose the next action. Always write a structured log observation when goal checks run. Otherwise reply HEARTBEAT_OK."\n`
+    : '';
+  return `# HEARTBEAT.md — ${ctx.domainName}
+
+<!-- OpenClaw reads this file during heartbeat turns.
+
+     HEARTBEAT REPLACES watches.yaml.
+     Do not add cron files, launchd jobs, systemd timers, or separate watch runners.
+     Recurring work lives in the native OpenClaw tasks block below and must
+     resolve through the routing table in AGENTS.md.
+     OpenClaw decides when the heartbeat turn runs, which tasks are due, and
+     where replies are delivered. This file decides what the selected domain
+     agent may check during that turn.
+
+     Rule: if no heartbeat item needs action, reply exactly HEARTBEAT_OK.
+     Keep outputs short unless a routing row explicitly asks for a delivered summary. -->
+
+tasks:
+
+- name: morning-plan
+  interval: 24h
+  prompt: "Resolve through the Session start routing row plus any project-specific planning row. If active work exists and no morning plan observation has been written today, review open scratchpad items, deferred tasks, and recent project activity. Produce a short prioritized daily plan only if there is actionable work. Otherwise reply HEARTBEAT_OK."
+
+- name: weekly-sync
+  interval: 7d
+  prompt: "Resolve through the Domain status routing row. If no weekly sync observation has been written for the current week, summarize active projects, flag open items, and note decisions or lessons that should be promoted to MEMORY.md. Otherwise reply HEARTBEAT_OK."
+
+- name: stale-project-check
+  interval: 7d
+  prompt: "Resolve through the Domain status routing row. If any project has no observations in the last 14 days and no stale-project check has been written this week, list stale projects with last activity date and ask whether to archive, resume, or close. Otherwise reply HEARTBEAT_OK."
+${wsGoalTask}
+- name: memory-maintenance
+  interval: 30m
+  prompt: "Resolve through the Session end routing row. Run memory_maintenance to backfill missing embeddings and report memory health. Surface stale scratchpad items only when the worker needs to decide something. Otherwise reply HEARTBEAT_OK."
+
+---
+
+## Heartbeat Contract
+
+OpenClaw parses the \`tasks:\` block above and includes only due tasks in the heartbeat prompt. Before doing any due recurring work:
+
+1. Read the relevant row in the domain routing table in \`AGENTS.md\`.
+2. Read \`MEMORY.md\` and any listed skill for that row.
+3. Use \`domain_status\`, \`domain_memory_query\`, and \`scratchpad_list\` before guessing from stale context.
+4. Write structured results with \`observation_write\` when a heartbeat produces useful state.
+5. If nothing needs attention, reply \`HEARTBEAT_OK\`.
+
+Do not infer recurring tasks from old chats. This file is the source of truth.
+`;
+}
+
+/* domain/context/domain.md */
+function genDomainContext(ctx) {
+  return `# Domain Context — ${ctx.domainName}
+
+<!-- What this domain is, scope, active work. Update as the domain evolves. -->
+
+---
+
+## What This Domain Is
+
+${ctx.whatYouDo || '[Fill in what this domain covers and what it produces.]'}
+
+- **Industry:** ${ctx.industry || '—'}
+- **Worker:** ${ctx.workerName || '—'}
+- **Tools:** ${ctx.toolsStr}
+
+---
+
+## What We're Trying to Fix
+
+${ctx.whatToFix || "[Fill in what's manual, slow, or error-prone right now.]"}
+
+---
+
+## Target Outcomes
+
+${ctx.impact.goalNarrative || '—'}
+${ctx.impact.timeSaved ? `\n**Estimated impact:** ${ctx.impact.timeSaved}` : ''}
+${ctx.impact.urgency    ? `\n**Urgency:** ${ctx.impact.urgency}`          : ''}
+
+---
+
+## Work Types
+
+${ctx.workTypes.length ? ctx.workTypes.map(w => `- **${w.name}** — ${w.description || '—'}`).join('\n') : '- [Add work types in the onboarding wizard]'}
+
+---
+
+## Active Projects
+
+| Project | Status |
+|---------|--------|
+| Domain setup | Active — ${ctx.now} |
+`;
+}
+
+/* domain/context/clients.md */
+function genClients(ctx) {
+  return `# Clients & Stakeholders — ${ctx.domainName}
+
+<!-- One entry per client or stakeholder this domain serves. Add as work expands. -->
+
+| Name | Role / Context | Status |
+|------|----------------|--------|
+| ${ctx.workerName || '[Your name]'} | Domain owner | Active |
+
+---
+
+## Notes
+
+- **Domain:** ${ctx.domainName}
+- **Industry:** ${ctx.industry || '—'}
+- **Tools:** ${ctx.toolsStr}
+
+<!-- Add client rows as engagements begin. Format: | Client name | Context | Active / Past | -->
+`;
+}
+
+/* project/AGENTS.md */
+function genProjectAgents(ctx) {
+  const wsLines   = ctx.workTypes.map(w => `- \`/workspaces/${w.workspace}\` — ${w.name}${w.description ? ': ' + truncate(w.description, 90) : ''}`).join('\n');
+  const routing   = ctx.workTypes.map(w => `| Work on ${w.name || w.workspace} | /workspaces/${w.workspace} | context/project.md + workspaces/${w.workspace}/CONTEXT.md | ${patternSkill(w.pattern)} |`).join('\n');
+  const projRules = (ctx.setup.projRules || '').split('\n').filter(s => s.trim()).map(s => '- ' + s.trim()).join('\n');
+  const oob       = (ctx.setup.hardStops || '').split('\n').filter(s => s.trim()).map(s => '- ' + s.trim()).join('\n');
+
+  return `# AGENTS.md — ${ctx.domainName} (Project Layer)
+
+<!-- Project layer. Global + domain layers load first from ~/.openclaw/workspaces/<domain>/AGENTS.md. -->
+
+---
+
+## Project
+
+${ctx.whatYouDo || `${ctx.domainName} — ${ctx.industry || 'knowledge work domain'}.`}
+
+---
+
+## Workspaces
+
+${wsLines || '- `/workspaces/[workspace]` — [description]'}
+
+---
+
+## Routing
+
+| Task Type | Workspace | Read | Load Skills |
+|-----------|-----------|------|-------------|
+${routing}
+| Session end | — | — | skills/memory-write.md + skills/context-update.md |
+
+---
+
+## Naming Conventions
+
+- Drafts: \`topic-name_draft.md\`
+- Finals: \`topic-name_final.md\`
+- Dated files: \`YYYY-MM-DD-filename.md\`
+
+---
+
+## Project-Specific Rules
+
+${projRules || '- [Add project-specific rules here if needed]'}
+
+---
+
+## Out of Bounds
+
+${oob || '- [Add hard stops here]'}
+`;
+}
+
+/* project/context/project.md */
+function genProjectMd(ctx) {
+  return `# Project Context — ${ctx.domainName}
+
+## What This Project Is
+
+${ctx.whatYouDo || '[Fill in what this project covers.]'}
+
+## Engagement Type
+
+Self-managed domain setup via WynDelta template.
+
+## Current Phase
+
+Initial setup — ${ctx.now}.
+
+## Success Criteria
+
+${ctx.impact.goalNarrative ? `- ${ctx.impact.goalNarrative.split('\n')[0]}` : '- [Fill in what success looks like]'}
+${ctx.impact.timeSaved ? `- Estimated impact: ${ctx.impact.timeSaved}` : ''}
+${ctx.impact.urgency   ? `- Target: ${ctx.impact.urgency}` : ''}
+
+## Work Types
+
+${ctx.workTypes.length ? ctx.workTypes.map((w,i) => `${i+1}. **${w.name}** — ${w.description || '—'}`).join('\n') : '- [Add work types in §2]'}
+`;
+}
+
+/* project/context/client.md */
+function genClientMd(ctx) {
+  return `# Client / Stakeholder Context — ${ctx.domainName}
+
+## About
+
+- **Domain:** ${ctx.domainName}
+- **Worker:** ${ctx.workerName || '—'}
+- **Industry:** ${ctx.industry || '—'}
+
+## What to Prioritize
+
+${ctx.whatToFix || "[Fill in what's most important to fix or improve.]"}
+
+## Delivery Standards
+
+- Produce outputs the worker can use immediately, not drafts that need heavy editing.
+- Cite sources before drawing conclusions.
+- Flag uncertainty explicitly.
+`;
+}
+
+/* project/context/stack.md */
+function genStackMd(ctx) {
+  return `# Stack & Tools — ${ctx.domainName}
+
+## Tools in Use
+
+${ctx.tools.length ? ctx.tools.map(t => `- ${t}`).join('\n') : '- [Fill in your tools — add them in §1 of the onboarding wizard]'}
+
+## Integration Notes
+
+${ctx.workTypes.length ? ctx.workTypes.map(w => `- **${w.name}** — [which tools this workspace touches]`).join('\n') : '- [Fill in per-workspace tool notes]'}
+
+## Access Status
+
+- [Note any tools that need credentials, API keys, or access requests before the agent can use them]
+
+## What to Avoid
+
+- [List any tools or actions that are out of bounds for this domain]
+`;
+}
+
+/* project/context/decisions.md */
+function genDecisions(ctx) {
+  const lines = [];
+  lines.push(`# Decisions — ${ctx.domainName}`);
+  lines.push('');
+  lines.push(`<!-- Format: [DATE] DECISION: ... | REASONING: ... | CONTEXT: ... -->`);
+  lines.push('');
+  lines.push(`[${ctx.now}] DECISION: Set up ${ctx.domainName} domain with WynDelta template | REASONING: ${ctx.whatToFix || 'Streamline knowledge work in this domain.'} | CONTEXT: ${ctx.workTypes.length} work type(s) configured.`);
+  if (ctx.impact.goalNarrative) {
+    lines.push('');
+    lines.push(`[${ctx.now}] DECISION: Target outcome — ${ctx.impact.goalNarrative.split('\n')[0].slice(0, 120)} | REASONING: ${ctx.impact.timeSaved || 'Efficiency improvement.'} | CONTEXT: Urgency: ${ctx.impact.urgency || '—'}.`);
+  }
+  return lines.join('\n') + '\n';
+}
+
+/* project/memory/MEMORY.md */
+function genProjectMemory(ctx) {
+  const lines = [];
+  lines.push(`# Long-Term Memory — ${ctx.domainName}`);
+  lines.push('');
+  lines.push(`<!-- Seeded by WynDelta Domain Onboarding on ${ctx.now}. -->`);
+  lines.push('');
+  lines.push('---\n\n## Decisions\n');
+  lines.push(`#decision [[domain-setup]] ${ctx.domainName} domain initialized ${ctx.now}.`);
+  if (ctx.whatToFix) lines.push(`Primary motivation: ${ctx.whatToFix.split('\n')[0].slice(0, 150)}`);
+  if (ctx.impact.timeSaved) lines.push(`Target impact: ${ctx.impact.timeSaved}.`);
+  lines.push('');
+  lines.push('---\n\n## Patterns\n');
+  ctx.workTypes.forEach(w => {
+    lines.push(`#pattern [[${w.workspace}]] ${w.name} workspace uses the ${w.pattern || '[pattern]'} approach.`);
+    if (w.description) lines.push(`Involves: ${w.description}`);
+    lines.push('');
+  });
+  lines.push(`#pattern [[memory-protocol]] Write to memory at the end of every productive session via skills/memory-write.md.`);
+  lines.push(`Update workspace CONTEXT.md before closing.\n`);
+  lines.push('---\n\n## Preferences\n');
+  lines.push(`#preference [[output-format]] Keep outputs concise and immediately usable. Cite sources before conclusions.\n`);
+  lines.push('---\n\n## Bugs / Known Issues\n');
+  lines.push('<!-- Populate as issues are discovered -->\n');
+  return lines.join('\n');
+}
+
+/* project/workspaces/{ws}/CONTEXT.md */
+function genWorkspaceContext(w, ctx) {
+  return `# CONTEXT.md — ${w.name}
+## Workspace: workspaces/${w.workspace}/
+
+Last updated: ${ctx.now}
+
+---
+
+## What This Workspace Is For
+
+${w.description || '[Describe what happens in this workspace — what gets worked on, what comes out.]'}
+
+**Pattern:** ${w.pattern || '—'}
+
+---
+
+## How This Agent Helps
+
+${patternDescription(w.pattern)}
+
+---
+
+## Tools & Inputs
+
+${ctx.tools.length ? ctx.tools.map(t => `- ${t}`).join('\n') : '- [List the tools and data sources this workspace uses]'}
+
+---
+
+## Current State
+
+- **Status:** Active
+- **Last session:** —
+- **Next action:** [Update each session]
+
+---
+
+## Key Decisions
+
+- [Decisions made about how this workspace operates]
+
+---
+
+## Open Questions
+
+- [ ] [Any unresolved questions before this workspace goes live]
+
+---
+
+## Notes
+
+[Anything the agent needs to know about quirks, edge cases, or preferred approaches in this area of work.]
+`;
+}
+
+function patternDescription(pattern) {
+  const p = (pattern || '').toLowerCase();
+  if (p === 'monitoring')      return 'Watches for conditions, changes, or thresholds and surfaces alerts when they occur.';
+  if (p === 'extraction')      return 'Reads documents, emails, or structured data and pulls out the key information.';
+  if (p === 'validation')      return 'Checks data, documents, or outputs against defined rules and flags exceptions.';
+  if (p === 'classification')  return 'Routes, tags, or sorts incoming work into the right bucket for the right action.';
+  if (p === 'orchestration')   return 'Coordinates a multi-step process — hands off between steps, tracks state, surfaces blockers.';
+  if (p === 'generation')      return 'Drafts documents, reports, or structured outputs based on source material or templates.';
+  return '[Describe how the agent works in this space.]';
+}
+
+/* setup-client.sh */
+function genSetupScript(ctx) {
+  return `#!/usr/bin/env bash
+# Generated by WynDelta Domain Onboarding on ${ctx.now}
+# Installs ~/.openclaw/workspaces/${ctx.slug}/ and sets up the project repo at ${ctx.projDir}.
+# Run from the root of the MASTER-claude-pi-template repo,
+# with the unzipped wyndelta-${ctx.slug}/ folder alongside it.
+
+set -euo pipefail
+
+DOMAIN_NAME="${ctx.domainName.replace(/"/g,'\\"')}"
+SLUG="${ctx.slug}"
+PERSONA_NAME="${ctx.personaNm}"
+TEMPLATE_DIR="$(pwd)"
+ZIP_DIR="\${ZIP_DIR:-$TEMPLATE_DIR/wyndelta-\${SLUG}}"
+CLIENT_REPO="\${CLIENT_REPO:-${ctx.projDir}}"
+
+if [[ ! -d "$ZIP_DIR" ]]; then
+  echo "✗ Expected unzipped bundle at $ZIP_DIR. Set ZIP_DIR=... if it is elsewhere." >&2
+  exit 1
+fi
+if [[ ! -x "$TEMPLATE_DIR/install.sh" ]]; then
+  echo "✗ Run this from the MASTER-claude-pi-template repo root (install.sh not found)." >&2
+  exit 1
+fi
+
+echo "→ Installing domain to ~/.openclaw/workspaces/\${SLUG}/"
+"$TEMPLATE_DIR/install.sh" --domain "$SLUG" --persona "$PERSONA_NAME"
+
+DOMAIN_DIR="$HOME/.openclaw/workspaces/\${SLUG}"
+echo "→ Overlaying generated domain files"
+cp "$ZIP_DIR/domain/AGENTS.md"           "$DOMAIN_DIR/AGENTS.md"
+cp "$ZIP_DIR/domain/SOUL.md"             "$DOMAIN_DIR/SOUL.md"
+cp "$ZIP_DIR/domain/MEMORY.md"           "$DOMAIN_DIR/MEMORY.md"
+cp "$ZIP_DIR/domain/HEARTBEAT.md"        "$DOMAIN_DIR/HEARTBEAT.md"
+mkdir -p "$DOMAIN_DIR/context"
+cp "$ZIP_DIR/domain/context/domain.md"   "$DOMAIN_DIR/context/domain.md"
+cp "$ZIP_DIR/domain/context/clients.md"  "$DOMAIN_DIR/context/clients.md"
+
+echo "→ Setting up project repo at $CLIENT_REPO"
+if [[ ! -d "$CLIENT_REPO" ]]; then
+  cp -r "$TEMPLATE_DIR/base/" "$CLIENT_REPO"
+  ( cd "$CLIENT_REPO" && git init -q )
+fi
+
+mkdir -p "$CLIENT_REPO/context" "$CLIENT_REPO/memory"
+cp "$ZIP_DIR/project/AGENTS.md"                "$CLIENT_REPO/AGENTS.md"
+cp "$ZIP_DIR/project/context/project.md"       "$CLIENT_REPO/context/project.md"
+cp "$ZIP_DIR/project/context/client.md"        "$CLIENT_REPO/context/client.md"
+cp "$ZIP_DIR/project/context/stack.md"         "$CLIENT_REPO/context/stack.md"
+cp "$ZIP_DIR/project/context/decisions.md"     "$CLIENT_REPO/context/decisions.md"
+cp "$ZIP_DIR/project/memory/MEMORY.md"         "$CLIENT_REPO/memory/MEMORY.md"
+
+rm -rf "$CLIENT_REPO/workspaces/example-workspace-1" "$CLIENT_REPO/workspaces/example-workspace-2"
+
+if [[ -d "$ZIP_DIR/project/workspaces" ]]; then
+  for ws in "$ZIP_DIR/project/workspaces"/*/; do
+    name=$(basename "$ws")
+    mkdir -p "$CLIENT_REPO/workspaces/$name"
+    cp "$ws/CONTEXT.md" "$CLIENT_REPO/workspaces/$name/CONTEXT.md"
+  done
+fi
+
+cat <<EOF
+
+✓ Done.
+
+Domain:       $DOMAIN_DIR
+Project:      $CLIENT_REPO
+
+Next: openclaw agent --agent "$SLUG" --message "status"
+Verify that ${ctx.personaNm} references "${ctx.domainName}" by name.
+EOF
+`;
+}
+
+/* ONBOARDING-README.md */
+function genReadme(ctx) {
+  return `# WynDelta Domain Bundle — ${ctx.domainName}
+
+Generated ${ctx.now}.
+
+## What's in this ZIP
+
+\`\`\`
+wyndelta-${ctx.slug}/
+├── domain/                     → ~/.openclaw/workspaces/${ctx.slug}/
+│   ├── AGENTS.md
+│   ├── SOUL.md
+│   ├── MEMORY.md
+│   ├── HEARTBEAT.md
+│   └── context/
+│       ├── domain.md
+│       └── clients.md
+├── project/                    → ${ctx.projDir}/
+│   ├── AGENTS.md
+│   ├── context/
+│   │   ├── project.md
+│   │   ├── client.md
+│   │   ├── stack.md
+│   │   └── decisions.md
+│   ├── memory/MEMORY.md
+│   └── workspaces/
+│       └── <workspace>/CONTEXT.md
+├── setup-client.sh
+└── ONBOARDING-README.md
+\`\`\`
+
+## To deploy
+
+From the MASTER-claude-pi-template repo root, with this folder unzipped alongside it:
+
+\`\`\`bash
+bash setup-client.sh
+\`\`\`
+
+Then: \`openclaw agent --agent ${ctx.slug} --message "status"\`
+
+${ctx.personaNm} should greet you and reference "${ctx.domainName}".
+
+## To resume editing
+
+Open \`Intake-mapping/wyndelta-onboarding.html\`, click **Import JSON**, and load the \`master.json\` from this ZIP.
+`;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   GENERATED FILES PREVIEW
+   ════════════════════════════════════════════════════════════════════════════ */
+function renderGenerated(files) {
+  const order = [
+    'domain/AGENTS.md','domain/SOUL.md','domain/MEMORY.md','domain/HEARTBEAT.md',
+    'domain/context/domain.md','domain/context/clients.md',
+    'project/AGENTS.md','project/context/project.md','project/context/client.md',
+    'project/context/stack.md','project/context/decisions.md','project/memory/MEMORY.md',
+  ];
+  const wsKeys  = Object.keys(files).filter(k => k.startsWith('project/workspaces/'));
+  const tailKeys = ['setup-client.sh','ONBOARDING-README.md'];
+  const all = [...order.filter(k => files[k] != null), ...wsKeys, ...tailKeys.filter(k => files[k] != null)];
+
+  document.getElementById('generatedFiles').innerHTML = all.map((path, i) => `
+    <div class="file-block">
+      <div class="file-block-header">
+        <div>
+          <div class="file-path">${esc(path)}</div>
+          <div class="file-desc-sm">${esc(fileDest(path))}</div>
+        </div>
+        <button class="btn btn-copy" onclick="copyFileContent(${i})">Copy</button>
+      </div>
+      <div class="file-body" data-fi="${i}">${esc(files[path] || '')}</div>
+    </div>
+  `).join('');
+  window.__genFiles = files;
+  window.__genOrder = all;
+}
+
+function fileDest(p) {
+  if (p.startsWith('domain/'))   return 'Deploy to: ~/.openclaw/workspaces/<slug>/' + p.replace(/^domain\//,'');
+  if (p.startsWith('project/'))  return 'Deploy to: <project-dir>/' + p.replace(/^project\//,'');
+  if (p === 'setup-client.sh')   return 'Run from MASTER-claude-pi-template repo root';
+  return '';
+}
+function copyFileContent(i) {
+  const el = document.querySelector(`[data-fi="${i}"]`);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(() => showToast('Copied ✓'));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ZIP + SETUP.SH DOWNLOAD
+   ════════════════════════════════════════════════════════════════════════════ */
+async function downloadZip() {
+  if (typeof JSZip === 'undefined') { showToast('JSZip not loaded — check your connection'); return; }
+  if (!state.generatedFiles || !Object.keys(state.generatedFiles).length) buildAll();
+  const ctx = buildContext();
+  const zip = new JSZip();
+  const root = zip.folder(`wyndelta-${ctx.slug}`);
+  Object.entries(state.generatedFiles).forEach(([p, content]) => root.file(p, content));
+  root.file('master.json', JSON.stringify(state, null, 2));
+  const blob = await zip.generateAsync({ type:'blob' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `wyndelta-${ctx.slug}-${Date.now()}.zip`; a.click();
+  URL.revokeObjectURL(url);
+  showToast('ZIP downloaded ↓');
+}
+
+function downloadSetupScript() {
+  if (!state.generatedFiles?.['setup-client.sh']) buildAll();
+  const ctx     = buildContext();
+  const content = state.generatedFiles['setup-client.sh'] || genSetupScript(ctx);
+  const blob    = new Blob([content], { type:'text/x-shellscript' });
+  const url     = URL.createObjectURL(blob);
+  const a       = document.createElement('a');
+  a.href = url; a.download = `setup-client-${ctx.slug}.sh`; a.click();
+  URL.revokeObjectURL(url);
+  showToast('setup-client.sh downloaded ↓');
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MASTER JSON EXPORT / IMPORT + LEGACY MIGRATION
+   ════════════════════════════════════════════════════════════════════════════ */
+function exportMasterJson() {
+  state.meta.savedAt = new Date().toISOString();
+  const ctx  = buildContext();
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type:'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `wyndelta-onboarding-${ctx.slug}-${Date.now()}.json`; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Master JSON exported ↓');
+}
+
+function handleMasterImport(ev) {
+  const file = ev.target.files?.[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed   = JSON.parse(e.target.result);
+      const migrated = migrateToV3(parsed);
+      state = mergeStates(state, migrated);
+      saveToStorage(); rerenderAll(); showToast('Imported ✓');
+    } catch (err) { showToast('Import failed: ' + err.message); }
+  };
+  reader.readAsText(file); ev.target.value = '';
+}
+
+function mergeStates(base, incoming) {
+  const out     = blankState();
+  out.meta      = { ...base.meta, ...incoming.meta, schemaVersion: SCHEMA_VERSION };
+  out.identity  = { ...base.identity,  ...incoming.identity };
+  out.impact    = { ...base.impact,    ...incoming.impact };
+  out.setup     = { ...base.setup,     ...incoming.setup, orgRules: incoming.setup?.orgRules || base.setup?.orgRules || DEFAULT_ORG_RULES };
+  out.workTypes = (incoming.workTypes && incoming.workTypes.length) ? incoming.workTypes : base.workTypes;
+  out.generatedFiles = incoming.generatedFiles || {};
+  return out;
+}
+
+/* Handles v3 (passthrough), v2, and all 7 legacy v1 shapes */
+function migrateToV3(d) {
+  if (d?.meta?.schemaVersion === SCHEMA_VERSION) return d;
+
+  const out = blankState();
+
+  /* ── v2 state (schemaVersion: 2) ──────────────────────────────────────── */
+  if (d?.meta?.schemaVersion === 2) {
+    const intake  = d.intake  || {};
+    const harness = d.harness || {};
+    const synth   = d.synthesis || {};
+    out.identity = {
+      workerName:  harness.personaName || '',
+      domainName:  intake.companyName  || harness.slug || '',
+      whatYouDo:   harness.projDesc    || '',
+      industry:    intake.industryVertical || '',
+      whatToFix:   intake.primaryPain  || intake.triggerNow || '',
+      tools:       [intake.erpSystem, intake.wmsSystem, intake.tmsSystem, intake.procureSystem, intake.ediSystem, intake.otherSystems].filter(Boolean).join(', '),
+    };
+    // Map v2 agents[] → workTypes[]
+    out.workTypes = (d.agents || []).map(a => ({
+      id: a.id || newId(),
+      name:        a.agentName  || a.name    || '',
+      description: a.agentPurpose || a.purpose || '',
+      pattern:     a.agentPattern || a.pattern || '',
+    }));
+    out.impact = {
+      goalNarrative: synth.ebitdaImpact ? `Target: ${synth.ebitdaImpact}${synth.payback ? ', payback ' + synth.payback : ''}.` : '',
+      timeSaved:     synth.manualHoursDisplaced || '',
+      urgency:       '',
+    };
+    out.setup = {
+      slug:        harness.slug        || slugify(intake.companyName) || '',
+      personaName: harness.personaName || '',
+      persona:     harness.persona     || '',
+      projectDir:  harness.projectDir  || '',
+      orgRules:    harness.orgRules    || DEFAULT_ORG_RULES,
+      projRules:   harness.projRules   || '',
+      hardStops:   harness.oob         || '',
+    };
+    return out;
+  }
+
+  /* ── v1 legacy: client-intake ──────────────────────────────────────────── */
+  if (d.handoff && d.clientContext) {
+    const cc = d.clientContext || {};
+    const bp = d.burningPlatform || {};
+    const tt = d.techAndData || {};
+    out.identity = {
+      workerName:  d.handoff.wnTeam || '',
+      domainName:  cc.companyName || d.handoff.client || '',
+      whatYouDo:   '',
+      industry:    cc.industryVertical || '',
+      whatToFix:   bp.primaryPain || bp.triggerNow || '',
+      tools:       [tt.erpSystem, tt.wmsSystem, tt.tmsSystem].filter(Boolean).join(', '),
+    };
+    out.setup.slug = slugify(cc.companyName || d.handoff.client || '');
+    return out;
+  }
+
+  /* ── v1 legacy: BPM mapper → one workType ─────────────────────────────── */
+  if (d.processIdentity) {
+    const pi = d.processIdentity || {};
+    out.workTypes.push({ id: newId(), name: pi.processName || '', description: pi.processPurpose || '', pattern: '' });
+    out.identity.domainName = d.processIdentity?.clientRef || '';
+    return out;
+  }
+
+  /* ── v1 legacy: agent brief → one workType ────────────────────────────── */
+  if (d.agentIdentity || d.handoff?.agent_name) {
+    const ai = d.agentIdentity || {};
+    out.workTypes.push({ id: newId(), name: ai.name || d.handoff?.agent_name || '', description: ai.agentPurpose || '', pattern: ai.agentPattern || '' });
+    out.identity.domainName = d.handoff?.client || '';
+    return out;
+  }
+
+  /* ── v1 legacy: prioritization matrix → workTypes[] ───────────────────── */
+  if (Array.isArray(d.opportunities)) {
+    d.opportunities.forEach(o => {
+      out.workTypes.push({ id: newId(), name: o.name || '', description: '', pattern: '' });
+    });
+    return out;
+  }
+
+  /* ── v1 legacy: synthesis → identity + impact ──────────────────────────── */
+  if (d.impact || d.clientSnapshot) {
+    const im = d.impact || {};
+    const cs = d.clientSnapshot || {};
+    out.identity.domainName = cs.client || d.handoff?.client || '';
+    out.impact = { goalNarrative: im.ebitda || d.handoff?.ebitda_impact || '', timeSaved: '', urgency: '' };
+    return out;
+  }
+
+  /* ── v1 legacy: harness-scaffold config ───────────────────────────────── */
+  if (d.config?.client || d.config?.slug) {
+    out.identity.domainName = d.config.client || '';
+    out.setup = { slug: d.config.slug || '', personaName: d.config.personaName || '', persona: d.config.persona || '', projectDir: '', orgRules: d.config.orgrules || DEFAULT_ORG_RULES, projRules: d.config.projrules || '', hardStops: d.config.oob || '' };
+    return out;
+  }
+
+  return out;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   HELPERS
+   ════════════════════════════════════════════════════════════════════════════ */
+function esc(s)        { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function slugify(s)    { return (s || '').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
+function truncate(s,n) { s = s || ''; return s.length > n ? s.substring(0,n) + '…' : s; }
+
+function patternSkill(p) {
+  const x = (p || '').toLowerCase();
+  if (x === 'monitoring')     return 'monitoring-agent.md';
+  if (x === 'extraction')     return 'extraction-agent.md';
+  if (x === 'validation')     return 'validation-agent.md';
+  if (x === 'classification') return 'classification-agent.md';
+  if (x === 'orchestration')  return 'orchestration-agent.md';
+  if (x === 'generation')     return 'generation-agent.md';
+  return 'memory-write.md';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+function refreshDerived() {
+  const id    = state.identity || {};
+  const setup = state.setup    || {};
+
+  // slug from domainName
+  if (id.domainName && !setup.slug) {
+    state.setup.slug = slugify(id.domainName);
+    const el = document.querySelector('[data-bind="setup.slug"]');
+    if (el && !el.value) el.value = state.setup.slug;
+  }
+  // projectDir from slug
+  if (state.setup.slug && !setup.projectDir) {
+    const derived = `~/projects/${state.setup.slug}`;
+    state.setup.projectDir = derived;
+    const el = document.querySelector('[data-bind="setup.projectDir"]');
+    if (el && !el.value) el.value = derived;
+  }
+  // persona from personaName + domainName
+  if (setup.personaName && id.domainName && !setup.persona) {
+    const derived = `You are ${setup.personaName}, an embedded agent for ${id.domainName}.`;
+    state.setup.persona = derived;
+    const el = document.querySelector('[data-bind="setup.persona"]');
+    if (el && !el.value) el.value = derived;
+  }
+  // slug preview in §5
+  const sp = document.getElementById('slugPreview');
+  if (sp) sp.textContent = `~/.openclaw/workspaces/${state.setup.slug || '<slug>'}/`;
+}
+
+function rerenderAll() {
+  document.querySelectorAll('[data-bind]').forEach(el => {
+    const v = getPath(state, el.dataset.bind);
+    el.value = v == null ? '' : v;
+  });
+  renderWorkTypes();
+  refreshDerived();
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   BOOT
+   ════════════════════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  bindStaticInputs();
+  rerenderAll();
+  if (state.meta?.savedAt) {
+    const el = document.getElementById('saveState');
+    el.textContent = 'restored — ' + new Date(state.meta.savedAt).toLocaleString();
+    el.classList.add('saved');
+  }
+});
+</script>
+</body>
+</html>
