@@ -79,6 +79,18 @@
      - project-scoped turns
      Domain-level memory lives in ~/.openclaw/workspaces/{{DOMAIN_NAME}}/MEMORY.md and memory.db -->
 
+### Minimum-viable routing row
+
+A routing row has four columns: **Task Type** (the trigger keyword), **Workspace** (where work happens; `—` for domain-wide), **Read** (files the agent reads first), **Load Skills** (which skills come on for this row). Match by the **first bolded keyword** in Task Type. Project rows override domain rows by sharing that keyword. One worked example:
+
+| Task Type | Workspace | Read | Load Skills |
+|-----------|-----------|------|-------------|
+| **Triage** — sort an incoming request, decide if it needs work, route or close | — | `MEMORY.md` + `context/clients.md` | `memory-query.md` |
+
+Read that row as: when a turn starts with "triage" or matches the Triage task type, the agent stays in the domain workspace, reads MEMORY.md and clients.md before acting, and loads `memory-query.md`. Use it as the template for every row below.
+
+### Full domain routing table
+
 | Task Type | Workspace | Read | Load Skills |
 |-----------|-----------|------|-------------|
 | **Session start** — orient before any work | — | `MEMORY.md` + `HEARTBEAT.md` when recurring | `memory-query.md` |

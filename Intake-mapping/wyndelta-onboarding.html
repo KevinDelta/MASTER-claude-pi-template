@@ -252,14 +252,21 @@
   </div>
 
   <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
-    <button class="btn btn-primary" onclick="downloadZip()">⬇ Download ZIP</button>
+    <button class="btn btn-primary" onclick="copyInstallCommand()">⌘ Copy install command (recommended)</button>
+    <button class="btn btn-ghost" onclick="downloadZip()">⬇ Download ZIP (offline fallback)</button>
     <button class="btn btn-ghost" onclick="buildAll(); showToast('Regenerated ✓')">↺ Regenerate</button>
     <button class="btn btn-ghost" onclick="exportMasterJson()">↓ Export JSON</button>
   </div>
 
   <div class="info-box">
-    After downloading: unzip the ZIP, open the unzipped folder, then run <code style="color:var(--accent)">bash setup-client.sh</code>. The script will use the template at <code style="color:var(--accent)">~/.openclaw/templates/master-agent-template</code> unless you set <code style="color:var(--accent)">TEMPLATE_DIR=/path/to/template</code>. Your domain will be installed at <code style="color:var(--accent)" id="slugPreview">~/.openclaw/workspaces/&lt;slug&gt;/</code> and your project repo at the path you entered in §4.
+    <strong>Recommended:</strong> click <em>Copy install command</em>, then paste it into the same terminal where you ran <code style="color:var(--accent)">bootstrap.sh</code>. The command pipes your intake JSON straight into <code style="color:var(--accent)">install.sh --intake-stdin</code> — no ZIP, no unzip step.<br><br>
+    <strong>Offline fallback:</strong> download the ZIP, unzip it, and run <code style="color:var(--accent)">bash setup-client.sh</code>. The script uses the template at <code style="color:var(--accent)">~/.openclaw/templates/master-agent-template</code> unless you set <code style="color:var(--accent)">TEMPLATE_DIR=/path/to/template</code>. Your domain will be installed at <code style="color:var(--accent)" id="slugPreview">~/.openclaw/workspaces/&lt;slug&gt;/</code> and your project repo at the path you entered in §4.
   </div>
+
+  <details style="margin-bottom:16px;">
+    <summary style="cursor:pointer; font-size:13px; color:var(--muted);">View the install command</summary>
+    <pre id="installCommandPreview" style="margin-top:8px; padding:12px; background:var(--code-bg, #111); color:var(--accent); border-radius:6px; overflow-x:auto; font-size:12px;">Click Regenerate to build the command.</pre>
+  </details>
 
   <div id="generatedFiles">Click Regenerate to build files.</div>
 
@@ -502,6 +509,41 @@ function buildAll() {
   renderGenerated(files);
   const slugEl = document.getElementById('slugPreview');
   if (slugEl) slugEl.textContent = `~/.openclaw/workspaces/${buildContext().slug}/`;
+  const cmdEl = document.getElementById('installCommandPreview');
+  if (cmdEl) cmdEl.textContent = buildInstallCommand();
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PASTE-IN INSTALL COMMAND
+   Builds a single shell command the operator can paste into the terminal where
+   bootstrap.sh ran. Pipes the intake JSON straight into install.sh --intake-stdin
+   so the wizard → install handoff is one paste, not unzip + bash.
+   ════════════════════════════════════════════════════════════════════════════ */
+function buildInstallCommand() {
+  const ctx = buildContext();
+  const json = JSON.stringify(state, null, 2);
+  const projectFlag = ctx.projDir ? ` --project-dir ${shellQuote(ctx.projDir)}` : '';
+  return [
+    'TEMPLATE_DIR="${TEMPLATE_DIR:-$HOME/.openclaw/templates/master-agent-template}"',
+    `cat <<'WYNDELTA_INTAKE_EOF' | "$TEMPLATE_DIR/install.sh" --intake-stdin${projectFlag}`,
+    json,
+    'WYNDELTA_INTAKE_EOF',
+  ].join('\n');
+}
+
+function shellQuote(value) {
+  if (!value) return "''";
+  if (/^[A-Za-z0-9_./-]+$/.test(value)) return value;
+  return `'${String(value).replace(/'/g, "'\\''")}'`;
+}
+
+function copyInstallCommand() {
+  if (!state.generatedFiles || !Object.keys(state.generatedFiles).length) buildAll();
+  const cmd = buildInstallCommand();
+  navigator.clipboard.writeText(cmd).then(
+    () => showToast('Install command copied — paste into your terminal'),
+    () => showToast('Copy failed — open the details panel and copy manually'),
+  );
 }
 
 function generateAllFiles() {

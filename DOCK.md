@@ -19,15 +19,32 @@
 
 ## A. Carried
 
+What the agent brings into every host/channel session. Group A entries are inputs to Section B (Export Allowlist) — anything below that is *not* in the allowlist stays local.
+
+### A.1 Carried / Domain
+
 - **Domain:** {{DOMAIN_NAME}} - [one-sentence description of the domain]
-- **Persona:** {{PERSONA_NAME}} - [one-sentence description of persona role]
 - **Runtime:** OpenClaw Gateway + domain agent workspace
-- **Active projects:**
-  - [project-slug] - [brief description]
 - **Memory DB:** local only; located at `~/.openclaw/workspaces/{{DOMAIN_NAME}}/memory.db`; never exported raw
-- **Skills:**
-  - [skill-name] - [what it does]
-  - [skill-name] - [what it does]
+
+### A.2 Carried / Persona
+
+- **Persona:** {{PERSONA_NAME}} - [one-sentence description of persona role]
+
+### A.3 Carried / Active Projects
+
+- [project-slug] - [brief description]
+
+### A.4 Carried / Skills
+
+> Re-generated as `~/.openclaw/workspaces/{{DOMAIN_NAME}}/SKILLS.md` on every install. Keep the line below in sync if you edit the workspace skills directory by hand.
+
+- [skill-name] - [what it does]
+- [skill-name] - [what it does]
+
+### A.5 Carried / Commerce (optional)
+
+Disabled by default. Activated by passing `--enable-commerce` to `install.sh` and configuring restricted Stripe keys in `.env`. See Section F (Commerce Boundary) for tools, approval gates, and constraints.
 
 ---
 

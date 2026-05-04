@@ -35,6 +35,20 @@ tasks:
   interval: 30m
   prompt: "Resolve through the Session end routing row. Run memory_maintenance to backfill missing embeddings and report memory health. Surface stale scratchpad items only when the worker needs to decide something. Otherwise reply HEARTBEAT_OK."
 
+# ─── Example: custom heartbeat task ──────────────────────────────────────────
+# Uncomment and adapt to add your own recurring check. The shape is always:
+#   name:      a unique kebab-case identifier
+#   interval:  how often OpenClaw considers this task due (e.g. 1h, 4h, 24h, 7d)
+#   prompt:    the instruction the agent runs when due. Always:
+#              - resolve through a routing row in AGENTS.md before acting
+#              - check whether an equivalent observation already exists for the
+#                current window so duplicates don't pile up
+#              - reply HEARTBEAT_OK when nothing needs attention
+#
+# - name: monday-client-digest
+#   interval: 7d
+#   prompt: "Resolve through the Domain status routing row. If today is Monday and no client digest observation has been written this week, summarize the past 7 days of client-facing activity by project: deliverables sent, decisions taken, and open questions. Write a structured log observation with the digest. Otherwise reply HEARTBEAT_OK."
+
 ---
 
 ## Heartbeat Contract

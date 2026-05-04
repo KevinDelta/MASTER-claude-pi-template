@@ -20,7 +20,9 @@
 #   --domain <name>       Domain workspace name under ~/.openclaw/workspaces/ (required)
 #   --persona <name>      Persona name; creates CLI function (required)
 #   --intake-json <file>  Canonical onboarding intake from the HTML wizard
+#   --intake-stdin        Read intake JSON from stdin (paste-in flow from the wizard)
 #   --project-dir <path>  Optional project repo path to create/fill from base/
+#   --validate            Validate an existing workspace; requires --domain
 #   --model <provider/id> Primary model (default: anthropic/claude-sonnet-4-5)
 #   --thinking <level>    off|minimal|low|medium|high|xhigh (default: medium)
 #   --heartbeat <dur>     OpenClaw heartbeat interval (default: 30m)
@@ -47,6 +49,7 @@ die()     { error "$*"; exit 1; }
 DOMAIN_NAME=""
 PERSONA_NAME=""
 INTAKE_JSON=""
+INTAKE_STDIN=false
 PROJECT_DIR=""
 MODEL="anthropic/claude-sonnet-4-5"
 THINKING="medium"
@@ -56,12 +59,14 @@ SKIP_OLLAMA=false
 SKIP_GATEWAY=false
 YES=false
 DRY_RUN=false
+VALIDATE=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
     --domain) DOMAIN_NAME="$2"; shift 2 ;;
     --persona) PERSONA_NAME="$2"; shift 2 ;;
     --intake-json) INTAKE_JSON="$2"; shift 2 ;;
+    --intake-stdin) INTAKE_STDIN=true; shift ;;
     --project-dir) PROJECT_DIR="$2"; shift 2 ;;
     --model) MODEL="$2"; shift 2 ;;
     --thinking) THINKING="$2"; shift 2 ;;
@@ -71,11 +76,26 @@ while [[ $# -gt 0 ]]; do
     --skip-gateway) SKIP_GATEWAY=true; shift ;;
     --yes) YES=true; shift ;;
     --dry-run) DRY_RUN=true; shift ;;
+    --validate) VALIDATE=true; shift ;;
     *) die "Unknown argument: $1" ;;
   esac
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if $VALIDATE; then
+  [[ -z "$DOMAIN_NAME" ]] && die "--validate requires --domain"
+  exec node "$SCRIPT_DIR/scripts/validate.mjs" \
+    --workspace-dir "$HOME/.openclaw/workspaces/$(echo "$DOMAIN_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-')"
+fi
+
+if $INTAKE_STDIN; then
+  INTAKE_TMP="$(mktemp -t openclaw-intake.XXXXXX.json)"
+  trap 'rm -f "$INTAKE_TMP"' EXIT
+  cat > "$INTAKE_TMP"
+  [[ -s "$INTAKE_TMP" ]] || die "--intake-stdin received empty input"
+  INTAKE_JSON="$INTAKE_TMP"
+fi
 
 json_get() {
   local file="$1" expr="$2"
@@ -146,9 +166,20 @@ $DRY_RUN && echo "  Mode:      DRY RUN - no changes will be made"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-if ! $YES && ! $DRY_RUN; then
-  read -rp "Proceed? [y/N] " confirm
-  [[ "$confirm" =~ ^[Yy]$ ]] || { info "Aborted."; exit 0; }
+if ! $YES; then
+  echo "  Override hints:"
+  echo "    --model <id>       (currently: $MODEL)"
+  echo "    --thinking <level> (currently: $THINKING)  - off|minimal|low|medium|high|xhigh"
+  echo "    --heartbeat <dur>  (currently: $HEARTBEAT_EVERY)"
+  echo "    --skip-ollama      to skip nomic-embed-text pull"
+  echo "    --skip-gateway     to skip OpenClaw daemon onboarding"
+  echo "    --enable-commerce  to install the optional Stripe plugin (off by default)"
+  echo "    --dry-run          to print steps without executing"
+  echo ""
+  if ! $DRY_RUN; then
+    read -rp "Proceed? [y/N] " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { info "Aborted."; exit 0; }
+  fi
 fi
 
 info "Step 1/10 - Checking prerequisites..."
@@ -234,6 +265,15 @@ done
 
 success "AGENTS.md built with global + domain routing layers"
 
+info "Step 4a - Generating SKILLS.md index..."
+if $DRY_RUN; then
+  echo -e "  ${YELLOW}[dry-run]${NC} node '$SCRIPT_DIR/scripts/build-skills-index.mjs' --workspace-dir '$WORKSPACE_DIR' --template-dir '$SCRIPT_DIR'"
+else
+  node "$SCRIPT_DIR/scripts/build-skills-index.mjs" \
+    --workspace-dir "$WORKSPACE_DIR" \
+    --template-dir "$SCRIPT_DIR" || warn "SKILLS.md generation failed - non-blocking"
+fi
+
 if [[ -n "$INTAKE_JSON" ]]; then
   info "Step 4b - Applying intake to domain templates..."
   if $DRY_RUN; then
@@ -243,6 +283,45 @@ if [[ -n "$INTAKE_JSON" ]]; then
       --intake-json "$INTAKE_JSON" \
       --workspace-dir "$WORKSPACE_DIR" \
       --template-dir "$SCRIPT_DIR"
+  fi
+else
+  info "Step 4b - Writing generic POST-INSTALL-CHECKLIST.md..."
+  CHECKLIST_FILE="$WORKSPACE_DIR/POST-INSTALL-CHECKLIST.md"
+  if $DRY_RUN; then
+    echo -e "  ${YELLOW}[dry-run]${NC} write $CHECKLIST_FILE"
+  else
+    cat > "$CHECKLIST_FILE" <<EOF
+# Post-Install Checklist - $DOMAIN_SLUG
+
+This is the generic checklist (no intake JSON was provided). Run \`install.sh --validate --domain $DOMAIN_SLUG\` after editing files to confirm fill-in completeness.
+
+## Verify the install
+
+- [ ] \`openclaw --version\` returns a version.
+- [ ] \`openclaw agents list\` shows \`$DOMAIN_SLUG\` bound to \`$WORKSPACE_DIR\`.
+- [ ] \`openclaw agent --agent $DOMAIN_SLUG --message "status" --local\` returns a response.
+- [ ] \`$PERSONA_SLUG-status\` (created by install.sh) prints the workspace dashboard.
+
+## Fill in worker-specific content
+
+- [ ] \`$WORKSPACE_DIR/AGENTS.md\` - replace placeholder routing rows; delete \`<!-- ... -->\` annotation blocks.
+- [ ] \`$WORKSPACE_DIR/SOUL.md\` - persona voice, identity, pushback thresholds. See \`domain/examples/\` for reference personas.
+- [ ] \`$WORKSPACE_DIR/context/domain.md\` - what the domain is, scope, active projects.
+- [ ] \`$WORKSPACE_DIR/DOCK.md\` - confirm Carried/Domain, Carried/Persona, Carried/Skills sections.
+- [ ] \`$WORKSPACE_DIR/HEARTBEAT.md\` - confirm or trim the default tasks; add custom tasks if needed.
+- [ ] \`$WORKSPACE_DIR/MEMORY.md\` - capture any starting decisions, patterns, preferences.
+
+## Confirm boundaries
+
+- [ ] \`$WORKSPACE_DIR/.env\` exists; secrets stay out of committed files.
+- [ ] Commerce remains disabled unless \`--enable-commerce\` was passed and approval gates are reviewed.
+- [ ] \`raw_observations\` denial confirmed (default).
+
+## Ready signal
+
+- [ ] \`install.sh --validate --domain $DOMAIN_SLUG\` reports all checks pass.
+EOF
+    success "Wrote $CHECKLIST_FILE"
   fi
 fi
 
@@ -329,6 +408,7 @@ fi
 
 ALIAS_COMMENT="# OpenClaw persona alias: $PERSONA_NAME - added by install.sh ($INSTALL_DATE)"
 ALIAS_LINE="alias ${PERSONA_SLUG}='openclaw agent --agent ${DOMAIN_SLUG} --message'"
+STATUS_FN_NAME="${PERSONA_SLUG}-status"
 
 if ! grep -qF "alias ${PERSONA_SLUG}=" "$SHELL_RC" 2>/dev/null; then
   run "printf '\n%s\n%s\n' '$ALIAS_COMMENT' \"$ALIAS_LINE\" >> '$SHELL_RC'"
@@ -336,6 +416,42 @@ if ! grep -qF "alias ${PERSONA_SLUG}=" "$SHELL_RC" 2>/dev/null; then
   warn "Run 'source $SHELL_RC' or open a new terminal to activate it"
 else
   info "Alias '$PERSONA_SLUG' already exists in $SHELL_RC"
+fi
+
+if ! grep -qF "${STATUS_FN_NAME}()" "$SHELL_RC" 2>/dev/null; then
+  if $DRY_RUN; then
+    echo -e "  ${YELLOW}[dry-run]${NC} append ${STATUS_FN_NAME}() to $SHELL_RC"
+  else
+    cat >> "$SHELL_RC" <<EOF
+
+# OpenClaw persona dashboard: ${PERSONA_NAME} - added by install.sh (${INSTALL_DATE})
+${STATUS_FN_NAME}() {
+  printf '\n=== ${PERSONA_NAME} (${DOMAIN_SLUG}) ===\n\n'
+  printf 'Active domain: '
+  cat "\$HOME/.openclaw/active-domain" 2>/dev/null || echo '(none)'
+  printf '\nWorkspace: ${WORKSPACE_DIR}\n'
+  printf '\n--- agents ---\n'
+  openclaw agents list 2>/dev/null | grep -E '^\\s*${DOMAIN_SLUG}\\b|^\\s*NAME\\b' || echo '(openclaw not on PATH)'
+  printf '\n--- heartbeat config ---\n'
+  for k in agents.defaults.heartbeat.every agents.defaults.heartbeat.target agents.defaults.model.primary agents.defaults.thinkingDefault; do
+    printf '  %s = ' "\$k"
+    openclaw config get "\$k" 2>/dev/null || echo '(unset)'
+  done
+  printf '\n--- workspace files ---\n'
+  for f in AGENTS.md SOUL.md HEARTBEAT.md MEMORY.md DOCK.md POST-INSTALL-CHECKLIST.md; do
+    if [ -f "${WORKSPACE_DIR}/\$f" ]; then
+      printf '  ✓ %s\n' "\$f"
+    else
+      printf '  ✗ %s (missing)\n' "\$f"
+    fi
+  done
+  printf '\nValidate: %s/install.sh --validate --domain ${DOMAIN_SLUG}\n\n' "$SCRIPT_DIR"
+}
+EOF
+    success "Added function '${STATUS_FN_NAME}' to $SHELL_RC"
+  fi
+else
+  info "Function '${STATUS_FN_NAME}' already exists in $SHELL_RC"
 fi
 
 if [[ -n "$PROJECT_DIR" ]]; then
@@ -381,15 +497,23 @@ echo ""
 echo "  Use persona alias:"
 echo "    $PERSONA_SLUG \"summarize active work\""
 echo ""
+echo "  Daily worker dashboard:"
+echo "    $PERSONA_SLUG-status"
+echo ""
 echo "  Files that still need worker-specific content:"
 echo "    $WORKSPACE_DIR/AGENTS.md"
 echo "    $WORKSPACE_DIR/SOUL.md"
 echo "    $WORKSPACE_DIR/context/domain.md"
 echo "    $WORKSPACE_DIR/DOCK.md"
 echo ""
+echo "  Checklist:       $WORKSPACE_DIR/POST-INSTALL-CHECKLIST.md"
+echo ""
+echo "  Validate fill-in when ready:"
+echo "    ./install.sh --validate --domain $DOMAIN_SLUG"
+echo ""
 if [[ -n "$PROJECT_DIR" ]]; then
   echo "  Project:         $PROJECT_DIR"
-  echo "  Checklist:       $PROJECT_DIR/POST-INSTALL-CHECKLIST.md"
+  echo "  Project checklist: $PROJECT_DIR/POST-INSTALL-CHECKLIST.md"
 else
   echo "  Project setup:"
   echo "    Run with --project-dir <path> or copy base/ into the project root."

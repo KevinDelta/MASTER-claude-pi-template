@@ -94,28 +94,31 @@ fi
 chmod +x "$INSTALL_DIR/install.sh" || true
 
 if [[ "$RUN_SMOKE" == true ]]; then
-  info "Running dry-run smoke check"
+  info "Running pre-flight check (dry-run, no changes)"
   (
     cd "$INSTALL_DIR"
     ./install.sh --domain bootstrap-smoke --persona Nova --dry-run --skip-gateway --skip-ollama --yes
   )
+  echo
+  info "Pre-flight check passed - no changes made yet."
 fi
 
 WIZARD="$INSTALL_DIR/Intake-mapping/wyndelta-onboarding.html"
 
 echo
 info "Template ready: $INSTALL_DIR"
+info "Nothing has been installed yet. Open the wizard to fill out intake, then paste the resulting command."
 
 if [[ -f "$WIZARD" ]]; then
-  info "Onboarding wizard:"
-  echo "  $WIZARD"
   echo
-  echo "Next:"
-  echo "  cd \"$INSTALL_DIR\""
-  echo "  open Intake-mapping/wyndelta-onboarding.html"
+  echo "Next steps (no install has happened yet):"
+  echo "  1. Open the wizard:"
+  echo "       open \"$WIZARD\""
+  echo "  2. Fill in the 5-section intake."
+  echo "  3. Use the wizard's 'Copy install command' button on the Finish screen,"
+  echo "     paste it into this terminal, and press Enter."
   echo
-  echo "After the wizard generates a bundle:"
-  echo "  bash setup-client.sh"
+  echo "Offline fallback: download the bundle, then run \`bash setup-client.sh\`."
 else
   warn "Onboarding wizard not found at $WIZARD"
   warn "Make sure Intake-mapping/wyndelta-onboarding.html is tracked in the public repo."
