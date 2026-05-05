@@ -18,14 +18,16 @@ A template system for building portable, domain-scoped knowledge worker agents. 
 4. Fill in `~/.openclaw/workspaces/<name>/context/domain.md` - what the domain is, active projects
 5. Fill in `~/.openclaw/workspaces/<name>/HEARTBEAT.md` - recurring work handled by OpenClaw heartbeat
 6. Fill in `~/.openclaw/workspaces/<name>/DOCK.md` - carried items, export allowlist, host/channel requirements
-7. Copy `base/` into each new project root; set `PROJECT_ID` in the project env source
-8. Fill in project `AGENTS.md`, `TOOLS.md`, `context/` files, and `workspaces/`
+7. Optionally create a project inside the workspace: `--project-slug <name>` → `~/.openclaw/workspaces/<name>/projects/<slug>/`
+8. Fill in project `AGENTS.md`, `TOOLS.md`, `context/` files, and `areas/`
 9. Delete annotation comments before going live
+
+Projects live inside the domain workspace — they are part of the worker's world, not separate repos. The OpenClaw workspace is the single git-tracked home for domain brain files and all project work.
 
 Wizard-based onboarding uses `master.json` as the canonical intake contract:
 
 ```bash
-./install.sh --intake-json master.json --project-dir <project-root>
+./install.sh --intake-json master.json --project-slug <name>
 ```
 
 The HTML wizard collects intake and creates a thin setup wrapper. `install.sh`
@@ -65,7 +67,7 @@ MASTER-claude-pi-template/
 │   ├── SOUL.md
 │   ├── openclaw/
 │   ├── context/
-│   └── workspaces/
+│   └── areas/
 └── skills/
 ```
 
