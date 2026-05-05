@@ -6,7 +6,7 @@
 
      WHAT BELONGS HERE:
      - This project's description, client, and scope
-     - This project's workspaces and what happens in each
+     - This project's areas and what happens in each
      - Routing table rows for this project's task types (override domain rows by matching Task Type key)
      - Project-specific rules and out-of-bounds
 
@@ -28,15 +28,15 @@
 
 ---
 
-## Workspaces
+## Areas
 
-<!-- List every workspace directory under workspaces/. Name for what work happens there.
+<!-- List every area directory under areas/. Name for what work happens there.
      Good: /drafting, /research, /production, /client-comms
      Bad: /documents, /files, /misc -->
 
-- `/workspaces/[workspace-a]` — [what this workspace is for]
-- `/workspaces/[workspace-b]` — [what this workspace is for]
-- `/workspaces/[workspace-c]` — [what this workspace is for]
+- `/areas/[area-a]` — [what work happens here]
+- `/areas/[area-b]` — [what work happens here]
+- `/areas/[area-c]` — [what work happens here]
 
 ---
 
@@ -64,18 +64,18 @@
 
      PROJECT_ID must be set in the project env source so observations are tagged to this project. -->
 
-| Task Type | Workspace | Read | Load Skills |
-|-----------|-----------|------|-------------|
+| Task Type | Area | Read | Load Skills |
+|-----------|------|------|-------------|
 | **Session start** — orient before any work | — | `context/project.md` | `memory-query.md` |
-| **Plan / scope** — define phases, break down work, create task list | /workspaces/[workspace-a] | `context/project.md` + `[workspace-a]/CONTEXT.md` | `doc-authoring.md` |
-| **Research** — gather information, synthesize sources, produce a brief | /workspaces/[workspace-b] | `context/client.md` + `context/project.md` + `[workspace-b]/CONTEXT.md` | — |
-| **Write / draft** — produce first draft of any deliverable | /workspaces/[workspace-a] | `context/project.md` + `context/client.md` + `[workspace-a]/CONTEXT.md` | `stop-slop.md` |
-| **Edit / revise** — refine existing draft, apply feedback | /workspaces/[workspace-a] | `[workspace-a]/CONTEXT.md` | `stop-slop.md` |
-| **Review / QA** — check deliverable against brief and standards | /workspaces/[workspace-a] | `context/project.md` + `[workspace-a]/CONTEXT.md` | `stop-slop.md` |
-| **Client comms** — draft message, email, or update for client | /workspaces/[workspace-b] | `context/client.md` + `[workspace-b]/CONTEXT.md` | `stop-slop.md` |
+| **Plan / scope** — define phases, break down work, create task list | /areas/[area-a] | `context/project.md` + `[area-a]/CONTEXT.md` | `doc-authoring.md` |
+| **Research** — gather information, synthesize sources, produce a brief | /areas/[area-b] | `context/client.md` + `context/project.md` + `[area-b]/CONTEXT.md` | — |
+| **Write / draft** — produce first draft of any deliverable | /areas/[area-a] | `context/project.md` + `context/client.md` + `[area-a]/CONTEXT.md` | `stop-slop.md` |
+| **Edit / revise** — refine existing draft, apply feedback | /areas/[area-a] | `[area-a]/CONTEXT.md` | `stop-slop.md` |
+| **Review / QA** — check deliverable against brief and standards | /areas/[area-a] | `context/project.md` + `[area-a]/CONTEXT.md` | `stop-slop.md` |
+| **Client comms** — draft message, email, or update for client | /areas/[area-b] | `context/client.md` + `[area-b]/CONTEXT.md` | `stop-slop.md` |
 | **Document** — update AGENTS.md, CONTEXT.md, decisions, reference docs | — | `context/project.md` | `doc-authoring.md` |
-| **Build / code** — write, edit, or debug code | /workspaces/[workspace-c] | `context/stack.md` + `[workspace-c]/CONTEXT.md` | — |
-| **Analyze / synthesize** — process data, extract patterns, produce findings | /workspaces/[workspace-b] | `context/project.md` + `[workspace-b]/CONTEXT.md` | — |
+| **Build / code** — write, edit, or debug code | /areas/[area-c] | `context/stack.md` + `[area-c]/CONTEXT.md` | — |
+| **Analyze / synthesize** — process data, extract patterns, produce findings | /areas/[area-b] | `context/project.md` + `[area-b]/CONTEXT.md` | — |
 | **Status / report** — summarize progress, produce a status update | — | `context/project.md` | `stop-slop.md` |
 | **Commerce / invoice** — draft billable work or reimbursable expenses | — | `TOOLS.md` + `context/project.md` + `context/client.md` | `memory-query.md` |
 | **Commerce / payment status** — check project-scoped Stripe payment state | — | `TOOLS.md` + `context/project.md` + `context/client.md` | `memory-query.md` |

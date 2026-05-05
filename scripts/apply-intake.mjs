@@ -179,13 +179,13 @@ function domainMethodsSection(ctx) {
 }
 
 function domainRoutingSection(ctx) {
-  const workRows = ctx.workTypes.map((w) => `| **Work on ${w.name || w.workspace}** | /workspaces/${w.workspace} | project context + workspaces/${w.workspace}/CONTEXT.md when project-scoped | ${patternSkill(w.pattern)} |`);
+  const workRows = ctx.workTypes.map((w) => `| **Work on ${w.name || w.workspace}** | /areas/${w.workspace} | project context + areas/${w.workspace}/CONTEXT.md when project-scoped | ${patternSkill(w.pattern)} |`);
   return `| Task Type | Workspace | Read | Load Skills |\n|-----------|-----------|------|-------------|\n| **Session start** - orient before any work | - | \`MEMORY.md\` + \`HEARTBEAT.md\` when recurring | \`memory-query.md\` |\n| **Heartbeat** - recurring proactive check | - | \`HEARTBEAT.md\` + \`MEMORY.md\` | \`memory-query.md\` + \`domain-status.md\` |\n| **Domain status** - cross-project summary, weekly review | - | \`MEMORY.md\` | \`domain-status.md\` |\n| **Goal review** - check domain goals against observed state | - | \`MEMORY.md\` + \`HEARTBEAT.md\` | \`goals-resolver.md\` |\n${workRows.join("\n")}${workRows.length ? "\n" : ""}| **Session end** - update state and write memory | - | - | \`memory-write.md\` + \`context-update.md\` |\n| **Harness** - modify AGENTS.md, skills, plugins, OpenClaw config | - | \`BLUEPRINT.md\` | \`harness-dev.md\` |`;
 }
 
 function domainWorkspaceSection(ctx) {
-  if (!ctx.workTypes.length) return "- `/workspaces/research` - background research, source synthesis, brief production";
-  return ctx.workTypes.map((w) => `- \`/workspaces/${w.workspace}\` - ${w.name}${w.description ? `: ${w.description}` : ""}`).join("\n");
+  if (!ctx.workTypes.length) return "- `/areas/research` - background research, source synthesis, brief production";
+  return ctx.workTypes.map((w) => `- \`/areas/${w.workspace}\` - ${w.name}${w.description ? `: ${w.description}` : ""}`).join("\n");
 }
 
 function domainRulesSection(ctx) {
@@ -260,7 +260,7 @@ function domainMemory(ctx) {
   ];
   for (const w of ctx.workTypes) {
     lines.push(`[${ctx.today}] #pattern PATTERN: ${w.name || w.workspace} uses the ${w.pattern || "workspace"} pattern | EVIDENCE: Selected during onboarding`);
-    lines.push(`status:active belongs_to:domain related_to:workspaces/${w.workspace}/CONTEXT.md`);
+    lines.push(`status:active belongs_to:domain related_to:areas/${w.workspace}/CONTEXT.md`);
     lines.push("");
   }
   lines.push("## Domain Preferences", "");
@@ -360,8 +360,8 @@ function domainClients(ctx) {
 }
 
 function projectAgents(ctx) {
-  const workspaces = ctx.workTypes.length ? ctx.workTypes.map((w) => `- \`/workspaces/${w.workspace}\` - ${w.name}${w.description ? `: ${w.description}` : ""}`).join("\n") : "- `/workspaces/general` - General project work";
-  const routing = ctx.workTypes.length ? ctx.workTypes.map((w) => `| **Work on ${w.name || w.workspace}** | /workspaces/${w.workspace} | \`context/project.md\` + \`workspaces/${w.workspace}/CONTEXT.md\` | ${patternSkill(w.pattern)} |`).join("\n") : "| **Work** | /workspaces/general | `context/project.md` + `workspaces/general/CONTEXT.md` | - |";
+  const workspaces = ctx.workTypes.length ? ctx.workTypes.map((w) => `- \`/areas/${w.workspace}\` - ${w.name}${w.description ? `: ${w.description}` : ""}`).join("\n") : "- `/areas/general` - General project work";
+  const routing = ctx.workTypes.length ? ctx.workTypes.map((w) => `| **Work on ${w.name || w.workspace}** | /areas/${w.workspace} | \`context/project.md\` + \`areas/${w.workspace}/CONTEXT.md\` | ${patternSkill(w.pattern)} |`).join("\n") : "| **Work** | /areas/general | `context/project.md` + `areas/general/CONTEXT.md` | - |";
   return `# AGENTS.md - ${ctx.domainName} Project Layer
 
 <!-- Project layer. OpenClaw loads the domain workspace first; project work reads this file after the selected domain agent is routed here. -->

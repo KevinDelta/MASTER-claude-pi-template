@@ -21,7 +21,7 @@
 #   --persona <name>      Persona name; creates CLI function (required)
 #   --intake-json <file>  Canonical onboarding intake from the HTML wizard
 #   --intake-stdin        Read intake JSON from stdin (paste-in flow from the wizard)
-#   --project-dir <path>  Optional project repo path to create/fill from base/
+#   --project-slug <name> Optional project name; creates projects/<slug>/ inside the domain workspace
 #   --validate            Validate an existing workspace; requires --domain
 #   --model <provider/id> Primary model (default: anthropic/claude-sonnet-4-5)
 #   --thinking <level>    off|minimal|low|medium|high|xhigh (default: medium)
@@ -50,7 +50,7 @@ DOMAIN_NAME=""
 PERSONA_NAME=""
 INTAKE_JSON=""
 INTAKE_STDIN=false
-PROJECT_DIR=""
+PROJECT_SLUG=""
 MODEL="anthropic/claude-sonnet-4-5"
 THINKING="medium"
 HEARTBEAT_EVERY="30m"
@@ -67,7 +67,7 @@ while [[ $# -gt 0 ]]; do
     --persona) PERSONA_NAME="$2"; shift 2 ;;
     --intake-json) INTAKE_JSON="$2"; shift 2 ;;
     --intake-stdin) INTAKE_STDIN=true; shift ;;
-    --project-dir) PROJECT_DIR="$2"; shift 2 ;;
+    --project-slug) PROJECT_SLUG="$2"; shift 2 ;;
     --model) MODEL="$2"; shift 2 ;;
     --thinking) THINKING="$2"; shift 2 ;;
     --heartbeat) HEARTBEAT_EVERY="$2"; shift 2 ;;
@@ -118,10 +118,10 @@ if [[ -n "$INTAKE_JSON" ]]; then
   INTAKE_DOMAIN="$(json_get "$INTAKE_JSON" "identity.domainName")"
   INTAKE_SLUG="$(json_get "$INTAKE_JSON" "setup.slug")"
   INTAKE_PERSONA="$(json_get "$INTAKE_JSON" "setup.personaName")"
-  INTAKE_PROJECT_DIR="$(json_get "$INTAKE_JSON" "setup.projectDir")"
+  INTAKE_PROJECT_SLUG="$(json_get "$INTAKE_JSON" "setup.projectSlug")"
   [[ -z "$DOMAIN_NAME" ]] && DOMAIN_NAME="${INTAKE_SLUG:-$INTAKE_DOMAIN}"
   [[ -z "$PERSONA_NAME" ]] && PERSONA_NAME="$INTAKE_PERSONA"
-  [[ -z "$PROJECT_DIR" ]] && PROJECT_DIR="$INTAKE_PROJECT_DIR"
+  [[ -z "$PROJECT_SLUG" ]] && PROJECT_SLUG="$INTAKE_PROJECT_SLUG"
 fi
 
 [[ -z "$DOMAIN_NAME" ]] && read -rp "Domain name (e.g. gtm-strategy, research, ops): " DOMAIN_NAME
@@ -135,6 +135,8 @@ PERSONA_SLUG="$(slugify "$PERSONA_NAME")"
 
 OPENCLAW_HOME="$HOME/.openclaw"
 WORKSPACE_DIR="$OPENCLAW_HOME/workspaces/$DOMAIN_SLUG"
+PROJECT_DIR=""
+[[ -n "$PROJECT_SLUG" ]] && PROJECT_DIR="$WORKSPACE_DIR/projects/$(slugify "$PROJECT_SLUG")"
 MEMORY_PLUGIN_DIR="$OPENCLAW_HOME/plugins/domain-memory-$DOMAIN_SLUG"
 COMMERCE_PLUGIN_DIR="$OPENCLAW_HOME/plugins/domain-commerce-$DOMAIN_SLUG"
 INSTALL_DATE="$(date '+%Y-%m-%d')"
@@ -161,7 +163,7 @@ echo "  Commerce:  $(if $ENABLE_COMMERCE; then echo 'install domain-commerce Str
 echo "  Gateway:   $(if $SKIP_GATEWAY; then echo 'skip'; else echo 'onboard/install daemon'; fi)"
 echo "  Ollama:    $(if $SKIP_OLLAMA; then echo 'skip'; else echo 'install nomic-embed-text'; fi)"
 [[ -n "$INTAKE_JSON" ]] && echo "  Intake:    $INTAKE_JSON"
-[[ -n "$PROJECT_DIR" ]] && echo "  Project:   $PROJECT_DIR"
+[[ -n "$PROJECT_SLUG" ]] && echo "  Project:   $WORKSPACE_DIR/projects/$(slugify "$PROJECT_SLUG")"
 $DRY_RUN && echo "  Mode:      DRY RUN - no changes will be made"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
@@ -455,16 +457,15 @@ else
 fi
 
 if [[ -n "$PROJECT_DIR" ]]; then
-  info "Step 11/11 - Creating/filling project repo from base template..."
+  info "Step 11/11 - Creating/filling project directory inside workspace..."
   if $DRY_RUN; then
     echo -e "  ${YELLOW}[dry-run]${NC} Would create/fill project at $PROJECT_DIR"
   else
     if [[ ! -d "$PROJECT_DIR" ]]; then
-      mkdir -p "$(dirname "$PROJECT_DIR")"
-      cp -R "$SCRIPT_DIR/base" "$PROJECT_DIR"
-      ( cd "$PROJECT_DIR" && git init -q )
+      mkdir -p "$PROJECT_DIR"
+      cp -R "$SCRIPT_DIR/base/." "$PROJECT_DIR/"
     fi
-    mkdir -p "$PROJECT_DIR/context" "$PROJECT_DIR/memory" "$PROJECT_DIR/workspaces"
+    mkdir -p "$PROJECT_DIR/context" "$PROJECT_DIR/memory" "$PROJECT_DIR/areas"
     if [[ -n "$INTAKE_JSON" ]]; then
       node "$SCRIPT_DIR/scripts/apply-intake.mjs" \
         --intake-json "$INTAKE_JSON" \
@@ -474,7 +475,7 @@ if [[ -n "$PROJECT_DIR" ]]; then
     else
       cp -R "$SCRIPT_DIR/base/." "$PROJECT_DIR/"
     fi
-    rm -rf "$PROJECT_DIR/workspaces/example-workspace-1" "$PROJECT_DIR/workspaces/example-workspace-2"
+    rm -rf "$PROJECT_DIR/areas/example-area-1" "$PROJECT_DIR/areas/example-area-2"
   fi
 fi
 
@@ -516,8 +517,8 @@ if [[ -n "$PROJECT_DIR" ]]; then
   echo "  Project checklist: $PROJECT_DIR/POST-INSTALL-CHECKLIST.md"
 else
   echo "  Project setup:"
-  echo "    Run with --project-dir <path> or copy base/ into the project root."
-  echo "    Copy base/openclaw/.env.example to a project env source and set PROJECT_ID."
+  echo "    Run with --project-slug <name> to create a project inside the workspace."
+  echo "    Projects live at: $WORKSPACE_DIR/projects/<slug>/"
 fi
 echo ""
 echo "  Heartbeat owns recurring work:"

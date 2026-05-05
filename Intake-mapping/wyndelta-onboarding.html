@@ -170,7 +170,7 @@
     <div class="section-desc">Each work type becomes a workspace your agent operates in. Name them as you'd describe your work to a colleague — not as system categories. 2–4 is typical.</div>
   </div>
 
-  <div class="info-box">Each entry gets its own folder under <code style="color:var(--accent)">workspaces/</code> and a row in the routing table. Your agent will load the right context when you say what you're working on.</div>
+  <div class="info-box">Each entry gets its own folder under <code style="color:var(--accent)">areas/</code> inside your project and a row in the routing table. Your agent will load the right context when you say what you're working on.</div>
 
   <div id="workTypeList"></div>
 
@@ -222,8 +222,8 @@
     </div>
     <div class="form-row"><label>Agent intro line <span class="hint">(one sentence — auto-drafted, edit freely)</span></label>
       <input type="text" data-bind="setup.persona" placeholder="e.g. You are Atlas, an embedded agent for GTM Consulting work." /></div>
-    <div class="form-row"><label>Project directory <span class="hint">(where setup-client.sh copies files on your machine — absolute path)</span></label>
-      <input type="text" data-bind="setup.projectDir" placeholder="e.g. /Users/you/projects/gtm-consulting" /></div>
+    <div class="form-row"><label>Project name <span class="hint">(optional — creates a project folder inside your domain workspace)</span></label>
+      <input type="text" data-bind="setup.projectSlug" placeholder="e.g. q3-strategy, client-acme" /></div>
   </div>
 
   <details>
@@ -260,7 +260,7 @@
 
   <div class="info-box">
     <strong>Recommended:</strong> click <em>Copy install command</em>, then paste it into the same terminal where you ran <code style="color:var(--accent)">bootstrap.sh</code>. The command pipes your intake JSON straight into <code style="color:var(--accent)">install.sh --intake-stdin</code> — no ZIP, no unzip step.<br><br>
-    <strong>Offline fallback:</strong> download the ZIP, unzip it, and run <code style="color:var(--accent)">bash setup-client.sh</code>. The script uses the template at <code style="color:var(--accent)">~/.openclaw/templates/master-agent-template</code> unless you set <code style="color:var(--accent)">TEMPLATE_DIR=/path/to/template</code>. Your domain will be installed at <code style="color:var(--accent)" id="slugPreview">~/.openclaw/workspaces/&lt;slug&gt;/</code> and your project repo at the path you entered in §4.
+    <strong>Offline fallback:</strong> download the ZIP, unzip it, and run <code style="color:var(--accent)">bash setup-client.sh</code>. The script uses the template at <code style="color:var(--accent)">~/.openclaw/templates/master-agent-template</code> unless you set <code style="color:var(--accent)">TEMPLATE_DIR=/path/to/template</code>. Your domain will be installed at <code style="color:var(--accent)" id="slugPreview">~/.openclaw/workspaces/&lt;slug&gt;/</code>. If you named a project in §4, it lands at <code style="color:var(--accent)">~/.openclaw/workspaces/&lt;slug&gt;/projects/&lt;project&gt;/</code>.
   </div>
 
   <details style="margin-bottom:16px;">
@@ -289,7 +289,7 @@ const STORAGE_PREFIX = 'wyndelta-onboarding';
 
 const DEFAULT_ORG_RULES = [
   'Read AGENTS.md at the start of every session',
-  'Load workspace CONTEXT.md before producing any output',
+  'Load area CONTEXT.md before producing any output',
   'Ask before taking irreversible action — never assume approval',
   'Update CONTEXT.md and write to memory at the end of any productive session',
   'Do not create files outside designated workspace folders',
@@ -305,7 +305,7 @@ function blankState() {
     workTypes: [],   // [{ id, name, description, pattern }]
     impact: { goalNarrative: '', timeSaved: '', urgency: '' },
     setup: {
-      slug: '', personaName: '', persona: '', projectDir: '',
+      slug: '', personaName: '', persona: '', projectSlug: '',
       orgRules: DEFAULT_ORG_RULES, projRules: '', hardStops: '',
     },
     generatedFiles: {},
@@ -470,7 +470,7 @@ function buildContext() {
   const slug       = setup.slug || slugify(domainName) || 'domain';
   const personaNm  = setup.personaName || 'Atlas';
   const persona    = setup.persona || `You are ${personaNm}, an embedded agent for ${domainName}.`;
-  const projDir    = setup.projectDir || `~/projects/${slug}`;
+  const projSlug   = setup.projectSlug || '';
 
   // workTypes is the primary source; fall back to legacy agents[] if present
   const workTypes = (state.workTypes && state.workTypes.length)
@@ -486,7 +486,7 @@ function buildContext() {
 
   return {
     now: new Date().toISOString().split('T')[0],
-    domainName, slug, personaNm, persona, projDir,
+    domainName, slug, personaNm, persona, projSlug,
     workerName: id.workerName || '',
     whatYouDo:  id.whatYouDo  || '',
     industry:   id.industry   || '',
@@ -522,7 +522,7 @@ function buildAll() {
 function buildInstallCommand() {
   const ctx = buildContext();
   const json = JSON.stringify(state, null, 2);
-  const projectFlag = ctx.projDir ? ` --project-dir ${shellQuote(ctx.projDir)}` : '';
+  const projectFlag = ctx.projSlug ? ` --project-slug ${shellQuote(ctx.projSlug)}` : '';
   return [
     'TEMPLATE_DIR="${TEMPLATE_DIR:-$HOME/.openclaw/templates/master-agent-template}"',
     `cat <<'WYNDELTA_INTAKE_EOF' | "$TEMPLATE_DIR/install.sh" --intake-stdin${projectFlag}`,
@@ -559,7 +559,7 @@ function generateAllFiles() {
 function genSetupScript(ctx) {
   return `#!/usr/bin/env bash
 # Generated by WynDelta Domain Onboarding on ${ctx.now}
-# Installs ~/.openclaw/workspaces/${ctx.slug}/ and sets up the project repo at ${ctx.projDir}.
+# Installs ~/.openclaw/workspaces/${ctx.slug}/ and optionally creates a project inside the workspace.
 # Run from the unzipped wyndelta-${ctx.slug}/ folder.
 # Uses TEMPLATE_DIR if set, otherwise ~/.openclaw/templates/master-agent-template.
 
@@ -568,13 +568,8 @@ set -euo pipefail
 SLUG="${ctx.slug}"
 SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE_DIR="\${TEMPLATE_DIR:-$HOME/.openclaw/templates/master-agent-template}"
-CLIENT_REPO="\${CLIENT_REPO:-${ctx.projDir}}"
+PROJECT_SLUG="\${PROJECT_SLUG:-${ctx.projSlug}}"
 INTAKE_JSON="\${INTAKE_JSON:-$SCRIPT_DIR/master.json}"
-
-if [[ -z "$CLIENT_REPO" ]]; then
-  echo "✗ Project directory is required. Set it in the wizard or rerun with CLIENT_REPO=/absolute/project/path." >&2
-  exit 1
-fi
 if [[ ! -f "$INTAKE_JSON" ]]; then
   echo "✗ Expected intake JSON at $INTAKE_JSON. Run this script from the unzipped folder or set INTAKE_JSON=..." >&2
   exit 1
@@ -587,19 +582,20 @@ if [[ ! -x "$TEMPLATE_DIR/install.sh" ]]; then
   exit 1
 fi
 
-echo "→ Installing OpenClaw domain and framework project from intake"
-"$TEMPLATE_DIR/install.sh" --intake-json "$INTAKE_JSON" --project-dir "$CLIENT_REPO"
+echo "→ Installing OpenClaw domain workspace from intake"
+PROJECT_FLAG=""
+[[ -n "$PROJECT_SLUG" ]] && PROJECT_FLAG="--project-slug $PROJECT_SLUG"
+"$TEMPLATE_DIR/install.sh" --intake-json "$INTAKE_JSON" $PROJECT_FLAG
 
 cat <<EOF
 
 ✓ Done.
 
-Domain:       $HOME/.openclaw/workspaces/$SLUG
-Project:      $CLIENT_REPO
-
+Domain:  $HOME/.openclaw/workspaces/$SLUG
+${ctx.projSlug ? `Project: $HOME/.openclaw/workspaces/$SLUG/projects/$PROJECT_SLUG` : ''}
 Next: openclaw agent --agent "$SLUG" --message "status"
 Verify that ${ctx.personaNm} references "${ctx.domainName}" by name.
-Review: $CLIENT_REPO/POST-INSTALL-CHECKLIST.md
+Review: $HOME/.openclaw/workspaces/$SLUG/POST-INSTALL-CHECKLIST.md
 EOF
 `;
 }
@@ -624,7 +620,7 @@ wyndelta-${ctx.slug}/
 └── POST-INSTALL-CHECKLIST.md
 \`\`\`
 
-\`setup-client.sh\` calls \`install.sh --intake-json master.json --project-dir ${ctx.projDir}\`. It does not copy Markdown over the OpenClaw workspace; \`install.sh\` is the single provisioning authority.
+\`setup-client.sh\` calls \`install.sh --intake-json master.json${ctx.projSlug ? ` --project-slug ${ctx.projSlug}` : ''}\`. It does not copy Markdown over the OpenClaw workspace; \`install.sh\` is the single provisioning authority.
 
 ## To deploy
 
@@ -679,7 +675,7 @@ function renderGenerated(files) {
   const order = [
     'setup-client.sh','ONBOARDING-README.md','POST-INSTALL-CHECKLIST.md',
   ];
-  const wsKeys  = Object.keys(files).filter(k => k.startsWith('project/workspaces/'));
+  const wsKeys  = Object.keys(files).filter(k => k.startsWith('project/areas/'));
   const tailKeys = [];
   const all = [...order.filter(k => files[k] != null), ...wsKeys, ...tailKeys.filter(k => files[k] != null)];
 
@@ -806,7 +802,7 @@ function migrateToV3(d) {
       slug:        harness.slug        || slugify(intake.companyName) || '',
       personaName: harness.personaName || '',
       persona:     harness.persona     || '',
-      projectDir:  harness.projectDir  || '',
+      projectSlug: harness.projectSlug || harness.projectDir || '',
       orgRules:    harness.orgRules    || DEFAULT_ORG_RULES,
       projRules:   harness.projRules   || '',
       hardStops:   harness.oob         || '',
@@ -867,7 +863,7 @@ function migrateToV3(d) {
   /* ── v1 legacy: harness-scaffold config ───────────────────────────────── */
   if (d.config?.client || d.config?.slug) {
     out.identity.domainName = d.config.client || '';
-    out.setup = { slug: d.config.slug || '', personaName: d.config.personaName || '', persona: d.config.persona || '', projectDir: '', orgRules: d.config.orgrules || DEFAULT_ORG_RULES, projRules: d.config.projrules || '', hardStops: d.config.oob || '' };
+    out.setup = { slug: d.config.slug || '', personaName: d.config.personaName || '', persona: d.config.persona || '', projectSlug: '', orgRules: d.config.orgrules || DEFAULT_ORG_RULES, projRules: d.config.projrules || '', hardStops: d.config.oob || '' };
     return out;
   }
 
@@ -895,13 +891,6 @@ function refreshDerived() {
     state.setup.slug = slugify(id.domainName);
     const el = document.querySelector('[data-bind="setup.slug"]');
     if (el && !el.value) el.value = state.setup.slug;
-  }
-  // projectDir from slug
-  if (state.setup.slug && !setup.projectDir) {
-    const derived = `~/projects/${state.setup.slug}`;
-    state.setup.projectDir = derived;
-    const el = document.querySelector('[data-bind="setup.projectDir"]');
-    if (el && !el.value) el.value = derived;
   }
   // persona from personaName + domainName
   if (setup.personaName && id.domainName && !setup.persona) {

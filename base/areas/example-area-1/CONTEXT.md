@@ -1,10 +1,10 @@
-# [Workspace Name] — Context
+# [Area Name] — Context
 
-<!-- What goes here: The current state and operating model of this workspace.
+<!-- What goes here: The current state and operating model of this area.
      The agent reads this before doing any work here.
 
      SECTIONS AT A GLANCE:
-     - Purpose         → what this workspace is and what it produces (stable)
+     - Purpose         → what this area is and what it produces (stable)
      - Functions       → what operations happen here (stable — rarely changes)
      - Workflow        → the sequence work follows, step by step (stable — rarely changes)
      - Standards       → quality bar, format rules, hard constraints (stable — rarely changes)
@@ -13,52 +13,52 @@
      - Key References  → files and resources to know about (update as project evolves)
 
      Update ONLY Current State at the end of each session.
-     The other sections reflect how this workspace works — change them only when the process changes.
+     The other sections reflect how this area works — change them only when the process changes.
 
-     Rename this file's header to match the actual workspace.
+     Rename this file's header to match the actual area.
      Example: "# Drafting — Context" or "# Research — Context" -->
 
 ## Purpose
 
-<!-- What is this workspace for? What does it produce?
+<!-- What is this area for? What does it produce?
      One or two sentences. Specific enough that the agent knows exactly what belongs here
-     and what doesn't. The agent uses this to decide whether a task belongs in this workspace
+     and what doesn't. The agent uses this to decide whether a task belongs in this area
      or somewhere else.
 
      Good: "Produces all client-facing deliverables — reports, proposals, and summaries —
      from research input to final formatted draft."
      Bad: "Where we write things." -->
 
-[What this workspace is for and what it produces]
+[What this area is for and what it produces]
 
 ---
 
 ## Functions
 
-<!-- What operations does this workspace handle? List the distinct types of work
+<!-- What operations does this area handle? List the distinct types of work
      that happen here. Not a process — just the action vocabulary.
-     4-6 bullets. Stable — update only when the workspace's scope changes.
+     4-6 bullets. Stable — update only when the area's scope changes.
 
      Good: specific operations with a clear input and output.
      Bad: "writing and editing" — too vague to be useful.
 
-     Example (drafting workspace):
+     Example (drafting area):
      - First draft from brief or research summary
      - Revision pass incorporating feedback
      - Self-edit for tone and slop before review
      - Final QA against brief and client standards
      - Formatting and packaging for delivery -->
 
-- [Operation this workspace performs]
-- [Operation this workspace performs]
-- [Operation this workspace performs]
-- [Operation this workspace performs]
+- [Operation this area performs]
+- [Operation this area performs]
+- [Operation this area performs]
+- [Operation this area performs]
 
 ---
 
 ## Workflow
 
-<!-- The sequence work moves through this workspace, step by step.
+<!-- The sequence work moves through this area, step by step.
      This is the process the agent should follow — not standards, not state.
      Numbered steps. Stable — update only when the process changes.
 
@@ -66,7 +66,7 @@
      Include confirmation points and handoff conditions explicitly.
      If the agent doesn't know when to stop or what "done" means for a step, it will guess.
 
-     Example (drafting workspace):
+     Example (drafting area):
      1. Receive brief or research summary → confirm scope and word count before writing
      2. Produce outline → flag for review if deliverable is client-facing
      3. Draft to completion — do not stop mid-document to ask questions
@@ -77,22 +77,22 @@
 1. [First step — what triggers it and what the agent does]
 2. [Second step — any gate or confirmation before proceeding]
 3. [Third step]
-4. [Completion condition — what "done" means for work in this workspace]
+4. [Completion condition — what "done" means for work in this area]
 
 ---
 
 ## Standards and Conventions
 
-<!-- Hard rules specific to this workspace. Format requirements, quality bar,
+<!-- Hard rules specific to this area. Format requirements, quality bar,
      things to always or never do here.
-     Do not repeat org-wide standards from AGENTS.md — only add what's specific to this workspace.
+     Do not repeat org-wide standards from AGENTS.md — only add what's specific to this area.
 
-     Good: "All drafts stay in /workspaces/drafting/ until review sign-off — never move to /production/ unilaterally."
+     Good: "All drafts stay in /areas/drafting/ until review sign-off — never move to /production/ unilaterally."
      Bad: "Be professional." -->
 
-- [Standard specific to this workspace]
-- [Standard specific to this workspace]
-- [Standard specific to this workspace]
+- [Standard specific to this area]
+- [Standard specific to this area]
+- [Standard specific to this area]
 
 ---
 

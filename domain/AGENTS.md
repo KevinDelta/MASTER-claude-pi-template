@@ -117,10 +117,10 @@ Read that row as: when a turn starts with "triage" or matches the Triage task ty
      These are starting points — projects rename and customize as needed.
      Reference these when scaffolding a new project. -->
 
-- `/workspaces/research` — background research, source synthesis, brief production
-- `/workspaces/drafting` — deliverable drafts from first version through final
-- `/workspaces/analysis` — data analysis, pattern synthesis, findings production
-- `/workspaces/delivery` — final deliverables, client-ready assets, sent materials
+- `/areas/research` — background research, source synthesis, brief production
+- `/areas/drafting` — deliverable drafts from first version through final
+- `/areas/analysis` — data analysis, pattern synthesis, findings production
+- `/areas/delivery` — final deliverables, client-ready assets, sent materials
 
 <!-- Add, remove, or rename workspace templates based on this domain's actual work types. -->
 
