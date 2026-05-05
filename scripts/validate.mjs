@@ -48,7 +48,10 @@ function warn(label, detail) { results.push({ kind: "warn", label, detail }); }
 function fail(label, detail) { results.push({ kind: "fail", label, detail }); }
 
 if (!fs.existsSync(workspaceDir) || !fs.statSync(workspaceDir).isDirectory()) {
-  fail("workspace exists", `Not found: ${workspaceDir}`);
+  fail(
+    "workspace exists",
+    `Not found: ${workspaceDir}\n        The domain has not been installed yet. Complete Step 4 first:\n        run the install command from the wizard, or run install.sh --domain ${domainSlug} --persona <name>`,
+  );
   printAndExit();
 } else {
   pass("workspace exists", workspaceDir);

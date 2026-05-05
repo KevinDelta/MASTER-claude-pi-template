@@ -1,125 +1,212 @@
 # MASTER OpenClaw Agent Template
 
-Portable, domain-scoped knowledge worker agent template for OpenClaw. The
-framework is routing-table-first: OpenClaw handles runtime, gateway, channels,
-identity, heartbeat, and plugin loading; this template defines domain context,
-project context, local memory, skills, and dock/export policy.
+A template for building a portable, domain-scoped knowledge worker agent on OpenClaw. The framework is routing-table-first: OpenClaw handles the runtime, channels, identity, heartbeat, and plugins; this template defines who the agent is, how it works, what it knows, and what it's allowed to do.
 
-## Quick Start
+---
 
-Run from any directory:
+## Prerequisites
+
+Before you start:
+
+| Requirement | Why |
+|---|---|
+| **OpenClaw** — installed and on `$PATH` | The runtime that runs your agent. `openclaw --version` should return a version. |
+| **Node.js 18+** | Required by `install.sh` and the validate/build scripts. |
+| **git** | Required by `bootstrap.sh` to clone/update the template. |
+
+Install OpenClaw first. Everything else follows from it.
+
+---
+
+## Getting Started
+
+### Step 1 — Bootstrap the template
+
+Run this once to clone the template to your machine:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kevindelta/MASTER-claude-pi-template/main/bootstrap.sh | bash
 ```
 
-The bootstrap clones or updates the template at:
+This clones the template to `~/.openclaw/templates/master-agent-template` and runs a dry-run pre-flight check. **Nothing is installed yet.** The output tells you so explicitly.
 
-```text
-~/.openclaw/templates/master-agent-template
-```
+> Already have the repo? `cd` into it and skip to Step 2.
 
-Then open the local onboarding wizard:
+---
 
-```bash
-cd ~/.openclaw/templates/master-agent-template
-open Intake-mapping/wyndelta-onboarding.html
-```
-
-The wizard generates a thin client/domain bundle: `master.json`,
-`setup-client.sh`, onboarding notes, and a post-install checklist. From the
-unzipped bundle, run:
+### Step 2 — Open the intake wizard
 
 ```bash
-bash setup-client.sh
-openclaw agent --agent <domain-slug> --message "status" --local
+open ~/.openclaw/templates/master-agent-template/Intake-mapping/wyndelta-onboarding.html
 ```
 
-`setup-client.sh` calls `install.sh --intake-json master.json --project-dir ...`.
-It does not copy generated Markdown over the OpenClaw workspace; `install.sh` is
-the single provisioning authority.
-
-## Bootstrap Options
-
-Use a different repo, branch, or install path:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/kevindelta/MASTER-claude-pi-template/main/bootstrap.sh | \
-  bash -s -- --repo https://github.com/<org>/<repo>.git --branch main --dir ~/.openclaw/templates/test-template
-```
-
-Open the wizard automatically on macOS:
+Or with `--open` on the bootstrap command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kevindelta/MASTER-claude-pi-template/main/bootstrap.sh | bash -s -- --open
 ```
 
-Skip the dry-run smoke check:
+The wizard is a local HTML file. It runs entirely in your browser with no network calls.
+
+---
+
+### Step 3 — Fill in the 5 intake sections
+
+| Section | What it captures |
+|---|---|
+| **§1 Identity** | Your name, domain name, what you do, industry |
+| **§2 Work Types** | 2–4 types of work your agent will do (becomes routing rows + area folders) |
+| **§3 Goals** | What you want to change or improve |
+| **§4 Setup** | Domain slug, persona name, optional project name |
+| **§5 Finish** | Review and copy the install command |
+
+2–4 work types is typical. Name them as you'd describe your work to a colleague, not as system categories.
+
+---
+
+### Step 4 — Install
+
+On the **Finish** screen, click **"Copy install command (recommended)"** and paste it into the terminal where you ran bootstrap:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kevindelta/MASTER-claude-pi-template/main/bootstrap.sh | bash -s -- --skip-smoke
+# This is what gets pasted — shape will match your intake:
+TEMPLATE_DIR="${TEMPLATE_DIR:-$HOME/.openclaw/templates/master-agent-template}"
+cat <<'WYNDELTA_INTAKE_EOF' | "$TEMPLATE_DIR/install.sh" --intake-stdin
+{ ... your intake JSON ... }
+WYNDELTA_INTAKE_EOF
 ```
 
-Install optional Stripe commerce tooling during domain setup:
+Press Enter. `install.sh` will:
+
+1. Create `~/.openclaw/workspaces/<domain>/` with all framework files
+2. Build a combined AGENTS.md from global + domain routing layers
+3. Generate SKILLS.md and POST-INSTALL-CHECKLIST.md
+4. Install the domain-memory plugin
+5. Register an OpenClaw agent for the domain
+6. Configure heartbeat defaults
+7. Create a `<persona>` shell function and `<persona>-status` dashboard function
+
+The terminal output shows every step and the path of every file created.
+
+---
+
+### Step 5 — Validate
+
+> **Prerequisite:** Step 4 must have completed successfully. If the install command from the wizard printed errors or you skipped it, run it again before validating.
+
+Confirm the install is clean:
 
 ```bash
-./install.sh --domain <domain> --persona <persona> --enable-commerce
+~/.openclaw/templates/master-agent-template/install.sh --validate --domain <your-slug>
 ```
 
-The commerce plugin is approval-gated and uses hosted Stripe surfaces. Configure
-restricted Stripe keys in the installed domain environment; never commit filled
-`.env` files.
+`<your-slug>` is the short name you entered in the wizard §4 (e.g. `adusa-workspace`, `research-ops`). It matches the folder name under `~/.openclaw/workspaces/`.
 
-Equivalent environment overrides:
+This checks: workspace exists, required files present, no unfilled annotation blocks, `.env` set up, agent registered, routing table parses. You get a pass/fail report with file:line pointers for anything that needs attention.
+
+If you see `FAIL workspace exists`, the domain was not installed — go back to Step 4.
+
+---
+
+### Step 6 — Fill in your workspace
+
+Open `~/.openclaw/workspaces/<domain>/` and fill in these files before your first session:
+
+| File | What to fill in |
+|---|---|
+| `SOUL.md` | Persona voice, identity, relationship to you. See `domain/examples/` for reference personas. |
+| `AGENTS.md` | Replace the placeholder routing rows with your actual work types and context. |
+| `context/domain.md` | What your domain is, current focus, active projects. |
+| `DOCK.md` | Confirm the Carried/Domain, Carried/Persona, and Carried/Skills sections. |
+| `HEARTBEAT.md` | Review the default recurring tasks; add or trim as needed. |
+| `.env` | Copy from `.env.example`; fill in secrets. Never commit this file. |
+
+Delete all `<!-- ... -->` annotation blocks when done. `--validate` will flag any that remain.
+
+---
+
+### Step 7 — First session
 
 ```bash
-OPENCLAW_TEMPLATE_REPO_URL=https://github.com/<org>/<repo>.git
-OPENCLAW_TEMPLATE_BRANCH=main
-OPENCLAW_TEMPLATE_DIR=~/.openclaw/templates/master-agent-template
+openclaw agent --agent <domain-slug> --message "status" --local
 ```
 
-## What Gets Installed
+Or use the persona alias created by install:
 
-`bootstrap.sh` installs the template checkout only. It does not create a live
-domain until the generated `setup-client.sh` or `install.sh` is run. OpenClaw
-onboarding handles runtime readiness; this framework handles domain/project
-context, routing rows, persona, memory policy, and dock/export policy.
+```bash
+<persona-slug> "summarize active work"
+```
 
-The generated setup creates:
+Check the worker dashboard anytime:
 
-```text
+```bash
+<persona-slug>-status
+```
+
+---
+
+## What gets installed
+
+```
 ~/.openclaw/workspaces/<domain>/
-├── AGENTS.md
-├── SOUL.md
-├── HEARTBEAT.md
-├── MEMORY.md
-├── DOCK.md
+├── AGENTS.md          ← global + domain routing (combined by install.sh)
+├── SOUL.md            ← persona voice and identity
+├── HEARTBEAT.md       ← recurring work handled by OpenClaw heartbeat
+├── MEMORY.md          ← durable facts, preferences, decisions
+├── DOCK.md            ← host/channel export policy
+├── SKILLS.md          ← auto-generated skill index
+├── POST-INSTALL-CHECKLIST.md
 ├── context/
-└── skills/
+│   ├── domain.md      ← what the domain is, active projects
+│   └── clients.md     ← client/stakeholder context
+├── skills/            ← domain-specific skill files
+└── .env               ← secrets and environment config (never commit)
 ```
 
-Project repos are created from `base/` and use `PROJECT_ID` for memory tagging.
+Projects live inside the workspace at `projects/<slug>/` and are created with `--project-slug <name>`.
 
-## OpenClaw vs Framework
+---
 
-OpenClaw gets a message to the right agent, workspace, session, channel,
-heartbeat, and plugin surface. This framework tells the selected agent how to
-work through `AGENTS.md`, `SOUL.md`, `MEMORY.md`, `HEARTBEAT.md`, `DOCK.md`,
-context files, skills, and project routing rows.
+## Adding a project
 
-## Updating
+After the domain is installed, create a project inside the workspace:
+
+```bash
+~/.openclaw/templates/master-agent-template/install.sh \
+  --domain <domain-slug> --persona <persona-name> \
+  --project-slug <project-name>
+```
+
+This creates `~/.openclaw/workspaces/<domain>/projects/<project-slug>/` from the `base/` template — with its own `AGENTS.md`, `TOOLS.md`, `context/`, and `areas/` directories. The project inherits domain routing rows and can override them.
+
+---
+
+## OpenClaw vs this framework
+
+| Layer | Owned by |
+|---|---|
+| Runtime, channels, identity, auth, heartbeat scheduling, plugin loading | OpenClaw |
+| Who the agent is, how it works, what it knows, what it's allowed to do | This framework |
+
+OpenClaw gets a message to the right agent. This framework tells the selected agent how to work.
+
+---
+
+## Updating the template
 
 ```bash
 cd ~/.openclaw/templates/master-agent-template
 git pull --ff-only
 ```
 
-Or rerun the bootstrap command; it updates the existing checkout when it is
-clean.
+Or rerun the bootstrap command — it updates the existing checkout when the working tree is clean.
+
+---
 
 ## Notes
 
-- Do not commit filled `.env` files, client bundles, generated client repos, or secrets.
-- `HEARTBEAT.md` replaces `watches.yaml`; no OS scheduler is part of the active runtime.
-- `DOCK.md` is the policy contract for export, memory, host/channel, and optional commerce boundaries.
-- Stripe workflow constraints are documented in `xDOCS/STRIPE_WORKFLOW.md`.
+- Do not commit `.env` files, client bundles, or secrets.
+- `HEARTBEAT.md` replaces `watches.yaml`. No OS scheduler or cron job is part of the active runtime.
+- `DOCK.md` is the policy contract for memory export, host/channel access, and optional commerce boundaries.
+- Optional Stripe commerce tooling: `install.sh --enable-commerce`. See `DOCK.md §F` for constraints.
+- Stripe workflow documentation: `xDOCS/STRIPE_WORKFLOW.md`.

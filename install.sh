@@ -95,6 +95,7 @@ if $INTAKE_STDIN; then
   cat > "$INTAKE_TMP"
   [[ -s "$INTAKE_TMP" ]] || die "--intake-stdin received empty input"
   INTAKE_JSON="$INTAKE_TMP"
+  YES=true  # stdin is exhausted after reading JSON; auto-accept to avoid empty-input abort
 fi
 
 json_get() {
