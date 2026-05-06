@@ -78,7 +78,7 @@ WYNDELTA_INTAKE_EOF
 
 Press Enter. `install.sh` will:
 
-1. Create `~/.openclaw/workspaces/<domain>/` with all framework files
+1. Create `~/.openclaw/agents/<domain>/` with all framework files
 2. Build a combined AGENTS.md from global + domain routing layers
 3. Generate SKILLS.md and POST-INSTALL-CHECKLIST.md
 4. Install the domain-memory plugin
@@ -100,7 +100,7 @@ Confirm the install is clean:
 ~/.openclaw/templates/master-agent-template/install.sh --validate --domain <your-slug>
 ```
 
-`<your-slug>` is the short name you entered in the wizard §4 (e.g. `adusa-workspace`, `research-ops`). It matches the folder name under `~/.openclaw/workspaces/`.
+`<your-slug>` is the short name you entered in the wizard §4 (e.g. `adusa-workspace`, `research-ops`). It matches the folder name under `~/.openclaw/agents/`.
 
 This checks: workspace exists, required files present, no unfilled annotation blocks, `.env` set up, agent registered, routing table parses. You get a pass/fail report with file:line pointers for anything that needs attention.
 
@@ -110,7 +110,7 @@ If you see `FAIL workspace exists`, the domain was not installed — go back to 
 
 ### Step 6 — Fill in your workspace
 
-Open `~/.openclaw/workspaces/<domain>/` and fill in these files before your first session:
+Open `~/.openclaw/agents/<domain>/` and fill in these files before your first session:
 
 | File | What to fill in |
 |---|---|
@@ -148,7 +148,7 @@ Check the worker dashboard anytime:
 ## What gets installed
 
 ```
-~/.openclaw/workspaces/<domain>/
+~/.openclaw/agents/<domain>/
 ├── AGENTS.md          ← global + domain routing (combined by install.sh)
 ├── SOUL.md            ← persona voice and identity
 ├── HEARTBEAT.md       ← recurring work handled by OpenClaw heartbeat
@@ -177,7 +177,7 @@ After the domain is installed, create a project inside the workspace:
   --project-slug <project-name>
 ```
 
-This creates `~/.openclaw/workspaces/<domain>/projects/<project-slug>/` from the `base/` template — with its own `AGENTS.md`, `TOOLS.md`, `context/`, and `areas/` directories. The project inherits domain routing rows and can override them.
+This creates `~/.openclaw/agents/<domain>/projects/<project-slug>/` from the `base/` template — with its own `AGENTS.md`, `TOOLS.md`, `context/`, and `areas/` directories. The project inherits domain routing rows and can override them.
 
 ---
 

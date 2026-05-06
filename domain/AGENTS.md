@@ -1,8 +1,8 @@
 # AGENTS.md — {{DOMAIN_NAME}} (Domain Layer)
 
-<!-- DOMAIN LAYER — install.sh appends this file to ~/.openclaw/workspaces/<domain>/AGENTS.md after the global section.
+<!-- DOMAIN LAYER — install.sh appends this file to ~/.openclaw/agents/<domain>/AGENTS.md after the global section.
      OpenClaw treats that workspace as the domain agent's memory and instruction surface.
-     Load model: ~/.openclaw/workspaces/<domain>/AGENTS.md (global+domain combined)
+     Load model: ~/.openclaw/agents/<domain>/AGENTS.md (global+domain combined)
      -> project (<project-root>/AGENTS.md) when project work is routed.
      WHAT BELONGS HERE:
      - Domain vocabulary and methods shared across all projects in this domain
@@ -77,7 +77,7 @@
      - channel-routed turns after OpenClaw has selected this agent
      - heartbeat turns
      - project-scoped turns
-     Domain-level memory lives in ~/.openclaw/workspaces/{{DOMAIN_NAME}}/MEMORY.md and memory.db -->
+     Domain-level memory lives in ~/.openclaw/agents/{{DOMAIN_NAME}}/MEMORY.md and memory.db -->
 
 ### Minimum-viable routing row
 
@@ -139,7 +139,7 @@ Read that row as: when a turn starts with "triage" or matches the Triage task ty
 
 ## Routed Skills
 
-<!-- Domain-level skills are loaded from ~/.openclaw/workspaces/{{DOMAIN_NAME}}/skills/*.md
+<!-- Domain-level skills are loaded from ~/.openclaw/agents/{{DOMAIN_NAME}}/skills/*.md
      Universal/project skills are exposed by OpenClaw skill configuration.
      This table does not perform discovery; it documents when routing rows should use each skill.
      Add rows as domain-specific skills are created. -->

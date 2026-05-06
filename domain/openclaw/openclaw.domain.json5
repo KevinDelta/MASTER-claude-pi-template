@@ -24,7 +24,7 @@
 
   agents: {
     defaults: {
-      workspace: "~/.openclaw/workspaces/{{DOMAIN_NAME}}",
+      workspace: "~/.openclaw/agents/{{DOMAIN_NAME}}",
       model: {
         primary: "anthropic/claude-sonnet-4-5",
         fallbacks: ["openai/gpt-5.2"],
@@ -44,7 +44,7 @@
       {
         id: "{{DOMAIN_NAME}}",
         default: true,
-        workspace: "~/.openclaw/workspaces/{{DOMAIN_NAME}}",
+        workspace: "~/.openclaw/agents/{{DOMAIN_NAME}}",
         heartbeat: {
           every: "30m",
           target: "last",
@@ -56,7 +56,7 @@
   skills: {
     load: {
       extraDirs: [
-        "~/.openclaw/workspaces/{{DOMAIN_NAME}}/skills",
+        "~/.openclaw/agents/{{DOMAIN_NAME}}/skills",
       ],
     },
   },
@@ -75,8 +75,8 @@
         enabled: true,
         config: {
           domainName: "{{DOMAIN_NAME}}",
-          dbPath: "~/.openclaw/workspaces/{{DOMAIN_NAME}}/memory.db",
-          memoryPath: "~/.openclaw/workspaces/{{DOMAIN_NAME}}/MEMORY.md",
+          dbPath: "~/.openclaw/agents/{{DOMAIN_NAME}}/memory.db",
+          memoryPath: "~/.openclaw/agents/{{DOMAIN_NAME}}/MEMORY.md",
           ollamaUrl: "http://localhost:11434",
           memoryTopN: 10,
         },
@@ -90,7 +90,7 @@
       //     domainName: "{{DOMAIN_NAME}}",
       //     stripeApiKeyEnv: "STRIPE_RESTRICTED_KEY",
       //     stripeApiVersion: "2026-02-25.clover",
-      //     catalogPath: "~/.openclaw/workspaces/{{DOMAIN_NAME}}/commerce-catalog.json",
+      //     catalogPath: "~/.openclaw/agents/{{DOMAIN_NAME}}/commerce-catalog.json",
       //     allowPaymentLinksWithoutApproval: false,
       //     maxAutoApprovedAmountCents: 0,
       //   },

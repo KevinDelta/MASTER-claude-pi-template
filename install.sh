@@ -3,7 +3,7 @@
 #
 # Sets up an OpenClaw-backed domain workspace on this machine:
 #   1. Checks prerequisites (node, openclaw, ollama)
-#   2. Creates ~/.openclaw/workspaces/<domain-name>/
+#   2. Creates ~/.openclaw/agents/<domain-name>/
 #   3. Deploys domain templates (AGENTS.md, SOUL.md, HEARTBEAT.md, MEMORY.md, context, skills, DOCK.md)
 #   4. Builds routing-first AGENTS.md from global + domain sections
 #   5. Installs the domain-memory OpenClaw plugin
@@ -17,7 +17,7 @@
 #   ./install.sh --domain <name> --persona <name> [options]
 #
 # Options:
-#   --domain <name>       Domain workspace name under ~/.openclaw/workspaces/ (required)
+#   --domain <name>       Domain workspace name under ~/.openclaw/agents/ (required)
 #   --persona <name>      Persona name; creates CLI function (required)
 #   --intake-json <file>  Canonical onboarding intake from the HTML wizard
 #   --intake-stdin        Read intake JSON from stdin (paste-in flow from the wizard)
@@ -86,7 +86,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if $VALIDATE; then
   [[ -z "$DOMAIN_NAME" ]] && die "--validate requires --domain"
   exec node "$SCRIPT_DIR/scripts/validate.mjs" \
-    --workspace-dir "$HOME/.openclaw/workspaces/$(echo "$DOMAIN_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-')"
+    --workspace-dir "$HOME/.openclaw/agents/$(echo "$DOMAIN_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-')"
 fi
 
 if $INTAKE_STDIN; then
@@ -135,7 +135,7 @@ DOMAIN_SLUG="$(slugify "$DOMAIN_NAME")"
 PERSONA_SLUG="$(slugify "$PERSONA_NAME")"
 
 OPENCLAW_HOME="$HOME/.openclaw"
-WORKSPACE_DIR="$OPENCLAW_HOME/workspaces/$DOMAIN_SLUG"
+WORKSPACE_DIR="$OPENCLAW_HOME/agents/$DOMAIN_SLUG"
 PROJECT_DIR=""
 [[ -n "$PROJECT_SLUG" ]] && PROJECT_DIR="$WORKSPACE_DIR/projects/$(slugify "$PROJECT_SLUG")"
 MEMORY_PLUGIN_DIR="$OPENCLAW_HOME/plugins/domain-memory-$DOMAIN_SLUG"
@@ -351,9 +351,9 @@ if [[ ! -f "$ENV_FILE" ]]; then
   run "cp '$WORKSPACE_DIR/.env.example' '$ENV_FILE'"
   run "sed -i.bak \
     -e 's|OPENCLAW_DOMAIN_NAME=my-domain|OPENCLAW_DOMAIN_NAME=$DOMAIN_SLUG|g' \
-    -e 's|DOMAIN_MEMORY_DB_PATH=~/.openclaw/workspaces/my-domain/memory.db|DOMAIN_MEMORY_DB_PATH=$WORKSPACE_DIR/memory.db|g' \
-    -e 's|DOMAIN_MEMORY_PATH=~/.openclaw/workspaces/my-domain/MEMORY.md|DOMAIN_MEMORY_PATH=$WORKSPACE_DIR/MEMORY.md|g' \
-    -e 's|DOMAIN_COMMERCE_CATALOG_PATH=~/.openclaw/workspaces/my-domain/commerce-catalog.json|DOMAIN_COMMERCE_CATALOG_PATH=$WORKSPACE_DIR/commerce-catalog.json|g' \
+    -e 's|DOMAIN_MEMORY_DB_PATH=~/.openclaw/agents/my-domain/memory.db|DOMAIN_MEMORY_DB_PATH=$WORKSPACE_DIR/memory.db|g' \
+    -e 's|DOMAIN_MEMORY_PATH=~/.openclaw/agents/my-domain/MEMORY.md|DOMAIN_MEMORY_PATH=$WORKSPACE_DIR/MEMORY.md|g' \
+    -e 's|DOMAIN_COMMERCE_CATALOG_PATH=~/.openclaw/agents/my-domain/commerce-catalog.json|DOMAIN_COMMERCE_CATALOG_PATH=$WORKSPACE_DIR/commerce-catalog.json|g' \
     '$ENV_FILE' && rm -f '${ENV_FILE}.bak'"
   success "Created $ENV_FILE"
 else

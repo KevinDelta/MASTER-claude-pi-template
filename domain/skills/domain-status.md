@@ -16,7 +16,7 @@ Load this skill when:
 
 ### 1. Load domain context
 
-Read `~/.openclaw/workspaces/<name>/MEMORY.md` for high-level domain orientation.
+Read `~/.openclaw/agents/<name>/MEMORY.md` for high-level domain orientation.
 
 Check the active projects list in `context/domain.md`.
 

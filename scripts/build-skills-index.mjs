@@ -95,7 +95,7 @@ function render(universal, domainSkills) {
   lines.push("## Domain Skills");
   lines.push("");
   if (!domainSkills.length) {
-    lines.push("*No domain skills installed yet. Add `.md` files with `name`/`description` frontmatter to `~/.openclaw/workspaces/<domain>/skills/`.*");
+    lines.push("*No domain skills installed yet. Add `.md` files with `name`/`description` frontmatter to `~/.openclaw/agents/<domain>/skills/`.*");
   } else {
     lines.push("Loaded from this domain's workspace.");
     lines.push("");

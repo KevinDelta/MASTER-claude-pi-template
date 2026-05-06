@@ -8,4 +8,4 @@ These are reference SOUL.md files. They are not loaded by `install.sh`. They exi
 | `SOUL.creative-director.md` | Creative direction — opinionated, visual, names what's off |
 | `SOUL.research-analyst.md` | Research — citation-first, skeptical, won't generalize from thin data |
 
-To use one: copy the file to `~/.openclaw/workspaces/<your-domain>/SOUL.md`, replace the name and domain, then rewrite voice/identity to match the actual worker's stance. Don't ship the example unchanged.
+To use one: copy the file to `~/.openclaw/agents/<your-domain>/SOUL.md`, replace the name and domain, then rewrite voice/identity to match the actual worker's stance. Don't ship the example unchanged.

@@ -13,12 +13,12 @@ A template system for building portable, domain-scoped knowledge worker agents. 
 ## How to Use This Template
 
 1. Run `./install.sh --domain <name> --persona <persona-name>`
-2. Fill in `~/.openclaw/workspaces/<name>/AGENTS.md` - domain vocabulary, methods, routing scaffold
-3. Fill in `~/.openclaw/workspaces/<name>/SOUL.md` - persona voice, identity, relationship to worker
-4. Fill in `~/.openclaw/workspaces/<name>/context/domain.md` - what the domain is, active projects
-5. Fill in `~/.openclaw/workspaces/<name>/HEARTBEAT.md` - recurring work handled by OpenClaw heartbeat
-6. Fill in `~/.openclaw/workspaces/<name>/DOCK.md` - carried items, export allowlist, host/channel requirements
-7. Optionally create a project inside the workspace: `--project-slug <name>` → `~/.openclaw/workspaces/<name>/projects/<slug>/`
+2. Fill in `~/.openclaw/agents/<name>/AGENTS.md` - domain vocabulary, methods, routing scaffold
+3. Fill in `~/.openclaw/agents/<name>/SOUL.md` - persona voice, identity, relationship to worker
+4. Fill in `~/.openclaw/agents/<name>/context/domain.md` - what the domain is, active projects
+5. Fill in `~/.openclaw/agents/<name>/HEARTBEAT.md` - recurring work handled by OpenClaw heartbeat
+6. Fill in `~/.openclaw/agents/<name>/DOCK.md` - carried items, export allowlist, host/channel requirements
+7. Optionally create a project inside the workspace: `--project-slug <name>` → `~/.openclaw/agents/<name>/projects/<slug>/`
 8. Fill in project `AGENTS.md`, `TOOLS.md`, `context/` files, and `areas/`
 9. Delete annotation comments before going live
 

@@ -58,7 +58,7 @@
      - Always include Session start and Session end rows if this project needs project-specific behavior
 
      MEMORY NOTE:
-     Domain memory lives in ~/.openclaw/workspaces/<name>/memory.db and MEMORY.md.
+     Domain memory lives in ~/.openclaw/agents/<name>/memory.db and MEMORY.md.
      Session start reads MEMORY.md for full orientation. Use domain-memory plugin tools for keyword/semantic recall.
      Remove the session-start row only if you want the domain default to apply unchanged.
 
@@ -104,7 +104,7 @@
 
 ## Routed Skills
 
-<!-- Domain skills are loaded from ~/.openclaw/workspaces/<name>/skills/*.md.
+<!-- Domain skills are loaded from ~/.openclaw/agents/<name>/skills/*.md.
      OpenClaw exposes configured skill directories to the agent.
      This table does not perform discovery; it documents when routing rows should use each skill.
      List project-level skills here. Domain-level skills are listed in the domain AGENTS.md. -->

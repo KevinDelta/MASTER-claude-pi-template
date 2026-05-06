@@ -94,7 +94,7 @@ function applyDomain(dir, ctx) {
 function applyProject(dir, ctx) {
   ensureDir(path.join(dir, "context"));
   ensureDir(path.join(dir, "memory"));
-  ensureDir(path.join(dir, "workspaces"));
+  ensureDir(path.join(dir, "areas"));
   writeFile(path.join(dir, "AGENTS.md"), projectAgents(ctx));
   writeFile(path.join(dir, "context", "project.md"), projectContext(ctx));
   writeFile(path.join(dir, "context", "client.md"), clientContext(ctx));
@@ -102,7 +102,7 @@ function applyProject(dir, ctx) {
   writeFile(path.join(dir, "context", "decisions.md"), decisionsContext(ctx));
   writeFile(path.join(dir, "memory", "MEMORY.md"), projectMemory(ctx));
   for (const w of ctx.workTypes) {
-    const wsDir = path.join(dir, "workspaces", w.workspace);
+    const wsDir = path.join(dir, "areas", w.workspace);
     ensureDir(wsDir);
     writeFile(path.join(wsDir, "CONTEXT.md"), workspaceContext(w, ctx));
   }
@@ -530,7 +530,7 @@ function postInstallChecklist(ctx) {
 
 - [ ] Run \`openclaw --version\` and confirm OpenClaw is installed.
 - [ ] Run \`openclaw config validate\`.
-- [ ] Run \`openclaw agents list\` and confirm \`${ctx.slug}\` points to \`~/.openclaw/workspaces/${ctx.slug}\`.
+- [ ] Run \`openclaw agents list\` and confirm \`${ctx.slug}\` points to \`~/.openclaw/agents/${ctx.slug}\`.
 - [ ] Run \`openclaw agent --agent ${ctx.slug} --message "status" --local\`.
 - [ ] Confirm \`AGENTS.md\` contains both global and domain layers.
 - [ ] Review project routing rows and workspace \`CONTEXT.md\` files.
