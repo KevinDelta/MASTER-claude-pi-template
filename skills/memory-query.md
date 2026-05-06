@@ -36,7 +36,7 @@ This makes recall visible and auditable. Do not pretend memory was injected if y
 At session start, read domain MEMORY.md directly for complete orientation. Plugin search gives keyword-relevant slices; reading MEMORY.md gives the full picture of what the domain knows.
 
 ```
-read("~/.openclaw/workspaces/<name>/MEMORY.md")
+read("~/.openclaw/agents/<name>/MEMORY.md")
 ```
 
 After reading, state what applies to today's work before proceeding:

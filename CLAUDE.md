@@ -12,17 +12,22 @@ A template system for building portable, domain-scoped knowledge worker agents. 
 
 ## How to Use This Template
 
-1. Run `./install.sh --domain <name> --persona <persona-name>`
-2. Fill in `~/.openclaw/agents/<name>/AGENTS.md` - domain vocabulary, methods, routing scaffold
-3. Fill in `~/.openclaw/agents/<name>/SOUL.md` - persona voice, identity, relationship to worker
-4. Fill in `~/.openclaw/agents/<name>/context/domain.md` - what the domain is, active projects
-5. Fill in `~/.openclaw/agents/<name>/HEARTBEAT.md` - recurring work handled by OpenClaw heartbeat
-6. Fill in `~/.openclaw/agents/<name>/DOCK.md` - carried items, export allowlist, host/channel requirements
-7. Optionally create a project inside the workspace: `--project-slug <name>` → `~/.openclaw/agents/<name>/projects/<slug>/`
-8. Fill in project `AGENTS.md`, `TOOLS.md`, `context/` files, and `areas/`
-9. Delete annotation comments before going live
+**Prerequisite:** OpenClaw must be initialized first (`openclaw onboard`). The workspace at `~/.openclaw/workspace/` must exist.
 
-Projects live inside the domain workspace — they are part of the worker's world, not separate repos. The OpenClaw workspace is the single git-tracked home for domain brain files and all project work.
+1. Run `./install.sh --domain <name> --persona <persona-name>`
+   - Replaces `~/.openclaw/workspace/AGENTS.md` with combined global + domain routing
+   - Appends domain identity to `~/.openclaw/workspace/SOUL.md` (preserves OC's content)
+   - Appends domain tasks to `~/.openclaw/workspace/HEARTBEAT.md` (preserves OC's content)
+   - Adds MEMORY.md, DOCK.md, context/, skills/ (skip-if-exists — no overwrites)
+2. Fill in `~/.openclaw/workspace/SOUL.md` — the `# Domain Identity:` section the installer added
+3. Fill in `~/.openclaw/workspace/AGENTS.md` - routing rows, delete annotation blocks
+4. Fill in `~/.openclaw/workspace/context/domain.md` - what the domain is, active projects
+5. Fill in `~/.openclaw/workspace/DOCK.md` - carried items, export allowlist, host/channel requirements
+6. Optionally create a project: `--project-slug <name>` → `~/.openclaw/workspace/projects/<slug>/`
+7. Fill in project `AGENTS.md`, `TOOLS.md`, `context/` files, and `areas/`
+8. Delete annotation comments before going live
+
+Projects live inside OC's native workspace — the single git-tracked home for domain brain files and all project work.
 
 Wizard-based onboarding uses `master.json` as the canonical intake contract:
 

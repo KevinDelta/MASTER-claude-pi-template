@@ -1,24 +1,61 @@
 # MASTER OpenClaw Agent Template
 
-A template for building a portable, domain-scoped knowledge worker agent on OpenClaw. The framework is routing-table-first: OpenClaw handles the runtime, channels, identity, heartbeat, and plugins; this template defines who the agent is, how it works, what it knows, and what it's allowed to do.
+A template for building a portable, domain-scoped knowledge worker agent on OpenClaw. The framework layers a domain routing table, persona, memory, skills, and project structure on top of OpenClaw's native workspace — enhancing what OC creates rather than duplicating it.
 
 ---
 
 ## Prerequisites
 
-Before you start:
-
 | Requirement | Why |
 |---|---|
-| **OpenClaw** — installed and on `$PATH` | The runtime that runs your agent. `openclaw --version` should return a version. |
+| **OpenClaw** — installed, initialized, and on `$PATH` | Creates `~/.openclaw/workspace/` that our framework builds on. `openclaw --version` should return a version. |
 | **Node.js 18+** | Required by `install.sh` and the validate/build scripts. |
 | **git** | Required by `bootstrap.sh` to clone/update the template. |
 
-Install OpenClaw first. Everything else follows from it.
+**OpenClaw must be installed and initialized before running this installer.** The workspace at `~/.openclaw/workspace/` must exist. If it doesn't, run `openclaw onboard` first.
+
+---
+
+## Architecture
+
+```
+~/.openclaw/
+├── workspace/                    ← OC's native workspace (brain files, git-tracked)
+│   ├── AGENTS.md                 ← OC creates; installer replaces with domain routing
+│   ├── SOUL.md                   ← OC creates; installer appends domain identity
+│   ├── HEARTBEAT.md              ← OC creates; installer appends domain task block
+│   ├── TOOLS.md                  ← OC creates; leave alone
+│   ├── MEMORY.md                 ← installer adds
+│   ├── DOCK.md                   ← installer adds
+│   ├── context/                  ← installer adds
+│   ├── skills/                   ← installer adds
+│   └── projects/                 ← installer adds (from base/ template)
+│       └── <project-slug>/
+│
+├── agents/
+│   └── <domain>/                 ← OC runtime only (sessions, state)
+│
+└── plugins/
+    └── domain-memory-<domain>/   ← installer adds
+```
+
+The domain agent (`openclaw agents add <domain>`) uses OC's native workspace. Our framework adds the routing table, persona, memory, and project scaffolding on top of what OC already created.
 
 ---
 
 ## Getting Started
+
+### Step 0 — Install and initialize OpenClaw
+
+Install OpenClaw and run initial setup:
+
+```bash
+openclaw onboard
+```
+
+This creates `~/.openclaw/workspace/` with native brain files (AGENTS.md, SOUL.md, HEARTBEAT.md, TOOLS.md). Our installer builds on this — it must exist before Step 4.
+
+---
 
 ### Step 1 — Bootstrap the template
 
@@ -28,7 +65,7 @@ Run this once to clone the template to your machine:
 curl -fsSL https://raw.githubusercontent.com/kevindelta/MASTER-claude-pi-template/main/bootstrap.sh | bash
 ```
 
-This clones the template to `~/.openclaw/templates/master-agent-template` and runs a dry-run pre-flight check. **Nothing is installed yet.** The output tells you so explicitly.
+This clones the template to `~/.openclaw/templates/master-agent-template` and runs a dry-run pre-flight check. **Nothing is installed yet.**
 
 > Already have the repo? `cd` into it and skip to Step 2.
 
@@ -60,13 +97,11 @@ The wizard is a local HTML file. It runs entirely in your browser with no networ
 | **§4 Setup** | Domain slug, persona name, optional project name |
 | **§5 Finish** | Review and copy the install command |
 
-2–4 work types is typical. Name them as you'd describe your work to a colleague, not as system categories.
-
 ---
 
 ### Step 4 — Install
 
-On the **Finish** screen, click **"Copy install command (recommended)"** and paste it into the terminal where you ran bootstrap:
+On the **Finish** screen, click **"Copy install command (recommended)"** and paste it into the terminal:
 
 ```bash
 # This is what gets pasted — shape will match your intake:
@@ -76,52 +111,47 @@ cat <<'WYNDELTA_INTAKE_EOF' | "$TEMPLATE_DIR/install.sh" --intake-stdin
 WYNDELTA_INTAKE_EOF
 ```
 
-Press Enter. `install.sh` will:
+The installer will:
 
-1. Create `~/.openclaw/agents/<domain>/` with all framework files
-2. Build a combined AGENTS.md from global + domain routing layers
-3. Generate SKILLS.md and POST-INSTALL-CHECKLIST.md
-4. Install the domain-memory plugin
-5. Register an OpenClaw agent for the domain
-6. Configure heartbeat defaults
-7. Create a `<persona>` shell function and `<persona>-status` dashboard function
-
-The terminal output shows every step and the path of every file created.
+1. Verify `~/.openclaw/workspace/` exists (fail with instructions if not)
+2. Replace `AGENTS.md` with the domain routing table (global + domain combined)
+3. Append the domain identity section to `SOUL.md`
+4. Append the domain task block to `HEARTBEAT.md`
+5. Add `MEMORY.md`, `DOCK.md`, `context/`, `skills/` (skipped if already present)
+6. Install the domain-memory plugin
+7. Create `.env` from template (skipped if already present)
+8. Register the domain agent with OpenClaw
+9. Configure heartbeat defaults
+10. Create a `<persona>` shell alias and `<persona>-status` dashboard function
 
 ---
 
 ### Step 5 — Validate
 
-> **Prerequisite:** Step 4 must have completed successfully. If the install command from the wizard printed errors or you skipped it, run it again before validating.
-
-Confirm the install is clean:
+> **Prerequisite:** Step 4 must have completed successfully.
 
 ```bash
 ~/.openclaw/templates/master-agent-template/install.sh --validate --domain <your-slug>
 ```
 
-`<your-slug>` is the short name you entered in the wizard §4 (e.g. `adusa-workspace`, `research-ops`). It matches the folder name under `~/.openclaw/agents/`.
+This checks: workspace exists, OC native files present, domain routing section in AGENTS.md, domain identity in SOUL.md, domain tasks in HEARTBEAT.md, required framework files present, `.env` keys set, agent registered.
 
-This checks: workspace exists, required files present, no unfilled annotation blocks, `.env` set up, agent registered, routing table parses. You get a pass/fail report with file:line pointers for anything that needs attention.
-
-If you see `FAIL workspace exists`, the domain was not installed — go back to Step 4.
+If you see `FAIL workspace exists`, run `openclaw onboard` and then re-run Step 4.
 
 ---
 
 ### Step 6 — Fill in your workspace
 
-Open `~/.openclaw/agents/<domain>/` and fill in these files before your first session:
+Open `~/.openclaw/workspace/` and fill in these files before your first session:
 
 | File | What to fill in |
 |---|---|
-| `SOUL.md` | Persona voice, identity, relationship to you. See `domain/examples/` for reference personas. |
-| `AGENTS.md` | Replace the placeholder routing rows with your actual work types and context. |
+| `SOUL.md` | The `# Domain Identity` section appended by the installer — persona voice, identity, relationship. |
+| `AGENTS.md` | Replace placeholder routing rows; delete `<!-- ... -->` annotation blocks. |
 | `context/domain.md` | What your domain is, current focus, active projects. |
 | `DOCK.md` | Confirm the Carried/Domain, Carried/Persona, and Carried/Skills sections. |
 | `HEARTBEAT.md` | Review the default recurring tasks; add or trim as needed. |
 | `.env` | Copy from `.env.example`; fill in secrets. Never commit this file. |
-
-Delete all `<!-- ... -->` annotation blocks when done. `--validate` will flag any that remain.
 
 ---
 
@@ -145,28 +175,6 @@ Check the worker dashboard anytime:
 
 ---
 
-## What gets installed
-
-```
-~/.openclaw/agents/<domain>/
-├── AGENTS.md          ← global + domain routing (combined by install.sh)
-├── SOUL.md            ← persona voice and identity
-├── HEARTBEAT.md       ← recurring work handled by OpenClaw heartbeat
-├── MEMORY.md          ← durable facts, preferences, decisions
-├── DOCK.md            ← host/channel export policy
-├── SKILLS.md          ← auto-generated skill index
-├── POST-INSTALL-CHECKLIST.md
-├── context/
-│   ├── domain.md      ← what the domain is, active projects
-│   └── clients.md     ← client/stakeholder context
-├── skills/            ← domain-specific skill files
-└── .env               ← secrets and environment config (never commit)
-```
-
-Projects live inside the workspace at `projects/<slug>/` and are created with `--project-slug <name>`.
-
----
-
 ## Adding a project
 
 After the domain is installed, create a project inside the workspace:
@@ -177,7 +185,7 @@ After the domain is installed, create a project inside the workspace:
   --project-slug <project-name>
 ```
 
-This creates `~/.openclaw/agents/<domain>/projects/<project-slug>/` from the `base/` template — with its own `AGENTS.md`, `TOOLS.md`, `context/`, and `areas/` directories. The project inherits domain routing rows and can override them.
+This creates `~/.openclaw/workspace/projects/<project-slug>/` from the `base/` template — with its own `AGENTS.md`, `TOOLS.md`, `context/`, and `areas/` directories.
 
 ---
 
@@ -186,9 +194,10 @@ This creates `~/.openclaw/agents/<domain>/projects/<project-slug>/` from the `ba
 | Layer | Owned by |
 |---|---|
 | Runtime, channels, identity, auth, heartbeat scheduling, plugin loading | OpenClaw |
-| Who the agent is, how it works, what it knows, what it's allowed to do | This framework |
+| Native workspace files (AGENTS.md, SOUL.md, HEARTBEAT.md, TOOLS.md) | OpenClaw |
+| Domain routing table, persona, memory, skills, projects | This framework |
 
-OpenClaw gets a message to the right agent. This framework tells the selected agent how to work.
+OpenClaw creates the workspace. This framework populates it with domain-specific identity and makes it routing-first.
 
 ---
 
@@ -199,14 +208,11 @@ cd ~/.openclaw/templates/master-agent-template
 git pull --ff-only
 ```
 
-Or rerun the bootstrap command — it updates the existing checkout when the working tree is clean.
-
 ---
 
 ## Notes
 
 - Do not commit `.env` files, client bundles, or secrets.
-- `HEARTBEAT.md` replaces `watches.yaml`. No OS scheduler or cron job is part of the active runtime.
+- `HEARTBEAT.md` — do not create cron jobs, launchd jobs, or systemd timers. The `# Domain Tasks:` block is the source of truth.
 - `DOCK.md` is the policy contract for memory export, host/channel access, and optional commerce boundaries.
 - Optional Stripe commerce tooling: `install.sh --enable-commerce`. See `DOCK.md §F` for constraints.
-- Stripe workflow documentation: `xDOCS/STRIPE_WORKFLOW.md`.

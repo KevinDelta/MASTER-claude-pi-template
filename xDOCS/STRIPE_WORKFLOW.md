@@ -86,7 +86,7 @@ client/customer, and Stripe object involved. The tool call records this with
 `DOMAIN_COMMERCE_CATALOG_PATH`, usually:
 
 ```text
-~/.openclaw/workspaces/<domain>/commerce-catalog.json
+~/.openclaw/agents/<domain>/commerce-catalog.json
 ```
 
 Suggested shape:

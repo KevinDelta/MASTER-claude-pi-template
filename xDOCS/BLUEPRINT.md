@@ -60,7 +60,7 @@ Do not encode channel/account/peer bindings in `AGENTS.md`. That belongs in Open
 ├── active-domain                 # last installed/selected domain slug
 ├── plugins/
 │   └── domain-memory-<domain>/   # local OpenClaw plugin copy
-└── workspaces/
+└── agents/
     └── <domain>/
         ├── AGENTS.md             # global + domain combined by install.sh
         ├── SOUL.md
@@ -84,7 +84,7 @@ Project repos still use the `base/` template:
 │   ├── .env.example
 │   └── project.config.json5
 ├── context/
-└── workspaces/
+└── areas/
 ```
 
 ---
@@ -143,7 +143,7 @@ Domain memory has two local layers. OpenClaw's native memory is Markdown/workspa
 Location:
 
 ```
-~/.openclaw/workspaces/<domain>/memory.db
+~/.openclaw/agents/<domain>/memory.db
 ```
 
 Plugin:
@@ -296,7 +296,7 @@ Wizard-generated bundles use the intake-driven form:
 The installer:
 
 1. checks Node/OpenClaw,
-2. creates `~/.openclaw/workspaces/<domain>/`,
+2. creates `~/.openclaw/agents/<domain>/`,
 3. deploys domain files,
 4. builds combined `AGENTS.md`,
 5. applies intake through the canonical framework renderer when `--intake-json` is provided,

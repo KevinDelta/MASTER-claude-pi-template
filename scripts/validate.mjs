@@ -2,8 +2,11 @@
 /* Validate an installed OpenClaw domain workspace.
  *
  * Usage:
- *   node scripts/validate.mjs --workspace-dir <path>
+ *   node scripts/validate.mjs --workspace-dir <path> [--domain <slug>]
  *   ./install.sh --validate --domain <name>
+ *
+ * --workspace-dir defaults to ~/.openclaw/workspace (OC's native workspace)
+ * --domain is optional; used for reporting and agent-registration check only
  *
  * Exit codes:
  *   0  all checks passed (warnings allowed)
@@ -12,6 +15,7 @@
  */
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execSync } from "node:child_process";
 
@@ -22,26 +26,24 @@ for (let i = 0; i < args.length; i += 1) {
   if (!arg.startsWith("--")) usage();
   const key = arg.slice(2);
   const val = args[i + 1];
-  if (!val || val.startsWith("--")) usage();
+  if (!val || val.startsWith("--")) { opts[key] = true; continue; }
   opts[key] = val;
   i += 1;
 }
 
-if (!opts["workspace-dir"]) usage();
-
-const workspaceDir = path.resolve(opts["workspace-dir"]);
-const domainSlug = path.basename(workspaceDir);
+const DEFAULT_WORKSPACE = path.join(os.homedir(), ".openclaw", "workspace");
+const workspaceDir = path.resolve(opts["workspace-dir"] || DEFAULT_WORKSPACE);
+const domainSlug = opts["domain"] || null;
 
 const results = [];
-const REQUIRED_FILES = [
-  "AGENTS.md",
-  "SOUL.md",
-  "MEMORY.md",
-  "HEARTBEAT.md",
-  "DOCK.md",
-  "context/domain.md",
-  ".env",
-];
+
+// Files OC creates natively — must exist before our installer runs
+const OC_NATIVE_FILES = ["AGENTS.md", "SOUL.md", "HEARTBEAT.md", "TOOLS.md"];
+
+// Files our installer adds — must exist after install runs
+const FRAMEWORK_FILES = ["MEMORY.md", "DOCK.md", "context/domain.md", ".env"];
+
+const REQUIRED_FILES = [...OC_NATIVE_FILES, ...FRAMEWORK_FILES];
 
 function pass(label, detail) { results.push({ kind: "pass", label, detail }); }
 function warn(label, detail) { results.push({ kind: "warn", label, detail }); }
@@ -50,7 +52,7 @@ function fail(label, detail) { results.push({ kind: "fail", label, detail }); }
 if (!fs.existsSync(workspaceDir) || !fs.statSync(workspaceDir).isDirectory()) {
   fail(
     "workspace exists",
-    `Not found: ${workspaceDir}\n        The domain has not been installed yet. Complete Step 4 first:\n        run the install command from the wizard, or run install.sh --domain ${domainSlug} --persona <name>`,
+    `Not found: ${workspaceDir}\n        OpenClaw has not been initialized yet.\n        Run: openclaw onboard\n        Then re-run the installer: install.sh --domain <name> --persona <name>`,
   );
   printAndExit();
 } else {
@@ -74,6 +76,7 @@ for (const rel of REQUIRED_FILES) {
 checkAnnotations(workspaceDir);
 checkEnv(workspaceDir);
 checkRoutingTable(workspaceDir);
+checkDomainInstalled(workspaceDir);
 checkMemoryDb(workspaceDir);
 checkAgentRegistered(domainSlug);
 
@@ -159,6 +162,27 @@ function checkRoutingTable(dir) {
   }
 }
 
+function checkDomainInstalled(dir) {
+  const soulFile = path.join(dir, "SOUL.md");
+  if (fs.existsSync(soulFile)) {
+    const soulContent = fs.readFileSync(soulFile, "utf8");
+    if (/# Domain Identity:/i.test(soulContent)) {
+      pass("SOUL.md domain section", "domain identity section present");
+    } else {
+      warn("SOUL.md domain section", "no '# Domain Identity:' section found — run install.sh to add it");
+    }
+  }
+  const hbFile = path.join(dir, "HEARTBEAT.md");
+  if (fs.existsSync(hbFile)) {
+    const hbContent = fs.readFileSync(hbFile, "utf8");
+    if (/# Domain Tasks:/i.test(hbContent)) {
+      pass("HEARTBEAT.md domain tasks", "domain task block present");
+    } else {
+      warn("HEARTBEAT.md domain tasks", "no '# Domain Tasks:' block found — run install.sh to add it");
+    }
+  }
+}
+
 function checkMemoryDb(dir) {
   const dbPath = path.join(dir, "memory.db");
   if (!fs.existsSync(dbPath)) {
@@ -174,6 +198,10 @@ function checkMemoryDb(dir) {
 }
 
 function checkAgentRegistered(slug) {
+  if (!slug) {
+    warn("openclaw agent registered", "no --domain provided; skipping agent registration check");
+    return;
+  }
   let out;
   try {
     out = execSync("openclaw agents list 2>&1", { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
@@ -184,7 +212,7 @@ function checkAgentRegistered(slug) {
   if (out.includes(slug)) {
     pass("openclaw agent registered", `'${slug}' found in 'openclaw agents list'`);
   } else {
-    fail("openclaw agent registered", `'${slug}' not found in 'openclaw agents list' output`);
+    fail("openclaw agent registered", `'${slug}' not found in 'openclaw agents list' — run: openclaw agents add '${slug}'`);
   }
 }
 

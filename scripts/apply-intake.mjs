@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 function usage() {
-  console.error(`Usage: node scripts/apply-intake.mjs --intake-json <file> --workspace-dir <dir> [--project-dir <dir>] [--template-dir <dir>]`);
+  console.error(`Usage: node scripts/apply-intake.mjs --intake-json <file> [--workspace-dir <dir>] [--project-dir <dir>] [--template-dir <dir>]`);
   process.exit(2);
 }
 
@@ -19,10 +20,11 @@ for (let i = 0; i < args.length; i += 1) {
   i += 1;
 }
 
-if (!opts["intake-json"] || !opts["workspace-dir"]) usage();
+if (!opts["intake-json"]) usage();
 
+const DEFAULT_WORKSPACE = path.join(os.homedir(), ".openclaw", "workspace");
 const intakePath = path.resolve(opts["intake-json"]);
-const workspaceDir = path.resolve(opts["workspace-dir"]);
+const workspaceDir = path.resolve(opts["workspace-dir"] || DEFAULT_WORKSPACE);
 const projectDir = opts["project-dir"] ? path.resolve(opts["project-dir"]) : "";
 const today = new Date().toISOString().slice(0, 10);
 
@@ -81,13 +83,19 @@ function buildContext(input) {
 
 function applyDomain(dir, ctx) {
   ensureDir(path.join(dir, "context"));
+  // AGENTS.md: always rewrite with domain routing sections (our content is authority)
   rewriteDomainAgents(path.join(dir, "AGENTS.md"), ctx);
-  writeFile(path.join(dir, "SOUL.md"), domainSoul(ctx));
-  writeFile(path.join(dir, "MEMORY.md"), domainMemory(ctx));
-  writeFile(path.join(dir, "HEARTBEAT.md"), domainHeartbeat(ctx));
-  writeFile(path.join(dir, "context", "domain.md"), domainContext(ctx));
-  writeFile(path.join(dir, "context", "clients.md"), domainClients(ctx));
+  // SOUL.md: append domain identity section to OC's native file (idempotent)
+  appendSoulSection(path.join(dir, "SOUL.md"), ctx);
+  // HEARTBEAT.md: append domain task block to OC's native file (idempotent)
+  appendHeartbeatSection(path.join(dir, "HEARTBEAT.md"), ctx);
+  // Add-only files: write only if not already present
+  writeIfNew(path.join(dir, "MEMORY.md"), domainMemory(ctx));
+  writeIfNew(path.join(dir, "context", "domain.md"), domainContext(ctx));
+  writeIfNew(path.join(dir, "context", "clients.md"), domainClients(ctx));
+  // DOCK.md: in-place update (idempotent)
   applyDock(path.join(dir, "DOCK.md"), ctx);
+  // Checklist: always generate fresh
   writeFile(path.join(dir, "POST-INSTALL-CHECKLIST.md"), postInstallChecklist(ctx));
 }
 
@@ -530,7 +538,7 @@ function postInstallChecklist(ctx) {
 
 - [ ] Run \`openclaw --version\` and confirm OpenClaw is installed.
 - [ ] Run \`openclaw config validate\`.
-- [ ] Run \`openclaw agents list\` and confirm \`${ctx.slug}\` points to \`~/.openclaw/agents/${ctx.slug}\`.
+- [ ] Run \`openclaw agents list\` and confirm \`${ctx.slug}\` is registered.
 - [ ] Run \`openclaw agent --agent ${ctx.slug} --message "status" --local\`.
 - [ ] Confirm \`AGENTS.md\` contains both global and domain layers.
 - [ ] Review project routing rows and workspace \`CONTEXT.md\` files.
@@ -580,6 +588,26 @@ function ensureDir(dir) {
 function writeFile(file, content) {
   ensureDir(path.dirname(file));
   fs.writeFileSync(file, content, "utf8");
+}
+
+function writeIfNew(file, content) {
+  if (fs.existsSync(file)) return;
+  ensureDir(path.dirname(file));
+  fs.writeFileSync(file, content, "utf8");
+}
+
+function appendSoulSection(file, ctx) {
+  const existing = readIfExists(file);
+  if (existing.includes("# Domain Identity:")) return;
+  const section = `\n\n---\n\n# Domain Identity: ${ctx.personaName}\n<!-- Added by apply-intake.mjs ${ctx.today} -->\n\n${domainSoul(ctx)}`;
+  fs.appendFileSync(file, section, "utf8");
+}
+
+function appendHeartbeatSection(file, ctx) {
+  const existing = readIfExists(file);
+  if (existing.includes("# Domain Tasks:")) return;
+  const section = `\n\n---\n\n# Domain Tasks: ${ctx.slug}\n<!-- Added by apply-intake.mjs ${ctx.today} -->\n\n${domainHeartbeat(ctx)}`;
+  fs.appendFileSync(file, section, "utf8");
 }
 
 function readIfExists(file) {
