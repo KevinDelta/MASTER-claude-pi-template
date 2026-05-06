@@ -429,7 +429,7 @@ run "echo '$DOMAIN_SLUG' > '$OPENCLAW_HOME/active-domain'"
 
 info "Step 7/10 - Registering OpenClaw agent..."
 if command -v openclaw &>/dev/null || $DRY_RUN; then
-  run "openclaw agents add '$DOMAIN_SLUG' --non-interactive" || warn "Agent may already exist - check: openclaw agents list"
+  run "openclaw agents add '$DOMAIN_SLUG' --workspace '$WORKSPACE_DIR' --non-interactive" || warn "Agent may already exist - check: openclaw agents list"
   run "openclaw agents set-identity --agent '$DOMAIN_SLUG' --from-identity" || warn "Identity sync skipped - fill SOUL.md and run set-identity manually"
 fi
 
