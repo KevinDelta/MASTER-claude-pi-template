@@ -32,7 +32,7 @@
 #   --intake-json <file>  Canonical onboarding intake from the HTML wizard
 #   --intake-stdin        Read intake JSON from stdin (paste-in flow from the wizard)
 #   --project-slug <name> Optional project name; creates workspace/projects/<slug>/
-#   --validate            Validate the workspace; requires --domain
+#   --validate            Validate the workspace (--domain optional, for routing/persona checks)
 #   --model <provider/id> Primary model (default: anthropic/claude-sonnet-4-5)
 #   --thinking <level>    off|minimal|low|medium|high|xhigh (default: medium)
 #   --heartbeat <dur>     OpenClaw heartbeat interval (default: 30m)
@@ -94,10 +94,11 @@ done
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if $VALIDATE; then
-  [[ -z "$DOMAIN_NAME" ]] && die "--validate requires --domain"
-  exec node "$SCRIPT_DIR/scripts/validate.mjs" \
-    --workspace-dir "$HOME/.openclaw/workspace" \
-    --domain "$(echo "$DOMAIN_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-')"
+  VALIDATE_ARGS=(--workspace-dir "$HOME/.openclaw/workspace")
+  if [[ -n "$DOMAIN_NAME" ]]; then
+    VALIDATE_ARGS+=(--domain "$(echo "$DOMAIN_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-')")
+  fi
+  exec node "$SCRIPT_DIR/scripts/validate.mjs" "${VALIDATE_ARGS[@]}"
 fi
 
 if $INTAKE_STDIN; then
@@ -361,13 +362,13 @@ else
     cat > "$CHECKLIST_FILE" <<EOF
 # Post-Install Checklist - $DOMAIN_SLUG
 
-This is the generic checklist (no intake JSON was provided). Run \`install.sh --validate --domain $DOMAIN_SLUG\` after editing files to confirm fill-in completeness.
+This is the generic checklist (no intake JSON was provided). Run \`install.sh --validate\` after editing files to confirm fill-in completeness.
 
 ## Verify the install
 
 - [ ] \`openclaw --version\` returns a version.
-- [ ] \`openclaw agents list\` shows \`$DOMAIN_SLUG\` bound to \`$WORKSPACE_DIR\`.
-- [ ] \`openclaw agent --agent $DOMAIN_SLUG --message "status" --local\` returns a response.
+- [ ] \`openclaw agents list\` shows \`main\` bound to \`$WORKSPACE_DIR\`.
+- [ ] \`openclaw agent --agent main --message "status" --local\` returns a response.
 - [ ] \`$PERSONA_SLUG-status\` (created by install.sh) prints the workspace dashboard.
 
 ## Fill in worker-specific content
@@ -387,7 +388,7 @@ This is the generic checklist (no intake JSON was provided). Run \`install.sh --
 
 ## Ready signal
 
-- [ ] \`install.sh --validate --domain $DOMAIN_SLUG\` reports all checks pass.
+- [ ] \`install.sh --validate\` reports all checks pass.
 EOF
     success "Wrote $CHECKLIST_FILE"
   fi
@@ -427,10 +428,11 @@ fi
 
 run "echo '$DOMAIN_SLUG' > '$OPENCLAW_HOME/active-domain'"
 
-info "Step 7/10 - Registering OpenClaw agent..."
+info "Step 7/10 - Syncing identity to OpenClaw 'main' agent..."
+# Single-domain: reuse OC's native 'main' agent (created by openclaw onboard).
+# No new agent needed — main already points to $WORKSPACE_DIR.
 if command -v openclaw &>/dev/null || $DRY_RUN; then
-  run "openclaw agents add '$DOMAIN_SLUG' --workspace '$WORKSPACE_DIR' --non-interactive" || warn "Agent may already exist - check: openclaw agents list"
-  run "openclaw agents set-identity --agent '$DOMAIN_SLUG' --from-identity" || warn "Identity sync skipped - fill SOUL.md and run set-identity manually"
+  run "openclaw agents set-identity --agent 'main' --from-identity" || warn "Identity sync skipped - fill SOUL.md and run set-identity manually"
 fi
 
 info "Step 8/10 - Configuring OpenClaw defaults..."
@@ -475,7 +477,7 @@ else
 fi
 
 ALIAS_COMMENT="# OpenClaw persona alias: $PERSONA_NAME - added by install.sh ($INSTALL_DATE)"
-ALIAS_LINE="alias ${PERSONA_SLUG}='openclaw agent --agent ${DOMAIN_SLUG} --message'"
+ALIAS_LINE="alias ${PERSONA_SLUG}='openclaw agent --agent main --message'"
 STATUS_FN_NAME="${PERSONA_SLUG}-status"
 
 if ! grep -qF "alias ${PERSONA_SLUG}=" "$SHELL_RC" 2>/dev/null; then
@@ -499,7 +501,7 @@ ${STATUS_FN_NAME}() {
   cat "\$HOME/.openclaw/active-domain" 2>/dev/null || echo '(none)'
   printf '\nWorkspace: ${WORKSPACE_DIR}\n'
   printf '\n--- agents ---\n'
-  openclaw agents list 2>/dev/null | grep -E '^\\s*${DOMAIN_SLUG}\\b|^\\s*NAME\\b' || echo '(openclaw not on PATH)'
+  openclaw agents list 2>/dev/null | grep -E '^\\s*main\\b|^\\s*NAME\\b' || echo '(openclaw not on PATH)'
   printf '\n--- heartbeat config ---\n'
   for k in agents.defaults.heartbeat.every agents.defaults.heartbeat.target agents.defaults.model.primary agents.defaults.thinkingDefault; do
     printf '  %s = ' "\$k"
@@ -513,7 +515,7 @@ ${STATUS_FN_NAME}() {
       printf '  ✗ %s (missing)\n' "\$f"
     fi
   done
-  printf '\nValidate: %s/install.sh --validate --domain ${DOMAIN_SLUG}\n\n' "$SCRIPT_DIR"
+  printf '\nValidate: %s/install.sh --validate\n\n' "$SCRIPT_DIR"
 }
 EOF
     success "Added function '${STATUS_FN_NAME}' to $SHELL_RC"
@@ -559,7 +561,7 @@ if $ENABLE_COMMERCE; then
 fi
 echo ""
 echo "  Start a local turn:"
-echo "    openclaw agent --agent $DOMAIN_SLUG --message \"status\" --local"
+echo "    openclaw agent --agent main --message \"status\" --local"
 echo ""
 echo "  Use persona alias:"
 echo "    $PERSONA_SLUG \"summarize active work\""
@@ -576,7 +578,7 @@ echo ""
 echo "  Checklist:       $WORKSPACE_DIR/POST-INSTALL-CHECKLIST.md"
 echo ""
 echo "  Validate fill-in when ready:"
-echo "    ./install.sh --validate --domain $DOMAIN_SLUG"
+echo "    ./install.sh --validate"
 echo ""
 if [[ -n "$PROJECT_DIR" ]]; then
   echo "  Project:         $PROJECT_DIR"

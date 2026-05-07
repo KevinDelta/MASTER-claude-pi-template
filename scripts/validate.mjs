@@ -198,10 +198,8 @@ function checkMemoryDb(dir) {
 }
 
 function checkAgentRegistered(slug) {
-  if (!slug) {
-    warn("openclaw agent registered", "no --domain provided; skipping agent registration check");
-    return;
-  }
+  // Single-domain setup: always uses OC's native 'main' agent.
+  // The domain slug is informational only (used for workspace content checks above).
   let out;
   try {
     out = execSync("openclaw agents list 2>&1", { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
@@ -209,10 +207,10 @@ function checkAgentRegistered(slug) {
     warn("openclaw agent registered", `could not run 'openclaw agents list' (${err.status || "?"}) — skipping`);
     return;
   }
-  if (out.includes(slug)) {
-    pass("openclaw agent registered", `'${slug}' found in 'openclaw agents list'`);
+  if (/\bmain\b/.test(out)) {
+    pass("openclaw agent registered", `'main' found in 'openclaw agents list'`);
   } else {
-    fail("openclaw agent registered", `'${slug}' not found in 'openclaw agents list' — run: openclaw agents add '${slug}'`);
+    fail("openclaw agent registered", `'main' not found in 'openclaw agents list' — run: openclaw onboard`);
   }
 }
 
