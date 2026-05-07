@@ -1,3 +1,6 @@
+# Claude Code project settings — local/machine-specific
+.claude/
+
 # Ignore macOS system files
 .DS_Store
 
