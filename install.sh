@@ -222,6 +222,19 @@ if [[ ! -d "$WORKSPACE_DIR" ]]; then
 else
   success "Workspace found: $WORKSPACE_DIR"
 fi
+
+# If OC has not yet seeded its own bootstrap files (IDENTITY.md created by openclaw onboard/setup),
+# run openclaw setup now so OC's native files are in place before we layer ours on top.
+if [[ ! -f "$WORKSPACE_DIR/IDENTITY.md" ]]; then
+  info "IDENTITY.md not found — running openclaw setup to seed OC's native workspace files..."
+  if $DRY_RUN; then
+    echo -e "  ${YELLOW}[dry-run]${NC} openclaw setup --workspace '$WORKSPACE_DIR' --yes"
+  else
+    openclaw setup --workspace "$WORKSPACE_DIR" --yes 2>/dev/null \
+      || warn "openclaw setup did not complete — IDENTITY.md may be missing. Continue with caution."
+  fi
+fi
+
 run "mkdir -p '$WORKSPACE_DIR/skills' '$WORKSPACE_DIR/context' '$OPENCLAW_HOME/plugins'"
 
 # add_new: copy src → dst only if dst does not already exist
@@ -286,6 +299,22 @@ add_new "$SCRIPT_DIR/domain/context/domain.md" "$WORKSPACE_DIR/context/domain.md
 add_new "$SCRIPT_DIR/domain/context/clients.md" "$WORKSPACE_DIR/context/clients.md"
 add_new "$SCRIPT_DIR/DOCK.md" "$WORKSPACE_DIR/DOCK.md"
 
+# USER.md: OC injects this as bootstrap context so the agent knows the worker.
+# Written once with variable substitution; never clobbered on subsequent runs.
+if [[ ! -f "$WORKSPACE_DIR/USER.md" ]]; then
+  if $DRY_RUN; then
+    echo -e "  ${YELLOW}[dry-run]${NC} would write $WORKSPACE_DIR/USER.md"
+  else
+    sed \
+      -e "s|{{WORKER_NAME}}|${PERSONA_NAME}|g" \
+      -e "s|{{DOMAIN_NAME}}|${DOMAIN_SLUG}|g" \
+      "$SCRIPT_DIR/domain/USER.md" > "$WORKSPACE_DIR/USER.md"
+    success "Wrote USER.md (worker identity for OC bootstrap injection)"
+  fi
+else
+  info "USER.md already exists — skipping"
+fi
+
 # Reference files: always write (documentation/config snapshot)
 deploy_always "$SCRIPT_DIR/domain/openclaw/openclaw.domain.json5" "$WORKSPACE_DIR/openclaw.domain.json5"
 deploy_always "$SCRIPT_DIR/domain/openclaw/.env.example" "$WORKSPACE_DIR/.env.example"
@@ -327,7 +356,8 @@ for f in \
   "$WORKSPACE_DIR/context/clients.md" \
   "$WORKSPACE_DIR/openclaw.domain.json5" \
   "$WORKSPACE_DIR/.env.example" \
-  "$WORKSPACE_DIR/DOCK.md"
+  "$WORKSPACE_DIR/DOCK.md" \
+  "$WORKSPACE_DIR/USER.md"
 do
   subst_file "$f"
 done
@@ -344,14 +374,20 @@ else
 fi
 
 if [[ -n "$INTAKE_JSON" ]]; then
-  info "Step 4b - Applying intake to domain templates..."
+  info "Step 4b - Applying intake (domain + all projects)..."
+  # apply-intake.mjs handles domain layer AND iterates all projects[]/areas[] from the intake.
+  # Pass --project-filter to limit to a single project slug (e.g. when re-running for one project).
+  PROJECT_FILTER_FLAG=""
+  if [[ -n "$PROJECT_SLUG" ]]; then
+    PROJECT_FILTER_FLAG="--project-filter '$(slugify "$PROJECT_SLUG")'"
+  fi
   if $DRY_RUN; then
-    echo -e "  ${YELLOW}[dry-run]${NC} node '$SCRIPT_DIR/scripts/apply-intake.mjs' --intake-json '$INTAKE_JSON' --workspace-dir '$WORKSPACE_DIR'"
+    echo -e "  ${YELLOW}[dry-run]${NC} node '$SCRIPT_DIR/scripts/apply-intake.mjs' --intake-json '$INTAKE_JSON' --workspace-dir '$WORKSPACE_DIR' $PROJECT_FILTER_FLAG"
   else
-    node "$SCRIPT_DIR/scripts/apply-intake.mjs" \
-      --intake-json "$INTAKE_JSON" \
-      --workspace-dir "$WORKSPACE_DIR" \
-      --template-dir "$SCRIPT_DIR"
+    eval "node '$SCRIPT_DIR/scripts/apply-intake.mjs' \
+      --intake-json '$INTAKE_JSON' \
+      --workspace-dir '$WORKSPACE_DIR' \
+      $PROJECT_FILTER_FLAG"
   fi
 else
   info "Step 4b - Writing generic POST-INSTALL-CHECKLIST.md..."
@@ -524,27 +560,23 @@ else
   info "Function '${STATUS_FN_NAME}' already exists in $SHELL_RC"
 fi
 
-if [[ -n "$PROJECT_DIR" ]]; then
-  info "Step 11/11 - Creating/filling project directory inside workspace..."
+if [[ -n "$PROJECT_SLUG" && -z "$INTAKE_JSON" ]]; then
+  # No intake provided but a project slug was specified — copy base template as a blank scaffold.
+  info "Step 11/11 - Creating blank project scaffold at projects/$(slugify "$PROJECT_SLUG")..."
+  PROJECT_DIR="$WORKSPACE_DIR/projects/$(slugify "$PROJECT_SLUG")"
   if $DRY_RUN; then
-    echo -e "  ${YELLOW}[dry-run]${NC} Would create/fill project at $PROJECT_DIR"
+    echo -e "  ${YELLOW}[dry-run]${NC} Would create blank project scaffold at $PROJECT_DIR"
   else
-    if [[ ! -d "$PROJECT_DIR" ]]; then
-      mkdir -p "$PROJECT_DIR"
-      cp -R "$SCRIPT_DIR/base/." "$PROJECT_DIR/"
-    fi
+    mkdir -p "$PROJECT_DIR"
+    cp -R "$SCRIPT_DIR/base/." "$PROJECT_DIR/"
     mkdir -p "$PROJECT_DIR/context" "$PROJECT_DIR/memory" "$PROJECT_DIR/areas"
-    if [[ -n "$INTAKE_JSON" ]]; then
-      node "$SCRIPT_DIR/scripts/apply-intake.mjs" \
-        --intake-json "$INTAKE_JSON" \
-        --workspace-dir "$WORKSPACE_DIR" \
-        --project-dir "$PROJECT_DIR" \
-        --template-dir "$SCRIPT_DIR"
-    else
-      cp -R "$SCRIPT_DIR/base/." "$PROJECT_DIR/"
-    fi
     rm -rf "$PROJECT_DIR/areas/example-area-1" "$PROJECT_DIR/areas/example-area-2"
+    success "Created blank project scaffold at $PROJECT_DIR"
+    info "Fill in context/project.md and add areas/ directories to complete the project."
   fi
+elif [[ -n "$INTAKE_JSON" ]]; then
+  # When intake is provided, projects were already created by apply-intake in Step 4b.
+  info "Step 11/11 - Projects created by apply-intake in Step 4b — nothing more to do here."
 fi
 
 echo ""
@@ -580,12 +612,15 @@ echo ""
 echo "  Validate fill-in when ready:"
 echo "    ./install.sh --validate"
 echo ""
-if [[ -n "$PROJECT_DIR" ]]; then
-  echo "  Project:         $PROJECT_DIR"
-  echo "  Project checklist: $PROJECT_DIR/POST-INSTALL-CHECKLIST.md"
+if [[ -n "$INTAKE_JSON" ]]; then
+  echo "  Projects:        $WORKSPACE_DIR/projects/ (created from intake)"
+  echo "  Each project has its own AGENTS.md, context/, areas/, and POST-INSTALL-CHECKLIST.md"
+elif [[ -n "$PROJECT_SLUG" ]]; then
+  echo "  Project:         $WORKSPACE_DIR/projects/$(slugify "$PROJECT_SLUG")"
 else
   echo "  Project setup:"
-  echo "    Run with --project-slug <name> to create a project inside the workspace."
+  echo "    Pass intake JSON with projects[] to create projects automatically."
+  echo "    Or: --project-slug <name> for a blank scaffold."
   echo "    Projects live at: $WORKSPACE_DIR/projects/<slug>/"
 fi
 echo ""

@@ -31,6 +31,7 @@
   .btn-red   { background:rgba(255,95,95,0.12); color:var(--red); border:1px solid rgba(255,95,95,0.25); font-size:11px; padding:4px 10px; } .btn-red:hover { background:rgba(255,95,95,0.2); }
   .btn-copy  { background:transparent; color:var(--muted); border:1px solid var(--border2); font-size:11px; padding:4px 10px; } .btn-copy:hover { color:var(--text); background:var(--card); }
   .btn-add   { background:rgba(79,126,255,0.1); color:var(--accent); border:1px dashed rgba(79,126,255,0.4); font-size:12px; padding:8px 14px; } .btn-add:hover { background:rgba(79,126,255,0.18); }
+  .btn-add-area { background:rgba(124,92,255,0.1); color:var(--accent2); border:1px dashed rgba(124,92,255,0.4); font-size:11px; padding:6px 12px; } .btn-add-area:hover { background:rgba(124,92,255,0.18); }
 
   .progress-bar { background:var(--surface); border-bottom:1px solid var(--border); padding:0 32px; display:flex; overflow-x:auto; scrollbar-width:none; }
   .progress-bar::-webkit-scrollbar { display:none; }
@@ -53,6 +54,13 @@
   .item-card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--border); }
   .item-label { font-size:13px; font-weight:700; color:var(--text); }
   .item-num { display:inline-block; background:rgba(79,126,255,0.15); color:var(--accent); border-radius:12px; padding:2px 10px; font-size:11px; font-weight:700; margin-right:8px; }
+  .area-num { display:inline-block; background:rgba(124,92,255,0.15); color:var(--accent2); border-radius:12px; padding:2px 10px; font-size:11px; font-weight:700; margin-right:8px; }
+
+  /* Area cards nested inside project cards */
+  .area-section { margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
+  .area-section-label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:12px; }
+  .area-card { background:rgba(124,92,255,0.04); border:1px solid rgba(124,92,255,0.2); border-left:3px solid var(--accent2); border-radius:var(--radius-sm); padding:14px 16px; margin-bottom:10px; }
+  .area-card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid rgba(124,92,255,0.15); }
 
   label { display:block; font-size:12px; font-weight:600; color:var(--text2); margin-bottom:6px; letter-spacing:0.02em; }
   label .hint { font-weight:400; color:var(--muted); font-size:11px; margin-left:6px; }
@@ -60,7 +68,8 @@
     width:100%; background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius-sm); padding:10px 13px; font-size:13px; color:var(--text); font-family:var(--font); outline:none; transition:border-color 0.15s;
   }
   input:focus, select:focus, textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,126,255,0.12); }
-  textarea { resize:vertical; min-height:80px; line-height:1.6; }
+  textarea { resize:vertical; min-height:70px; line-height:1.6; }
+  textarea.tall { min-height:100px; }
   .form-row { margin-bottom:16px; }
   .form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
   .form-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
@@ -79,8 +88,7 @@
   details summary::before { content:'▸'; font-size:10px; transition:transform 0.15s; }
   details[open] summary::before { transform:rotate(90deg); }
   details summary::-webkit-details-marker { display:none; }
-
-  .pattern-select option { padding:4px; }
+  details .card { margin-top:12px; }
 
   .toast { position:fixed; bottom:24px; right:24px; background:var(--card); border:1px solid var(--border2); border-radius:var(--radius-sm); padding:10px 18px; font-size:13px; color:var(--text); box-shadow:0 4px 20px rgba(0,0,0,0.4); opacity:0; transition:opacity 0.3s; z-index:9999; pointer-events:none; }
   .toast.show { opacity:1; }
@@ -106,20 +114,20 @@
 </header>
 
 <nav class="progress-bar">
-  <div class="step-nav active" onclick="goTo(0)"><span class="step-num">1</span> Who you are</div>
-  <div class="step-nav" onclick="goTo(1)"><span class="step-num">2</span> Your work types</div>
-  <div class="step-nav" onclick="goTo(2)"><span class="step-num">3</span> Impact &amp; goals</div>
-  <div class="step-nav" onclick="goTo(3)"><span class="step-num">4</span> Your setup</div>
+  <div class="step-nav active" onclick="goTo(0)"><span class="step-num">1</span> You &amp; domain</div>
+  <div class="step-nav" onclick="goTo(1)"><span class="step-num">2</span> Persona &amp; rules</div>
+  <div class="step-nav" onclick="goTo(2)"><span class="step-num">3</span> Projects &amp; areas</div>
+  <div class="step-nav" onclick="goTo(3)"><span class="step-num">4</span> Impact</div>
   <div class="step-nav" onclick="goTo(4)"><span class="step-num">5</span> Generate</div>
 </nav>
 
 <main>
 
-<!-- ══ §1 WHO YOU ARE ══════════════════════════════════════════════════════ -->
+<!-- ══ §1 YOU & DOMAIN ═══════════════════════════════════════════════════════ -->
 <div class="section active" id="sec-0">
   <div class="section-header">
-    <div class="section-title">Who you are</div>
-    <div class="section-desc">Describe yourself and your domain. This becomes the foundation of your agent's identity — how it introduces itself, what context it carries into every session, and what work it understands.</div>
+    <div class="section-title">You &amp; domain</div>
+    <div class="section-desc">Describe yourself and the domain. OpenClaw will carry this as background context. Keep it factual — the agent's voice and persona live in §2.</div>
   </div>
 
   <div class="card">
@@ -127,10 +135,10 @@
       <div class="form-row"><label>Your name or handle</label>
         <input type="text" data-bind="identity.workerName" placeholder="e.g. Kevin, or just your first name" /></div>
       <div class="form-row"><label>Domain name <span class="hint">(what this body of work is)</span></label>
-        <input type="text" data-bind="identity.domainName" placeholder="e.g. GTM Consulting, Supply Chain Ops, Research & Analysis" /></div>
+        <input type="text" data-bind="identity.domainName" placeholder="e.g. GTM Consulting, Supply Chain Ops" /></div>
     </div>
     <div class="form-row"><label>What you do <span class="hint">(1–2 sentences — your work, who it's for, what it produces)</span></label>
-      <textarea data-bind="identity.whatYouDo" placeholder="e.g. I work with 3–5 B2B SaaS clients at a time on go-to-market strategy, positioning, and sales enablement. Every engagement produces actionable playbooks, not research reports."></textarea></div>
+      <textarea data-bind="identity.whatYouDo" placeholder="e.g. I work with 3–5 B2B SaaS clients at a time on go-to-market strategy. Every engagement produces actionable playbooks, not research reports."></textarea></div>
     <div class="form-row"><label>Industry or field</label>
       <select data-bind="identity.industry">
         <option value="">— Select —</option>
@@ -146,47 +154,86 @@
   <div class="card">
     <div class="card-title">What you're trying to fix</div>
     <div class="form-row">
-      <label>What's manual, slow, or error-prone right now? <span class="hint">(seeds your agent's memory and priorities)</span></label>
-      <textarea data-bind="identity.whatToFix" placeholder="e.g. I spend 6–8 hours a week pulling data from three different systems to build a single weekly report. It's error-prone and delays client decisions by 2 days."></textarea>
+      <label>What's manual, slow, or error-prone right now? <span class="hint">(seeds agent memory and domain methods)</span></label>
+      <textarea data-bind="identity.whatToFix" placeholder="e.g. I spend 6–8 hours a week pulling data from three different systems to build one report. It delays client decisions by 2 days."></textarea>
     </div>
   </div>
 
   <div class="card">
     <div class="card-title">Tools you work in</div>
-    <div class="form-row"><label>List any systems or tools your work touches <span class="hint">(comma-separated is fine)</span></label>
-      <input type="text" data-bind="identity.tools" placeholder="e.g. Salesforce, HubSpot, Excel, Google Sheets, NetSuite, Notion, Slack" /></div>
+    <div class="form-row"><label>Systems or tools your work touches <span class="hint">(comma-separated)</span></label>
+      <input type="text" data-bind="identity.tools" placeholder="e.g. Salesforce, HubSpot, Excel, Notion, NetSuite" /></div>
   </div>
 
   <div class="nav-footer">
-    <span style="font-size:12px;color:var(--muted);">Your progress autosaves in this browser.</span>
-    <button class="btn btn-primary" onclick="goTo(1)">Your work types →</button>
+    <span style="font-size:12px;color:var(--muted);">Progress autosaves in this browser.</span>
+    <button class="btn btn-primary" onclick="goTo(1)">Persona &amp; rules →</button>
   </div>
 </div>
 
-<!-- ══ §2 YOUR WORK TYPES ════════════════════════════════════════════════ -->
+<!-- ══ §2 PERSONA & RULES ════════════════════════════════════════════════════ -->
 <div class="section" id="sec-1">
   <div class="section-header">
-    <div class="section-title">Your work types</div>
-    <div class="section-desc">Each work type becomes a workspace your agent operates in. Name them as you'd describe your work to a colleague — not as system categories. 2–4 is typical.</div>
+    <div class="section-title">Persona &amp; rules</div>
+    <div class="section-desc">Name your agent and set the rules it carries into every session. OpenClaw owns persona depth — this captures the minimum needed to get started.</div>
   </div>
 
-  <div class="info-box">Each entry gets its own folder under <code style="color:var(--accent)">areas/</code> inside your project and a row in the routing table. Your agent will load the right context when you say what you're working on.</div>
+  <div class="card">
+    <div class="form-grid-2">
+      <div class="form-row"><label>Agent name <span class="hint">(what you call it)</span></label>
+        <input type="text" data-bind="setup.personaName" placeholder="e.g. Atlas, Nova, Mercer" /></div>
+      <div class="form-row"><label>Short name / slug <span class="hint">(used in file paths — no spaces)</span></label>
+        <input type="text" data-bind="setup.slug" placeholder="e.g. gtm-consulting, supply-chain-ops" /></div>
+    </div>
+    <div class="form-row"><label>Agent intro line <span class="hint">(one sentence — auto-drafted, edit freely)</span></label>
+      <input type="text" data-bind="setup.persona" placeholder="e.g. You are Atlas, an embedded agent for GTM Consulting work." /></div>
+  </div>
 
-  <div id="workTypeList"></div>
+  <div class="card">
+    <div class="card-title">Org-wide rules</div>
+    <div class="form-row"><label>Rules that apply across all projects <span class="hint">(one per line)</span></label>
+      <textarea data-bind="setup.orgRules" class="tall"></textarea></div>
+  </div>
 
-  <button class="btn btn-add" onclick="addWorkType()">+ Add work type</button>
+  <div class="card">
+    <div class="card-title">Hard stops</div>
+    <div class="form-row"><label>Things this agent should never do <span class="hint">(one per line)</span></label>
+      <textarea data-bind="setup.hardStops" placeholder="e.g. Never send client-facing communications without review.&#10;Never modify source data directly."></textarea></div>
+  </div>
 
   <div class="nav-footer">
     <button class="btn btn-ghost" onclick="goTo(0)">← Back</button>
-    <button class="btn btn-primary" onclick="goTo(2)">Impact &amp; goals →</button>
+    <button class="btn btn-primary" onclick="goTo(2)">Projects &amp; areas →</button>
   </div>
 </div>
 
-<!-- ══ §3 IMPACT & GOALS ═════════════════════════════════════════════════ -->
+<!-- ══ §3 PROJECTS & AREAS ═══════════════════════════════════════════════════ -->
 <div class="section" id="sec-2">
   <div class="section-header">
-    <div class="section-title">Impact &amp; goals <span class="optional-badge">Optional</span></div>
-    <div class="section-desc">What does success look like? This seeds your agent's memory with targets it can reference and track over time. Skip it now and come back when you have a clearer picture.</div>
+    <div class="section-title">Projects &amp; areas</div>
+    <div class="section-desc">Each project gets its own workspace with AGENTS.md and context files. Each area inside a project gets a full CONTEXT.md — Purpose, Functions, Workflow, Standards, Skills, and References — written from what you fill in here.</div>
+  </div>
+
+  <div class="info-box">
+    <strong>Projects</strong> live at <code style="color:var(--accent)">~/.openclaw/workspace/projects/&lt;slug&gt;/</code> and hold their own context and routing.<br>
+    <strong>Areas</strong> live at <code style="color:var(--accent2)">projects/&lt;slug&gt;/areas/&lt;name&gt;/CONTEXT.md</code> — each becomes a routing row and a complete context file.
+  </div>
+
+  <div id="projectList"></div>
+
+  <button class="btn btn-add" onclick="addProject()">+ Add project</button>
+
+  <div class="nav-footer">
+    <button class="btn btn-ghost" onclick="goTo(1)">← Back</button>
+    <button class="btn btn-primary" onclick="goTo(3)">Impact →</button>
+  </div>
+</div>
+
+<!-- ══ §4 IMPACT ══════════════════════════════════════════════════════════════ -->
+<div class="section" id="sec-3">
+  <div class="section-header">
+    <div class="section-title">Impact <span class="optional-badge">Optional</span></div>
+    <div class="section-desc">What does success look like? This seeds your agent's memory with targets it can reference and track. Skip it now and come back when you have a clearer picture.</div>
   </div>
 
   <div class="card">
@@ -201,54 +248,16 @@
   </div>
 
   <div class="nav-footer">
-    <button class="btn btn-ghost" onclick="goTo(1)">← Back</button>
-    <button class="btn btn-primary" onclick="goTo(3)">Your setup →</button>
-  </div>
-</div>
-
-<!-- ══ §4 YOUR SETUP ══════════════════════════════════════════════════════ -->
-<div class="section" id="sec-3">
-  <div class="section-header">
-    <div class="section-title">Your setup</div>
-    <div class="section-desc">A few configuration values that drive file paths, the agent's name, and what it will and won't do.</div>
-  </div>
-
-  <div class="card">
-    <div class="form-grid-2">
-      <div class="form-row"><label>Short name <span class="hint">(used in file paths — no spaces)</span></label>
-        <input type="text" data-bind="setup.slug" placeholder="e.g. gtm-consulting, supply-chain-ops" /></div>
-      <div class="form-row"><label>Agent name <span class="hint">(what you call it)</span></label>
-        <input type="text" data-bind="setup.personaName" placeholder="e.g. Atlas, Nova, Mercer" /></div>
-    </div>
-    <div class="form-row"><label>Agent intro line <span class="hint">(one sentence — auto-drafted, edit freely)</span></label>
-      <input type="text" data-bind="setup.persona" placeholder="e.g. You are Atlas, an embedded agent for GTM Consulting work." /></div>
-    <div class="form-row"><label>Project name <span class="hint">(optional — creates a project folder inside your domain workspace)</span></label>
-      <input type="text" data-bind="setup.projectSlug" placeholder="e.g. q3-strategy, client-acme" /></div>
-  </div>
-
-  <details>
-    <summary>Advanced options</summary>
-    <div class="card" style="margin-top:12px;">
-      <div class="form-row"><label>Org-wide rules <span class="hint">(one per line — sensible defaults pre-filled)</span></label>
-        <textarea data-bind="setup.orgRules" style="min-height:90px;"></textarea></div>
-      <div class="form-row"><label>Project-specific rules <span class="hint">(one per line)</span></label>
-        <textarea data-bind="setup.projRules" style="min-height:70px;" placeholder="e.g. Always cite the source before writing a recommendation."></textarea></div>
-      <div class="form-row"><label>Hard stops <span class="hint">(things this agent should never do — one per line)</span></label>
-        <textarea data-bind="setup.hardStops" style="min-height:60px;" placeholder="e.g. Never send client-facing communications without review."></textarea></div>
-    </div>
-  </details>
-
-  <div class="nav-footer">
     <button class="btn btn-ghost" onclick="goTo(2)">← Back</button>
     <button class="btn btn-primary" onclick="goTo(4); buildAll();">Generate →</button>
   </div>
 </div>
 
-<!-- ══ §5 GENERATE ════════════════════════════════════════════════════════ -->
+<!-- ══ §5 GENERATE ════════════════════════════════════════════════════════════ -->
 <div class="section" id="sec-4">
   <div class="section-header">
     <div class="section-title">Generate</div>
-    <div class="section-desc">Your domain files are ready. Download the ZIP and run the setup script — your agent environment will be live in under a minute.</div>
+    <div class="section-desc">Your domain files are ready. Copy the install command and paste it into your terminal — your agent environment will be live in under a minute.</div>
   </div>
 
   <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
@@ -260,7 +269,7 @@
 
   <div class="info-box">
     <strong>Recommended:</strong> click <em>Copy install command</em>, then paste it into the same terminal where you ran <code style="color:var(--accent)">bootstrap.sh</code>. The command pipes your intake JSON straight into <code style="color:var(--accent)">install.sh --intake-stdin</code> — no ZIP, no unzip step.<br><br>
-    <strong>Offline fallback:</strong> download the ZIP, unzip it, and run <code style="color:var(--accent)">bash setup-client.sh</code>. The script uses the template at <code style="color:var(--accent)">~/.openclaw/templates/master-agent-template</code> unless you set <code style="color:var(--accent)">TEMPLATE_DIR=/path/to/template</code>. Your domain will be installed at <code style="color:var(--accent)" id="slugPreview">~/.openclaw/agents/&lt;slug&gt;/</code>. If you named a project in §4, it lands at <code style="color:var(--accent)">~/.openclaw/agents/&lt;slug&gt;/projects/&lt;project&gt;/</code>.
+    <strong>Offline fallback:</strong> download the ZIP, unzip it, and run <code style="color:var(--accent)">bash setup-client.sh</code>. Uses the template at <code style="color:var(--accent)">~/.openclaw/templates/master-agent-template</code>. Your domain lands at <code style="color:var(--accent)" id="slugPreview">~/.openclaw/workspace/projects/</code>.
   </div>
 
   <details style="margin-bottom:16px;">
@@ -272,7 +281,7 @@
 
   <div class="nav-footer">
     <button class="btn btn-ghost" onclick="goTo(3)">← Back</button>
-    <span style="font-size:12px;color:var(--muted);">Run <code style="color:var(--accent)">openclaw agent --agent &lt;slug&gt; --message "status"</code> to smoke-test.</span>
+    <span style="font-size:12px;color:var(--muted);">Run <code style="color:var(--accent)">openclaw agent --agent main --message "status"</code> to smoke-test.</span>
   </div>
 </div>
 
@@ -282,41 +291,57 @@
 
 <script>
 /* ════════════════════════════════════════════════════════════════════════════
-   STATE
+   STATE — v4 schema
    ════════════════════════════════════════════════════════════════════════════ */
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const STORAGE_PREFIX = 'wyndelta-onboarding';
 
 const DEFAULT_ORG_RULES = [
   'Read AGENTS.md at the start of every session',
-  'Load area CONTEXT.md before producing any output',
+  'Load area CONTEXT.md before producing any output for that area',
   'Ask before taking irreversible action — never assume approval',
   'Update CONTEXT.md and write to memory at the end of any productive session',
   'Do not create files outside designated workspace folders',
 ].join('\n');
 
+const PATTERN_OPTIONS = [
+  { value: '',               label: '— How does this agent help in this area? —' },
+  { value: 'monitoring',     label: 'Watches for things and alerts me (Monitoring)' },
+  { value: 'extraction',     label: 'Reads documents and pulls out data (Extraction)' },
+  { value: 'validation',     label: 'Checks rules and flags exceptions (Validation)' },
+  { value: 'classification', label: 'Routes and sorts incoming work (Classification)' },
+  { value: 'orchestration',  label: 'Coordinates a multi-step process (Orchestration)' },
+  { value: 'generation',     label: 'Drafts documents or reports (Generation)' },
+];
+
+function newId() { return 'id-' + Math.random().toString(36).slice(2, 9); }
+
+function newArea() {
+  return { id: newId(), name: '', slug: '', purpose: '', pattern: '',
+           functions: '', workflow: '', standards: '',
+           successCriteria: '', skills: '', references: '' };
+}
+
+function newProject() {
+  return { id: newId(), name: '', slug: '', whatItIs: '', whoItsFor: '',
+           successCriteria: '', scopeIn: '', scopeOut: '', constraints: '', phase: '',
+           client: { name: '', contact: '', priorities: '', delivery: '' },
+           stack: '', projectRules: '', areas: [] };
+}
+
 function blankState() {
   return {
     meta: { schemaVersion: SCHEMA_VERSION, savedAt: null },
-    identity: {
-      workerName: '', domainName: '', whatYouDo: '',
-      industry: '', whatToFix: '', tools: '',
-    },
-    workTypes: [],   // [{ id, name, description, pattern }]
+    identity: { workerName: '', domainName: '', whatYouDo: '', industry: '', whatToFix: '', tools: '' },
+    setup: { slug: '', personaName: '', persona: '', orgRules: DEFAULT_ORG_RULES, hardStops: '' },
     impact: { goalNarrative: '', timeSaved: '', urgency: '' },
-    setup: {
-      slug: '', personaName: '', persona: '', projectSlug: '',
-      orgRules: DEFAULT_ORG_RULES, projRules: '', hardStops: '',
-    },
+    projects: [],
+    workTypes: [],   // kept for migration only
     generatedFiles: {},
   };
 }
 
 let state = loadFromStorage() || blankState();
-
-/* ── WORK TYPE FACTORY ─────────────────────────────────────────────────────── */
-function newId() { return 'id-' + Math.random().toString(36).slice(2, 9); }
-function newWorkType() { return { id: newId(), name: '', description: '', pattern: '' }; }
 
 /* ════════════════════════════════════════════════════════════════════════════
    DATA-BINDING + AUTOSAVE
@@ -336,9 +361,9 @@ function setPath(obj, path, val) {
 function bindStaticInputs() {
   document.querySelectorAll('[data-bind]').forEach(el => {
     const path = el.dataset.bind;
-    const cur  = getPath(state, path);
+    const cur = getPath(state, path);
     if (cur != null) el.value = cur;
-    el.addEventListener('input',  () => { setPath(state, path, el.value); markDirty(); });
+    el.addEventListener('input', () => { setPath(state, path, el.value); markDirty(); });
     el.addEventListener('change', () => { setPath(state, path, el.value); markDirty(); refreshDerived(); });
   });
 }
@@ -359,7 +384,7 @@ function saveToStorage() {
   try {
     localStorage.setItem(storageKey(), JSON.stringify(state));
     const el = document.getElementById('saveState');
-    el.textContent = 'saved ' + new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    el.textContent = 'saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     el.classList.add('saved');
   } catch (err) { showToast('Autosave failed: ' + err.message); }
 }
@@ -374,7 +399,8 @@ function loadFromStorage() {
       if (!best || (v.meta?.savedAt || '') > (best.meta?.savedAt || '')) best = v;
     } catch {}
   }
-  return best;
+  if (best) return migrateToV4(best);
+  return null;
 }
 function resetState() {
   if (!confirm('Clear all fields and saved state in this browser?')) return;
@@ -388,283 +414,457 @@ function resetState() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
-   NAVIGATION
+   MIGRATION
    ════════════════════════════════════════════════════════════════════════════ */
-function goTo(idx) {
-  document.querySelectorAll('.section').forEach((s,i) => s.classList.toggle('active', i===idx));
-  document.querySelectorAll('.step-nav').forEach((s,i) => {
-    s.classList.remove('active','done');
-    if (i===idx) s.classList.add('active');
-    else if (i<idx) s.classList.add('done');
-  });
-  refreshDerived();
-  if (idx === 4) buildAll();
-  window.scrollTo({ top:0, behavior:'smooth' });
+function migrateToV4(d) {
+  if (d?.meta?.schemaVersion === 4) return d;
+
+  const out = blankState();
+
+  // v3: has workTypes[], no projects[]
+  if (d?.meta?.schemaVersion === 3 || (d?.workTypes && !d?.projects)) {
+    out.meta = { schemaVersion: 4, savedAt: d?.meta?.savedAt || null };
+    out.identity = { ...out.identity, ...(d?.identity || {}) };
+    out.impact   = { ...out.impact,   ...(d?.impact   || {}) };
+    out.setup    = {
+      slug: d?.setup?.slug || '',
+      personaName: d?.setup?.personaName || '',
+      persona: d?.setup?.persona || '',
+      orgRules: d?.setup?.orgRules || DEFAULT_ORG_RULES,
+      hardStops: d?.setup?.hardStops || '',
+    };
+    // Wrap workTypes into projects[0].areas[]
+    const pSlug = d?.setup?.projectSlug || 'initial-project';
+    if (Array.isArray(d?.workTypes) && d.workTypes.length) {
+      out.projects = [{
+        id: newId(),
+        name: pSlug,
+        slug: slugify(pSlug),
+        whatItIs: d?.identity?.whatYouDo || '',
+        whoItsFor: d?.identity?.workerName || '',
+        successCriteria: d?.impact?.goalNarrative || '',
+        scopeIn: '', scopeOut: '', constraints: d?.setup?.hardStops || '', phase: '',
+        client: { name: '', contact: '', priorities: '', delivery: '' },
+        stack: d?.identity?.tools || '',
+        projectRules: d?.setup?.projRules || '',
+        areas: d.workTypes.map(w => ({
+          id: w.id || newId(),
+          name: clean(w.name),
+          slug: slugify(w.workspace || w.name || 'area'),
+          purpose: clean(w.description),
+          pattern: clean(w.pattern),
+          functions: '', workflow: '', standards: '',
+          successCriteria: '', skills: '', references: '',
+        })),
+      }];
+    }
+    return out;
+  }
+
+  // v2 legacy or other shapes — pull what we can
+  if (d?.meta?.schemaVersion === 2 || (d?.intake && d?.harness)) {
+    const cc = d.intake || d.clientContext || {};
+    const h  = d.harness || {};
+    out.identity.domainName  = cc.companyName || h.slug || d.handoff?.client || '';
+    out.identity.workerName  = h.personaName  || d.handoff?.wnTeam || '';
+    out.identity.industry    = cc.industryVertical || '';
+    out.identity.whatYouDo   = h.projDesc || '';
+    out.setup.slug           = h.slug || slugify(cc.companyName || '');
+    out.setup.personaName    = h.personaName || '';
+    out.setup.persona        = h.persona || '';
+    out.setup.orgRules       = h.orgRules || DEFAULT_ORG_RULES;
+    out.setup.hardStops      = h.oob || '';
+    if (Array.isArray(d.agents)) {
+      out.projects = [{
+        id: newId(),
+        name: h.projectSlug || 'initial-project',
+        slug: slugify(h.projectSlug || 'initial-project'),
+        whatItIs: h.projDesc || '',
+        whoItsFor: h.personaName || '',
+        successCriteria: '', scopeIn: '', scopeOut: '', constraints: '',
+        phase: '', client: { name: '', contact: '', priorities: '', delivery: '' },
+        stack: '', projectRules: h.projRules || '',
+        areas: d.agents.map(a => ({
+          id: a.id || newId(),
+          name: clean(a.agentName || a.name),
+          slug: slugify(a.agentName || a.name || 'area'),
+          purpose: clean(a.agentPurpose || a.purpose),
+          pattern: clean(a.agentPattern || a.pattern),
+          functions: '', workflow: '', standards: '',
+          successCriteria: '', skills: '', references: '',
+        })),
+      }];
+    }
+    out.meta.schemaVersion = 4;
+    return out;
+  }
+
+  // Best-effort passthrough
+  out.meta.schemaVersion = 4;
+  if (d?.identity) out.identity = { ...out.identity, ...d.identity };
+  if (d?.setup)    out.setup    = { slug: d.setup.slug || '', personaName: d.setup.personaName || '', persona: d.setup.persona || '', orgRules: d.setup.orgRules || DEFAULT_ORG_RULES, hardStops: d.setup.hardStops || '' };
+  if (d?.impact)   out.impact   = { ...out.impact, ...d.impact };
+  if (Array.isArray(d?.projects)) out.projects = d.projects;
+  return out;
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
-   §2  WORK TYPES
+   NAVIGATION
    ════════════════════════════════════════════════════════════════════════════ */
-const PATTERN_OPTIONS = [
-  { value:'',             label:'— How does this agent help you? —' },
-  { value:'monitoring',   label:'Watches for things and alerts me (Monitoring)' },
-  { value:'extraction',   label:'Reads documents and pulls out data (Extraction)' },
-  { value:'validation',   label:'Checks rules and flags exceptions (Validation)' },
-  { value:'classification', label:'Routes and sorts incoming work (Classification)' },
-  { value:'orchestration', label:'Coordinates a multi-step process (Orchestration)' },
-  { value:'generation',   label:'Drafts documents or reports (Generation)' },
-];
-
-function addWorkType() { state.workTypes.push(newWorkType()); markDirty(); renderWorkTypes(); }
-function removeWorkType(id) {
-  if (!confirm('Remove this work type?')) return;
-  state.workTypes = state.workTypes.filter(w => w.id !== id);
-  markDirty(); renderWorkTypes();
+function goTo(idx) {
+  document.querySelectorAll('.section').forEach((s, i) => s.classList.toggle('active', i === idx));
+  document.querySelectorAll('.step-nav').forEach((s, i) => {
+    s.classList.remove('active', 'done');
+    if (i === idx) s.classList.add('active');
+    else if (i < idx) s.classList.add('done');
+  });
+  refreshDerived();
+  if (idx === 4) buildAll();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function renderWorkTypes() {
-  const el = document.getElementById('workTypeList');
-  if (!state.workTypes.length) {
-    el.innerHTML = '<div class="info-box" style="margin-bottom:16px;">No work types yet — click <strong>+ Add work type</strong> to start. Each one becomes a workspace your agent understands.</div>';
+/* ════════════════════════════════════════════════════════════════════════════
+   §3 PROJECTS & AREAS
+   ════════════════════════════════════════════════════════════════════════════ */
+function addProject() { state.projects.push(newProject()); markDirty(); renderProjects(); }
+function removeProject(pid) {
+  if (!confirm('Remove this project and all its areas?')) return;
+  state.projects = state.projects.filter(p => p.id !== pid);
+  markDirty(); renderProjects();
+}
+function addArea(pid) {
+  const p = state.projects.find(p => p.id === pid);
+  if (!p) return;
+  p.areas.push(newArea()); markDirty(); renderProjects();
+}
+function removeArea(pid, aid) {
+  const p = state.projects.find(p => p.id === pid);
+  if (!p) return;
+  p.areas = p.areas.filter(a => a.id !== aid);
+  markDirty(); renderProjects();
+}
+
+function renderProjects() {
+  const el = document.getElementById('projectList');
+  if (!state.projects.length) {
+    el.innerHTML = '<div class="info-box" style="margin-bottom:16px;">No projects yet — click <strong>+ Add project</strong> to start. Each project gets its own AGENTS.md and context files.</div>';
     return;
   }
-  el.innerHTML = state.workTypes.map((w, i) => `
-    <div class="item-card">
+  el.innerHTML = state.projects.map((p, pi) => `
+    <div class="item-card" data-pid="${p.id}">
       <div class="item-card-head">
-        <div><span class="item-num">${i + 1}</span><span class="item-label">${esc(w.name) || 'Untitled work type'}</span></div>
-        <button class="btn btn-red" onclick="removeWorkType('${w.id}')">Remove</button>
+        <div><span class="item-num">P${pi + 1}</span><span class="item-label" data-plabel="${p.id}">${esc(p.name) || 'Untitled project'}</span></div>
+        <button class="btn btn-red" onclick="removeProject('${p.id}')">Remove project</button>
       </div>
+
       <div class="form-grid-2">
-        <div class="form-row"><label>Name</label>
-          <input type="text" data-wt="${w.id}.name" value="${esc(w.name)}" placeholder="e.g. Client Reporting, Invoice Reconciliation" /></div>
-        <div class="form-row"><label>What it involves <span class="hint">(one line)</span></label>
-          <input type="text" data-wt="${w.id}.description" value="${esc(w.description)}" placeholder="e.g. Pull data from 3 sources, reconcile, send to client" /></div>
+        <div class="form-row"><label>Project name</label>
+          <input type="text" data-pt="${p.id}.name" value="${esc(p.name)}" placeholder="e.g. Q3 Strategy, ACME Onboarding" /></div>
+        <div class="form-row"><label>Slug <span class="hint">(auto-derived; override if needed)</span></label>
+          <input type="text" data-pt="${p.id}.slug" value="${esc(p.slug)}" placeholder="e.g. q3-strategy" /></div>
       </div>
-      <div class="form-row"><label>How this agent helps</label>
-        <select class="pattern-select" data-wt="${w.id}.pattern">
-          ${PATTERN_OPTIONS.map(p => `<option value="${p.value}" ${w.pattern===p.value?'selected':''}>${p.label}</option>`).join('')}
-        </select>
+      <div class="form-row"><label>What it is <span class="hint">(one paragraph — goes into context/project.md)</span></label>
+        <textarea data-pt="${p.id}.whatItIs" placeholder="e.g. End-to-end onboarding flow for new ACME clients from contract to first value delivery">${esc(p.whatItIs)}</textarea></div>
+      <div class="form-grid-2">
+        <div class="form-row"><label>Who it's for</label>
+          <input type="text" data-pt="${p.id}.whoItsFor" value="${esc(p.whoItsFor)}" placeholder="e.g. ACME team, internal ops" /></div>
+        <div class="form-row"><label>What success looks like</label>
+          <input type="text" data-pt="${p.id}.successCriteria" value="${esc(p.successCriteria)}" placeholder="e.g. Client live in 4 weeks, under 3 escalations" /></div>
+      </div>
+
+      <details>
+        <summary>Scope &amp; constraints</summary>
+        <div class="card">
+          <div class="form-row"><label>In scope <span class="hint">(one per line)</span></label>
+            <textarea data-pt="${p.id}.scopeIn" placeholder="e.g. Client data analysis&#10;Weekly reporting&#10;Stakeholder communication">${esc(p.scopeIn)}</textarea></div>
+          <div class="form-row"><label>Out of scope <span class="hint">(one per line)</span></label>
+            <textarea data-pt="${p.id}.scopeOut" placeholder="e.g. Infrastructure changes&#10;Third-party vendor contracts">${esc(p.scopeOut)}</textarea></div>
+          <div class="form-row"><label>Key constraints <span class="hint">(one per line)</span></label>
+            <textarea data-pt="${p.id}.constraints" placeholder="e.g. All outputs reviewed before client delivery&#10;No access to production database">${esc(p.constraints)}</textarea></div>
+          <div class="form-row"><label>Current phase</label>
+            <input type="text" data-pt="${p.id}.phase" value="${esc(p.phase)}" placeholder="e.g. Discovery, Implementation, Maintenance" /></div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Client / stakeholder</summary>
+        <div class="card">
+          <div class="form-grid-2">
+            <div class="form-row"><label>Client or stakeholder name</label>
+              <input type="text" data-pt="${p.id}.client.name" value="${esc(p.client?.name)}" placeholder="e.g. ACME Corp, Internal" /></div>
+            <div class="form-row"><label>Contact <span class="hint">(name, role, or handle)</span></label>
+              <input type="text" data-pt="${p.id}.client.contact" value="${esc(p.client?.contact)}" placeholder="e.g. Sarah (VP Ops)" /></div>
+          </div>
+          <div class="form-row"><label>What they care about <span class="hint">(one per line)</span></label>
+            <textarea data-pt="${p.id}.client.priorities" placeholder="e.g. Speed over perfection&#10;Weekly status visibility&#10;No surprises">${esc(p.client?.priorities)}</textarea></div>
+          <div class="form-row"><label>Delivery standards <span class="hint">(one per line)</span></label>
+            <textarea data-pt="${p.id}.client.delivery" placeholder="e.g. Always cite sources&#10;Flag uncertainty explicitly&#10;Deliver on Fridays">${esc(p.client?.delivery)}</textarea></div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Stack &amp; tools for this project</summary>
+        <div class="card">
+          <div class="form-row"><label>Tools specific to this project <span class="hint">(comma-separated or one per line)</span></label>
+            <input type="text" data-pt="${p.id}.stack" value="${esc(p.stack)}" placeholder="e.g. Salesforce, Notion, Loom, Google Sheets" /></div>
+          <div class="form-row"><label>Project-specific rules <span class="hint">(one per line — add to project AGENTS.md)</span></label>
+            <textarea data-pt="${p.id}.projectRules" placeholder="e.g. Always confirm scope before adding features.&#10;Run outputs past the client contact before finalizing.">${esc(p.projectRules)}</textarea></div>
+        </div>
+      </details>
+
+      <div class="area-section">
+        <div class="area-section-label">Areas <span style="font-weight:400;color:var(--muted);font-size:10px;margin-left:6px;">each area = one CONTEXT.md + one routing row</span></div>
+        <div id="areaList-${p.id}">${renderAreaCards(p)}</div>
+        <button class="btn btn-add-area" onclick="addArea('${p.id}')">+ Add area</button>
       </div>
     </div>
   `).join('');
 
-  el.querySelectorAll('[data-wt]').forEach(input => {
-    const [wid, field] = input.dataset.wt.split('.');
+  // Bind project fields
+  el.querySelectorAll('[data-pt]').forEach(input => {
     input.addEventListener('input', () => {
-      const w = state.workTypes.find(x => x.id === wid);
-      if (w) { w[field] = input.value; markDirty(); }
-      if (field === 'name') input.closest('.item-card').querySelector('.item-label').textContent = input.value || 'Untitled work type';
+      const [pid, ...fieldParts] = input.dataset.pt.split('.');
+      const field = fieldParts.join('.');
+      const p = state.projects.find(x => x.id === pid);
+      if (!p) return;
+      setPath(p, field, input.value);
+      markDirty();
+      if (field === 'name') {
+        const label = document.querySelector(`[data-plabel="${pid}"]`);
+        if (label) label.textContent = input.value || 'Untitled project';
+        // auto-derive slug if not manually overridden
+        const slugEl = el.querySelector(`[data-pt="${pid}.slug"]`);
+        if (slugEl && !slugEl.dataset.manual) slugEl.value = p.slug = slugify(input.value);
+      }
+      if (field === 'slug') input.dataset.manual = '1';
+    });
+  });
+
+  // Bind area fields
+  el.querySelectorAll('[data-at]').forEach(input => {
+    input.addEventListener('input', () => {
+      const [aid, ...fieldParts] = input.dataset.at.split('.');
+      const field = fieldParts.join('.');
+      for (const p of state.projects) {
+        const a = p.areas.find(x => x.id === aid);
+        if (a) {
+          a[field] = input.value;
+          if (field === 'name') {
+            const label = document.querySelector(`[data-alabel="${aid}"]`);
+            if (label) label.textContent = input.value || 'Untitled area';
+            const slugEl = el.querySelector(`[data-at="${aid}.slug"]`);
+            if (slugEl && !slugEl.dataset.manual) slugEl.value = a.slug = slugify(input.value);
+          }
+          if (field === 'slug') input.dataset.manual = '1';
+          markDirty();
+          break;
+        }
+      }
     });
   });
 }
 
-/* ════════════════════════════════════════════════════════════════════════════
-   CONTEXT BUILDER
-   ════════════════════════════════════════════════════════════════════════════ */
-function buildContext() {
-  const id     = state.identity || {};
-  const setup  = state.setup || {};
-  const impact = state.impact || {};
+function renderAreaCards(p) {
+  if (!p.areas.length) {
+    return '<div class="info-box" style="margin-bottom:10px;font-size:11px;">No areas yet. Click <strong>+ Add area</strong> below. Each area maps to a folder with a full CONTEXT.md.</div>';
+  }
+  return p.areas.map((a, ai) => `
+    <div class="area-card" data-aid="${a.id}">
+      <div class="area-card-head">
+        <div><span class="area-num">A${ai + 1}</span><span class="item-label" data-alabel="${a.id}">${esc(a.name) || 'Untitled area'}</span></div>
+        <button class="btn btn-red" onclick="removeArea('${p.id}', '${a.id}')">Remove</button>
+      </div>
 
-  const domainName = id.domainName || '[Domain Name]';
-  const slug       = setup.slug || slugify(domainName) || 'domain';
-  const personaNm  = setup.personaName || 'Atlas';
-  const persona    = setup.persona || `You are ${personaNm}, an embedded agent for ${domainName}.`;
-  const projSlug   = setup.projectSlug || '';
+      <div class="form-grid-2">
+        <div class="form-row"><label>Area name</label>
+          <input type="text" data-at="${a.id}.name" value="${esc(a.name)}" placeholder="e.g. Client Reporting, Invoice Reconciliation" /></div>
+        <div class="form-row"><label>Slug <span class="hint">(auto-derived)</span></label>
+          <input type="text" data-at="${a.id}.slug" value="${esc(a.slug)}" placeholder="e.g. client-reporting" /></div>
+      </div>
+      <div class="form-row"><label>Purpose <span class="hint">(what this area produces — goes into CONTEXT.md Purpose)</span></label>
+        <textarea data-at="${a.id}.purpose" placeholder="e.g. Produces weekly client performance reports from raw data sources. Output is a formatted PDF ready for delivery.">${esc(a.purpose)}</textarea></div>
+      <div class="form-row"><label>How this agent helps</label>
+        <select data-at="${a.id}.pattern">
+          ${PATTERN_OPTIONS.map(opt => `<option value="${opt.value}" ${a.pattern === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
+        </select>
+      </div>
 
-  // workTypes is the primary source; fall back to legacy agents[] if present
-  const workTypes = (state.workTypes && state.workTypes.length)
-    ? state.workTypes.map(w => ({ ...w, workspace: slugify(w.name || 'workspace') }))
-    : (state.agents || []).map(a => ({
-        id: a.id, name: a.agentName || a.name || '',
-        description: a.agentPurpose || a.purpose || '',
-        pattern: a.agentPattern || a.pattern || '',
-        workspace: slugify(a.agentName || a.name || 'workspace'),
-      }));
+      <details>
+        <summary>Functions, workflow &amp; standards</summary>
+        <div class="card">
+          <div class="form-row"><label>Functions <span class="hint">(one per line — what operations happen here)</span></label>
+            <textarea data-at="${a.id}.functions" placeholder="e.g. Pull data from Salesforce&#10;Reconcile against budget targets&#10;Format and export PDF&#10;Send for review">${esc(a.functions)}</textarea></div>
+          <div class="form-row"><label>Workflow <span class="hint">(one step per line — how work moves through this area)</span></label>
+            <textarea data-at="${a.id}.workflow" placeholder="e.g. Receive data export trigger&#10;Run reconciliation check; flag exceptions > 5%&#10;Draft report from template&#10;Mark Ready for Review — do not send unilaterally">${esc(a.workflow)}</textarea></div>
+          <div class="form-row"><label>Standards <span class="hint">(one per line — hard rules specific to this area)</span></label>
+            <textarea data-at="${a.id}.standards" placeholder="e.g. All reports stay in /areas/reporting/ until review sign-off&#10;Never modify source data&#10;Cite source and date for every number">${esc(a.standards)}</textarea></div>
+        </div>
+      </details>
 
-  const tools = (id.tools || '').split(',').map(s => s.trim()).filter(Boolean);
-
-  return {
-    now: new Date().toISOString().split('T')[0],
-    domainName, slug, personaNm, persona, projSlug,
-    workerName: id.workerName || '',
-    whatYouDo:  id.whatYouDo  || '',
-    industry:   id.industry   || '',
-    whatToFix:  id.whatToFix  || '',
-    tools, toolsStr: tools.join(', ') || '—',
-    workTypes,
-    impact,
-    setup,
-    identity: id,
-  };
+      <details>
+        <summary>Skills &amp; references</summary>
+        <div class="card">
+          <div class="form-grid-2">
+            <div class="form-row"><label>Skills to load <span class="hint">(comma-separated .md names)</span></label>
+              <input type="text" data-at="${a.id}.skills" value="${esc(a.skills)}" placeholder="e.g. stop-slop.md, doc-authoring.md" /></div>
+            <div class="form-row"><label>Success criteria <span class="hint">(one line)</span></label>
+              <input type="text" data-at="${a.id}.successCriteria" value="${esc(a.successCriteria)}" placeholder="e.g. Report delivered within 2 hours of data ready" /></div>
+          </div>
+          <div class="form-row"><label>Key references <span class="hint">(one per line — files or external resources the agent needs)</span></label>
+            <textarea data-at="${a.id}.references" placeholder="e.g. context/client.md - client delivery standards&#10;context/stack.md - data sources and connection details">${esc(a.references)}</textarea></div>
+        </div>
+      </details>
+    </div>
+  `).join('');
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
-   FILE GENERATORS
+   CONTEXT BUILDER (for generate step)
+   ════════════════════════════════════════════════════════════════════════════ */
+function buildContext() {
+  const id    = state.identity || {};
+  const setup = state.setup    || {};
+  const domainName = id.domainName || '[Domain Name]';
+  const slug       = setup.slug || slugify(domainName) || 'domain';
+  const personaNm  = setup.personaName || 'Atlas';
+  return { domainName, slug, personaNm, projSlug: '' };
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   INSTALL COMMAND
+   ════════════════════════════════════════════════════════════════════════════ */
+function buildInstallCommand() {
+  const ctx = buildContext();
+  const json = JSON.stringify(state, null, 2);
+  return [
+    'TEMPLATE_DIR="${TEMPLATE_DIR:-$HOME/.openclaw/templates/master-agent-template}"',
+    `cat <<'WYNDELTA_INTAKE_EOF' | "$TEMPLATE_DIR/install.sh" --intake-stdin`,
+    json,
+    'WYNDELTA_INTAKE_EOF',
+  ].join('\n');
+}
+
+function copyInstallCommand() {
+  if (!state.generatedFiles || !Object.keys(state.generatedFiles).length) buildAll();
+  navigator.clipboard.writeText(buildInstallCommand()).then(
+    () => showToast('Install command copied — paste into your terminal'),
+    () => showToast('Copy failed — open the details panel and copy manually'),
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   FILE GENERATION (wizard output is the JSON + thin wrappers)
    ════════════════════════════════════════════════════════════════════════════ */
 function buildAll() {
   const files = generateAllFiles();
   state.generatedFiles = files;
   markDirty();
   renderGenerated(files);
-  const slugEl = document.getElementById('slugPreview');
-  if (slugEl) slugEl.textContent = `~/.openclaw/agents/${buildContext().slug}/`;
+  const ctx = buildContext();
+  const sp = document.getElementById('slugPreview');
+  if (sp) sp.textContent = `~/.openclaw/workspace/projects/ (${state.projects.length} project${state.projects.length !== 1 ? 's' : ''})`;
   const cmdEl = document.getElementById('installCommandPreview');
   if (cmdEl) cmdEl.textContent = buildInstallCommand();
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
-   PASTE-IN INSTALL COMMAND
-   Builds a single shell command the operator can paste into the terminal where
-   bootstrap.sh ran. Pipes the intake JSON straight into install.sh --intake-stdin
-   so the wizard → install handoff is one paste, not unzip + bash.
-   ════════════════════════════════════════════════════════════════════════════ */
-function buildInstallCommand() {
-  const ctx = buildContext();
-  const json = JSON.stringify(state, null, 2);
-  const projectFlag = ctx.projSlug ? ` --project-slug ${shellQuote(ctx.projSlug)}` : '';
-  return [
-    'TEMPLATE_DIR="${TEMPLATE_DIR:-$HOME/.openclaw/templates/master-agent-template}"',
-    `cat <<'WYNDELTA_INTAKE_EOF' | "$TEMPLATE_DIR/install.sh" --intake-stdin${projectFlag}`,
-    json,
-    'WYNDELTA_INTAKE_EOF',
-  ].join('\n');
-}
-
-function shellQuote(value) {
-  if (!value) return "''";
-  if (/^[A-Za-z0-9_./-]+$/.test(value)) return value;
-  return `'${String(value).replace(/'/g, "'\\''")}'`;
-}
-
-function copyInstallCommand() {
-  if (!state.generatedFiles || !Object.keys(state.generatedFiles).length) buildAll();
-  const cmd = buildInstallCommand();
-  navigator.clipboard.writeText(cmd).then(
-    () => showToast('Install command copied — paste into your terminal'),
-    () => showToast('Copy failed — open the details panel and copy manually'),
-  );
 }
 
 function generateAllFiles() {
   const ctx = buildContext();
   const out = {};
-  out['setup-client.sh']              = genSetupScript(ctx);
-  out['ONBOARDING-README.md']         = genReadme(ctx);
-  out['POST-INSTALL-CHECKLIST.md']    = genPostInstallChecklist(ctx);
+  out['setup-client.sh']           = genSetupScript(ctx);
+  out['ONBOARDING-README.md']      = genReadme(ctx);
+  out['POST-INSTALL-CHECKLIST.md'] = genPostInstallChecklist(ctx);
   return out;
 }
 
-/* setup-client.sh */
 function genSetupScript(ctx) {
   return `#!/usr/bin/env bash
-# Generated by WynDelta Domain Onboarding on ${ctx.now}
-# Installs ~/.openclaw/agents/${ctx.slug}/ and optionally creates a project inside the workspace.
+# Generated by WynDelta Domain Onboarding
+# Installs the domain into ~/.openclaw/workspace/ and creates all projects from intake.
 # Run from the unzipped wyndelta-${ctx.slug}/ folder.
-# Uses TEMPLATE_DIR if set, otherwise ~/.openclaw/templates/master-agent-template.
 
 set -euo pipefail
 
 SLUG="${ctx.slug}"
 SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE_DIR="\${TEMPLATE_DIR:-$HOME/.openclaw/templates/master-agent-template}"
-PROJECT_SLUG="\${PROJECT_SLUG:-${ctx.projSlug}}"
 INTAKE_JSON="\${INTAKE_JSON:-$SCRIPT_DIR/master.json}"
+
 if [[ ! -f "$INTAKE_JSON" ]]; then
-  echo "✗ Expected intake JSON at $INTAKE_JSON. Run this script from the unzipped folder or set INTAKE_JSON=..." >&2
-  exit 1
+  echo "✗ Expected intake JSON at $INTAKE_JSON." >&2; exit 1
 fi
 if [[ ! -x "$TEMPLATE_DIR/install.sh" ]]; then
-  echo "✗ Template install.sh not found at $TEMPLATE_DIR/install.sh" >&2
-  echo "  Install/update the template first:" >&2
-  echo "  curl -fsSL https://raw.githubusercontent.com/kevindelta/MASTER-claude-pi-template/main/bootstrap.sh | bash" >&2
-  echo "  Or rerun with TEMPLATE_DIR=/path/to/MASTER-claude-pi-template" >&2
-  exit 1
+  echo "✗ Template install.sh not found at $TEMPLATE_DIR/install.sh" >&2; exit 1
 fi
 
 echo "→ Installing OpenClaw domain workspace from intake"
-PROJECT_FLAG=""
-[[ -n "$PROJECT_SLUG" ]] && PROJECT_FLAG="--project-slug $PROJECT_SLUG"
-"$TEMPLATE_DIR/install.sh" --intake-json "$INTAKE_JSON" $PROJECT_FLAG
+"$TEMPLATE_DIR/install.sh" --intake-json "$INTAKE_JSON"
 
-cat <<EOF
-
-✓ Done.
-
-Domain:  $HOME/.openclaw/agents/$SLUG
-${ctx.projSlug ? `Project: $HOME/.openclaw/agents/$SLUG/projects/$PROJECT_SLUG` : ''}
-Next: openclaw agent --agent "$SLUG" --message "status"
-Verify that ${ctx.personaNm} references "${ctx.domainName}" by name.
-Review: $HOME/.openclaw/agents/$SLUG/POST-INSTALL-CHECKLIST.md
-EOF
+echo ""
+echo "✓ Done."
+echo "Workspace: $HOME/.openclaw/workspace/"
+echo "Projects:  $HOME/.openclaw/workspace/projects/"
+echo "Next: openclaw agent --agent main --message \\"status\\""
 `;
 }
 
-/* ONBOARDING-README.md */
 function genReadme(ctx) {
+  const projectList = state.projects.map((p, i) =>
+    `  ${i + 1}. **${p.name || p.slug}** — ${p.areas.length} area${p.areas.length !== 1 ? 's' : ''}: ${p.areas.map(a => a.name || a.slug).join(', ') || 'none'}`
+  ).join('\n');
   return `# WynDelta Domain Bundle — ${ctx.domainName}
 
-Generated ${ctx.now}.
-
-## OpenClaw vs Framework
-
-OpenClaw gets the message to the right agent, workspace, session, channel, heartbeat, and plugin surface. This framework tells the selected agent how to work: routing rows, domain/project context, persona, memory policy, skills, and DOCK/export boundaries.
-
-## What's in this ZIP
+## What's in this bundle
 
 \`\`\`
 wyndelta-${ctx.slug}/
-├── master.json                 → canonical intake contract
+├── master.json                 → canonical intake (import back into the wizard to edit)
 ├── setup-client.sh             → thin installer wrapper
 ├── ONBOARDING-README.md
 └── POST-INSTALL-CHECKLIST.md
 \`\`\`
 
-\`setup-client.sh\` calls \`install.sh --intake-json master.json${ctx.projSlug ? ` --project-slug ${ctx.projSlug}` : ''}\`. It does not copy Markdown over the OpenClaw workspace; \`install.sh\` is the single provisioning authority.
+## Projects included
+
+${projectList || '*(no projects defined)*'}
 
 ## To deploy
-
-Open this unzipped folder, then run:
 
 \`\`\`bash
 bash setup-client.sh
 \`\`\`
 
-The script uses the template at \`~/.openclaw/templates/master-agent-template\`.
-If your template lives somewhere else:
+Or with a custom template directory:
 
 \`\`\`bash
 TEMPLATE_DIR=/path/to/MASTER-claude-pi-template bash setup-client.sh
 \`\`\`
 
-Then: \`openclaw agent --agent ${ctx.slug} --message "status"\`
-
-${ctx.personaNm} should greet you and reference "${ctx.domainName}".
-
-## Review
-
-After setup, review \`POST-INSTALL-CHECKLIST.md\` in the project repo and the domain workspace.
+Then: \`openclaw agent --agent main --message "status"\`
 
 ## To resume editing
 
-Open \`Intake-mapping/wyndelta-onboarding.html\`, click **Import JSON**, and load the \`master.json\` from this ZIP.
+Open \`Intake-mapping/wyndelta-onboarding.html\`, click **Import JSON**, and load \`master.json\`.
 `;
 }
 
 function genPostInstallChecklist(ctx) {
+  const projectChecks = state.projects.flatMap(p => [
+    `- [ ] Review \`projects/${p.slug || p.name}/AGENTS.md\` routing rows.`,
+    ...p.areas.map(a => `- [ ] Confirm \`projects/${p.slug || p.name}/areas/${a.slug || a.name}/CONTEXT.md\` Functions/Workflow/Standards are complete.`),
+  ]).join('\n');
   return `# Post-Install Checklist — ${ctx.domainName}
 
 - [ ] Run \`openclaw --version\` and confirm OpenClaw is installed.
 - [ ] Run \`openclaw config validate\`.
-- [ ] Run \`openclaw agents list\` and confirm \`${ctx.slug}\` points to \`~/.openclaw/agents/${ctx.slug}\`.
-- [ ] Run \`openclaw agent --agent ${ctx.slug} --message "status" --local\`.
+- [ ] Run \`openclaw agents list\` and confirm the domain agent is registered.
+- [ ] Run \`openclaw agent --agent main --message "status" --local\`.
 - [ ] Confirm \`AGENTS.md\` contains both global and domain layers.
-- [ ] Review project routing rows and workspace \`CONTEXT.md\` files.
-- [ ] Confirm \`HEARTBEAT.md\` uses OpenClaw native \`tasks:\` entries.
-- [ ] Use \`domain_info\` or \`domain_status\` from an agent turn to check the memory plugin.
 - [ ] Review \`DOCK.md\` against hard stops and export boundaries.
-- [ ] Confirm secrets stay in env/config only, not committed files.
-- [ ] Commerce remains disabled unless explicitly enabled with restricted keys and approval gates.
+- [ ] Confirm secrets stay in env/config only.
+
+## Project checks
+
+${projectChecks || '*(no projects defined)*'}
 `;
 }
 
@@ -672,13 +872,8 @@ function genPostInstallChecklist(ctx) {
    GENERATED FILES PREVIEW
    ════════════════════════════════════════════════════════════════════════════ */
 function renderGenerated(files) {
-  const order = [
-    'setup-client.sh','ONBOARDING-README.md','POST-INSTALL-CHECKLIST.md',
-  ];
-  const wsKeys  = Object.keys(files).filter(k => k.startsWith('project/areas/'));
-  const tailKeys = [];
-  const all = [...order.filter(k => files[k] != null), ...wsKeys, ...tailKeys.filter(k => files[k] != null)];
-
+  const order = ['setup-client.sh', 'ONBOARDING-README.md', 'POST-INSTALL-CHECKLIST.md'];
+  const all = order.filter(k => files[k] != null);
   document.getElementById('generatedFiles').innerHTML = all.map((path, i) => `
     <div class="file-block">
       <div class="file-block-header">
@@ -696,11 +891,9 @@ function renderGenerated(files) {
 }
 
 function fileDest(p) {
-  if (p.startsWith('domain/'))   return 'Deploy to: ~/.openclaw/agents/<slug>/' + p.replace(/^domain\//,'');
-  if (p.startsWith('project/'))  return 'Deploy to: <project-dir>/' + p.replace(/^project\//,'');
-  if (p === 'setup-client.sh')   return 'Run from the unzipped bundle folder';
-  if (p === 'POST-INSTALL-CHECKLIST.md') return 'Copied into bundle; install.sh also writes this into the domain and project';
-  if (p === 'ONBOARDING-README.md') return 'Bundle instructions';
+  if (p === 'setup-client.sh')           return 'Run from the unzipped bundle folder';
+  if (p === 'POST-INSTALL-CHECKLIST.md') return 'Copied into bundle; install.sh also writes per-project checklists';
+  if (p === 'ONBOARDING-README.md')      return 'Bundle instructions';
   return '';
 }
 function copyFileContent(i) {
@@ -720,7 +913,7 @@ async function downloadZip() {
   const root = zip.folder(`wyndelta-${ctx.slug}`);
   Object.entries(state.generatedFiles).forEach(([p, content]) => root.file(p, content));
   root.file('master.json', JSON.stringify(state, null, 2));
-  const blob = await zip.generateAsync({ type:'blob' });
+  const blob = await zip.generateAsync({ type: 'blob' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url; a.download = `wyndelta-${ctx.slug}-${Date.now()}.zip`; a.click();
@@ -729,12 +922,12 @@ async function downloadZip() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
-   MASTER JSON EXPORT / IMPORT + LEGACY MIGRATION
+   MASTER JSON EXPORT / IMPORT
    ════════════════════════════════════════════════════════════════════════════ */
 function exportMasterJson() {
   state.meta.savedAt = new Date().toISOString();
   const ctx  = buildContext();
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type:'application/json' });
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url; a.download = `wyndelta-onboarding-${ctx.slug}-${Date.now()}.json`; a.click();
@@ -747,8 +940,8 @@ function handleMasterImport(ev) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const parsed   = JSON.parse(e.target.result);
-      const migrated = migrateToV3(parsed);
+      const parsed = JSON.parse(e.target.result);
+      const migrated = migrateToV4(parsed);
       state = mergeStates(state, migrated);
       saveToStorage(); rerenderAll(); showToast('Imported ✓');
     } catch (err) { showToast('Import failed: ' + err.message); }
@@ -757,124 +950,22 @@ function handleMasterImport(ev) {
 }
 
 function mergeStates(base, incoming) {
-  const out     = blankState();
-  out.meta      = { ...base.meta, ...incoming.meta, schemaVersion: SCHEMA_VERSION };
-  out.identity  = { ...base.identity,  ...incoming.identity };
-  out.impact    = { ...base.impact,    ...incoming.impact };
-  out.setup     = { ...base.setup,     ...incoming.setup, orgRules: incoming.setup?.orgRules || base.setup?.orgRules || DEFAULT_ORG_RULES };
-  out.workTypes = (incoming.workTypes && incoming.workTypes.length) ? incoming.workTypes : base.workTypes;
-  out.generatedFiles = incoming.generatedFiles || {};
-  return out;
-}
-
-/* Handles v3 (passthrough), v2, and all 7 legacy v1 shapes */
-function migrateToV3(d) {
-  if (d?.meta?.schemaVersion === SCHEMA_VERSION) return d;
-
   const out = blankState();
-
-  /* ── v2 state (schemaVersion: 2) ──────────────────────────────────────── */
-  if (d?.meta?.schemaVersion === 2) {
-    const intake  = d.intake  || {};
-    const harness = d.harness || {};
-    const synth   = d.synthesis || {};
-    out.identity = {
-      workerName:  harness.personaName || '',
-      domainName:  intake.companyName  || harness.slug || '',
-      whatYouDo:   harness.projDesc    || '',
-      industry:    intake.industryVertical || '',
-      whatToFix:   intake.primaryPain  || intake.triggerNow || '',
-      tools:       [intake.erpSystem, intake.wmsSystem, intake.tmsSystem, intake.procureSystem, intake.ediSystem, intake.otherSystems].filter(Boolean).join(', '),
-    };
-    // Map v2 agents[] → workTypes[]
-    out.workTypes = (d.agents || []).map(a => ({
-      id: a.id || newId(),
-      name:        a.agentName  || a.name    || '',
-      description: a.agentPurpose || a.purpose || '',
-      pattern:     a.agentPattern || a.pattern || '',
-    }));
-    out.impact = {
-      goalNarrative: synth.ebitdaImpact ? `Target: ${synth.ebitdaImpact}${synth.payback ? ', payback ' + synth.payback : ''}.` : '',
-      timeSaved:     synth.manualHoursDisplaced || '',
-      urgency:       '',
-    };
-    out.setup = {
-      slug:        harness.slug        || slugify(intake.companyName) || '',
-      personaName: harness.personaName || '',
-      persona:     harness.persona     || '',
-      projectSlug: harness.projectSlug || harness.projectDir || '',
-      orgRules:    harness.orgRules    || DEFAULT_ORG_RULES,
-      projRules:   harness.projRules   || '',
-      hardStops:   harness.oob         || '',
-    };
-    return out;
-  }
-
-  /* ── v1 legacy: client-intake ──────────────────────────────────────────── */
-  if (d.handoff && d.clientContext) {
-    const cc = d.clientContext || {};
-    const bp = d.burningPlatform || {};
-    const tt = d.techAndData || {};
-    out.identity = {
-      workerName:  d.handoff.wnTeam || '',
-      domainName:  cc.companyName || d.handoff.client || '',
-      whatYouDo:   '',
-      industry:    cc.industryVertical || '',
-      whatToFix:   bp.primaryPain || bp.triggerNow || '',
-      tools:       [tt.erpSystem, tt.wmsSystem, tt.tmsSystem].filter(Boolean).join(', '),
-    };
-    out.setup.slug = slugify(cc.companyName || d.handoff.client || '');
-    return out;
-  }
-
-  /* ── v1 legacy: BPM mapper → one workType ─────────────────────────────── */
-  if (d.processIdentity) {
-    const pi = d.processIdentity || {};
-    out.workTypes.push({ id: newId(), name: pi.processName || '', description: pi.processPurpose || '', pattern: '' });
-    out.identity.domainName = d.processIdentity?.clientRef || '';
-    return out;
-  }
-
-  /* ── v1 legacy: agent brief → one workType ────────────────────────────── */
-  if (d.agentIdentity || d.handoff?.agent_name) {
-    const ai = d.agentIdentity || {};
-    out.workTypes.push({ id: newId(), name: ai.name || d.handoff?.agent_name || '', description: ai.agentPurpose || '', pattern: ai.agentPattern || '' });
-    out.identity.domainName = d.handoff?.client || '';
-    return out;
-  }
-
-  /* ── v1 legacy: prioritization matrix → workTypes[] ───────────────────── */
-  if (Array.isArray(d.opportunities)) {
-    d.opportunities.forEach(o => {
-      out.workTypes.push({ id: newId(), name: o.name || '', description: '', pattern: '' });
-    });
-    return out;
-  }
-
-  /* ── v1 legacy: synthesis → identity + impact ──────────────────────────── */
-  if (d.impact || d.clientSnapshot) {
-    const im = d.impact || {};
-    const cs = d.clientSnapshot || {};
-    out.identity.domainName = cs.client || d.handoff?.client || '';
-    out.impact = { goalNarrative: im.ebitda || d.handoff?.ebitda_impact || '', timeSaved: '', urgency: '' };
-    return out;
-  }
-
-  /* ── v1 legacy: harness-scaffold config ───────────────────────────────── */
-  if (d.config?.client || d.config?.slug) {
-    out.identity.domainName = d.config.client || '';
-    out.setup = { slug: d.config.slug || '', personaName: d.config.personaName || '', persona: d.config.persona || '', projectSlug: '', orgRules: d.config.orgrules || DEFAULT_ORG_RULES, projRules: d.config.projrules || '', hardStops: d.config.oob || '' };
-    return out;
-  }
-
+  out.meta     = { ...base.meta, ...incoming.meta, schemaVersion: SCHEMA_VERSION };
+  out.identity = { ...base.identity, ...incoming.identity };
+  out.impact   = { ...base.impact,   ...incoming.impact };
+  out.setup    = { ...base.setup, ...incoming.setup, orgRules: incoming.setup?.orgRules || base.setup?.orgRules || DEFAULT_ORG_RULES };
+  out.projects = (incoming.projects && incoming.projects.length) ? incoming.projects : base.projects;
+  out.generatedFiles = incoming.generatedFiles || {};
   return out;
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
    HELPERS
    ════════════════════════════════════════════════════════════════════════════ */
-function esc(s)        { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function slugify(s)    { return (s || '').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
+function esc(s)     { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function slugify(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
+function clean(s)   { return String(s ?? '').trim(); }
 
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -885,23 +976,19 @@ function showToast(msg) {
 function refreshDerived() {
   const id    = state.identity || {};
   const setup = state.setup    || {};
-
-  // slug from domainName
   if (id.domainName && !setup.slug) {
     state.setup.slug = slugify(id.domainName);
     const el = document.querySelector('[data-bind="setup.slug"]');
     if (el && !el.value) el.value = state.setup.slug;
   }
-  // persona from personaName + domainName
   if (setup.personaName && id.domainName && !setup.persona) {
     const derived = `You are ${setup.personaName}, an embedded agent for ${id.domainName}.`;
     state.setup.persona = derived;
     const el = document.querySelector('[data-bind="setup.persona"]');
     if (el && !el.value) el.value = derived;
   }
-  // slug preview in §5
   const sp = document.getElementById('slugPreview');
-  if (sp) sp.textContent = `~/.openclaw/agents/${state.setup.slug || '<slug>'}/`;
+  if (sp) sp.textContent = `~/.openclaw/workspace/projects/ (${state.projects.length} project${state.projects.length !== 1 ? 's' : ''})`;
 }
 
 function rerenderAll() {
@@ -909,7 +996,7 @@ function rerenderAll() {
     const v = getPath(state, el.dataset.bind);
     el.value = v == null ? '' : v;
   });
-  renderWorkTypes();
+  renderProjects();
   refreshDerived();
 }
 
