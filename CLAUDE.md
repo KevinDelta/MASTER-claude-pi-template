@@ -104,3 +104,10 @@ MASTER-claude-pi-template/
 - standalone Pi MCP server docs as the active dock path
 
 OpenClaw heartbeat owns recurring work. OpenClaw Gateway/plugin/channel configuration owns the host surface.
+
+---
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
