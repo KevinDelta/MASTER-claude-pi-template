@@ -37,6 +37,9 @@
 - `/areas/[area-a]` — [what work happens here]
 - `/areas/[area-b]` — [what work happens here]
 - `/areas/[area-c]` — [what work happens here]
+- `/inbox/_inbox/` — raw artifacts waiting to be distilled (call transcripts, notes, clipped articles)
+- `/inbox/_processed/` — archived sources, post-distillation
+- `/templates/` — output shells referenced by producer skills via `Template:` front-matter
 
 ---
 
@@ -79,6 +82,7 @@
 | **Status / report** — summarize progress, produce a status update | — | `context/project.md` | `stop-slop.md` |
 | **Commerce / invoice** — draft billable work or reimbursable expenses | — | `TOOLS.md` + `context/project.md` + `context/client.md` | `memory-query.md` |
 | **Commerce / payment status** — check project-scoped Stripe payment state | — | `TOOLS.md` + `context/project.md` + `context/client.md` | `memory-query.md` |
+| **Distill inbox** — process a raw artifact from `inbox/_inbox/` into pillars / decisions / skills | /inbox | `SOUL.md` + `context/project.md` + recent `context/decisions.md` | `distill-inbox.md` |
 | **Harness** — modify AGENTS.md, skills, plugins, OpenClaw config, or settings | — | `BLUEPRINT.md` | `harness-dev.md` |
 | **Session end** — update state and write memory | — | — | `memory-write.md` + `context-update.md` |
 
@@ -116,7 +120,25 @@
 | `context-update.md` | End of any session where workspace state changed |
 | `memory-write.md` | Session end — decisions, patterns, lessons to persist |
 | `memory-query.md` | Session start — orientation before first task |
+| `distill-inbox.md` | User asks to process inbox items, clear the inbox, or make sense of dropped artifacts |
 | `[your-skill].md` | [When to load it] |
+
+### Producer skills and templates
+
+Skills come in two flavors:
+
+- **Modifier skills** — shape *how* the agent works (`stop-slop`, `memory-write`, `doc-authoring`, `distill-inbox`). No output contract.
+- **Producer skills** — produce a shaped deliverable. Declare their output contract via an optional `Template:` front-matter line that points to a file in `templates/`.
+
+Example producer skill front-matter:
+
+```yaml
+---
+Template: executive-brief.md
+---
+```
+
+When a producer skill loads, the agent also loads the referenced template and fills its shape. Templates live in `base/templates/` (project-wide) with optional `base/areas/<area>/templates/` overrides. See [ADR-0001](../docs/adr/0001-templates-and-skills-separation.md).
 
 ---
 
