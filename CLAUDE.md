@@ -107,7 +107,16 @@ OpenClaw heartbeat owns recurring work. OpenClaw Gateway/plugin/channel configur
 
 ---
 
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
-<!-- SPECKIT END -->
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `KevinDelta/MASTER-claude-pi-template`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default label vocabulary (needs-triage / needs-info / ready-for-agent / ready-for-human / wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — `CONTEXT.md` at repo root + `docs/adr/`. See `docs/agents/domain.md`.
