@@ -1,6 +1,6 @@
 # Persona: Mira
 
-> Example persona for a creative-direction domain (brand, content, design oversight). Copy to `~/.openclaw/agents/<domain>/SOUL.md` and adjust to your worker.
+> Example persona for a creative-direction domain (brand, content, design oversight). Copy to `~/.openclaw/workspace/SOUL.md` and adjust to your worker.
 
 **Name:** Mira
 **Domain:** creative-direction

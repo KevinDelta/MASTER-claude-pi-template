@@ -2,6 +2,12 @@
   // Reference template for ~/.openclaw/openclaw.json.
   // install.sh uses OpenClaw CLI commands where possible and copies this file
   // into the domain workspace as documentation for the installed agent.
+  //
+  // Path scheme (see ADR 0004):
+  //   ~/.openclaw/workspace/        — template-owned workspace content
+  //   ~/.openclaw/plugins/<plugin>  — plugin source, slug-suffixed for future
+  //                                   multi-domain support
+  //   ~/.openclaw/agents/<name>/    — OpenClaw's per-agent state; NEVER ours
   logging: { level: "info" },
 
   gateway: {
@@ -24,7 +30,7 @@
 
   agents: {
     defaults: {
-      workspace: "~/.openclaw/agents/{{DOMAIN_NAME}}",
+      workspace: "~/.openclaw/workspace",
       model: {
         primary: "anthropic/claude-sonnet-4-5",
         fallbacks: ["openai/gpt-5.2"],
@@ -42,9 +48,9 @@
     },
     list: [
       {
-        id: "{{DOMAIN_NAME}}",
+        id: "main",
         default: true,
-        workspace: "~/.openclaw/agents/{{DOMAIN_NAME}}",
+        workspace: "~/.openclaw/workspace",
         heartbeat: {
           every: "30m",
           target: "last",
@@ -54,9 +60,14 @@
   },
 
   skills: {
+    // Last-wins precedence: plugin-core < plugin-domain < vendor < user.
+    // Routing rows decide what loads; the agent does not browse list_skills to pick skills.
     load: {
       extraDirs: [
-        "~/.openclaw/agents/{{DOMAIN_NAME}}/skills",
+        "~/.openclaw/plugins/domain-skills-{{DOMAIN_NAME}}/core",
+        "~/.openclaw/plugins/domain-skills-{{DOMAIN_NAME}}/domains/{{DOMAIN_NAME}}",
+        "~/.openclaw/workspace/skills/vendor",
+        "~/.openclaw/workspace/skills",
       ],
     },
   },
@@ -66,6 +77,7 @@
     load: {
       paths: [
         "~/.openclaw/plugins/domain-memory-{{DOMAIN_NAME}}",
+        "~/.openclaw/plugins/domain-skills-{{DOMAIN_NAME}}",
         // Optional, installed with install.sh --enable-commerce:
         // "~/.openclaw/plugins/domain-commerce-{{DOMAIN_NAME}}",
       ],
@@ -75,10 +87,19 @@
         enabled: true,
         config: {
           domainName: "{{DOMAIN_NAME}}",
-          dbPath: "~/.openclaw/agents/{{DOMAIN_NAME}}/memory.db",
-          memoryPath: "~/.openclaw/agents/{{DOMAIN_NAME}}/MEMORY.md",
+          dbPath: "~/.openclaw/workspace/memory.db",
+          memoryPath: "~/.openclaw/workspace/MEMORY.md",
           ollamaUrl: "http://localhost:11434",
           memoryTopN: 10,
+        },
+      },
+      "domain-skills": {
+        enabled: true,
+        config: {
+          domainName: "{{DOMAIN_NAME}}",
+          pluginRoot: "~/.openclaw/plugins/domain-skills-{{DOMAIN_NAME}}",
+          vendorDir: "~/.openclaw/workspace/skills/vendor",
+          userDir: "~/.openclaw/workspace/skills",
         },
       },
       // Optional Stripe workflow plugin. Use restricted Stripe keys (`rk_*`),
@@ -90,7 +111,7 @@
       //     domainName: "{{DOMAIN_NAME}}",
       //     stripeApiKeyEnv: "STRIPE_RESTRICTED_KEY",
       //     stripeApiVersion: "2026-02-25.clover",
-      //     catalogPath: "~/.openclaw/agents/{{DOMAIN_NAME}}/commerce-catalog.json",
+      //     catalogPath: "~/.openclaw/workspace/commerce-catalog.json",
       //     allowPaymentLinksWithoutApproval: false,
       //     maxAutoApprovedAmountCents: 0,
       //   },

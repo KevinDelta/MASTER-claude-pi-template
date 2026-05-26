@@ -154,7 +154,6 @@ function buildContext(input) {
 
   const domainName = clean(identity.domainName || setup.slug || "domain");
   const slug = slugify(setup.slug || domainName);
-  const personaName = clean(setup.personaName || "Agent");
   const tools = splitLines(identity.tools);
   const hardStops = splitLines(setup.hardStops);
   const orgRules = splitLines(setup.orgRules);
@@ -211,8 +210,6 @@ function buildContext(input) {
     workerName: clean(identity.workerName),
     domainName,
     slug,
-    personaName,
-    personaLine: clean(setup.persona),
     whatYouDo: clean(identity.whatYouDo),
     industry: clean(identity.industry),
     whatToFix: clean(identity.whatToFix),
@@ -234,10 +231,10 @@ function buildContext(input) {
 // ─── DOMAIN LAYER ────────────────────────────────────────────────────────────
 
 function applyDomain(dir, ctx) {
+  // Template-owned files only. SOUL.md / HEARTBEAT.md / USER.md / IDENTITY.md
+  // are OpenClaw-owned; the wizard never writes into them. See ADR 0004.
   ensureDir(path.join(dir, "context"));
   rewriteDomainAgents(path.join(dir, "AGENTS.md"), ctx);
-  appendSoulSection(path.join(dir, "SOUL.md"), ctx);
-  appendHeartbeatSection(path.join(dir, "HEARTBEAT.md"), ctx);
   writeIfNew(path.join(dir, "MEMORY.md"), domainMemory(ctx));
   writeIfNew(path.join(dir, "context", "domain.md"), domainContext(ctx));
   writeIfNew(path.join(dir, "context", "clients.md"), domainClients(ctx));
@@ -359,88 +356,6 @@ function domainOutOfBoundsSection(ctx) {
     ...ctx.hardStops,
   ];
   return stops.map((s) => `- ${s}`).join("\n");
-}
-
-function appendSoulSection(file, ctx) {
-  const existing = readIfExists(file);
-  if (existing.includes("# Domain Identity:")) return;
-  const section = `\n\n---\n\n# Domain Identity: ${ctx.personaName}\n<!-- Added by apply-intake.mjs ${ctx.today} -->\n\n${domainSoul(ctx)}`;
-  fs.appendFileSync(file, section, "utf8");
-}
-
-function domainSoul(ctx) {
-  return `# Persona: ${ctx.personaName}
-
-**Name:** ${ctx.personaName}
-**Domain:** ${ctx.slug}
-
----
-
-## Voice
-
-Direct and specific. State uncertainty clearly. Ask one concrete question when context is missing.
-
----
-
-## Identity
-
-I am ${ctx.personaName}, the working memory and operating partner for ${ctx.workerName || "the worker"}'s ${ctx.domainName} domain. ${ctx.whatYouDo || "I carry domain context, project state, routing expectations, and durable memory so work starts oriented."}
-
-${ctx.personaLine || ""}
-
----
-
-## Relationship to the Worker
-
-${ctx.workerName || "The worker"} makes the calls. I carry context, surface what matters, and turn repeated judgment into reusable operating structure.
-
----
-
-## When to Push Back
-
-I push back when a request conflicts with recorded memory, violates DOCK.md or project hard stops, asks for irreversible action without approval, or would produce unevidenced claims.
-`;
-}
-
-function appendHeartbeatSection(file, ctx) {
-  const existing = readIfExists(file);
-  if (existing.includes("# Domain Tasks:")) return;
-  const section = `\n\n---\n\n# Domain Tasks: ${ctx.slug}\n<!-- Added by apply-intake.mjs ${ctx.today} -->\n\n${domainHeartbeat(ctx)}`;
-  fs.appendFileSync(file, section, "utf8");
-}
-
-function domainHeartbeat(ctx) {
-  const goalTask = ctx.impact.goalNarrative
-    ? `\n- name: goal-review\n  interval: 24h\n  prompt: "Resolve through the Goal review routing row. If active goals exist and no equivalent review observation has been written for the current review window, compare observed state to each goal definition. If there is a meaningful delta, run the resolver skill and propose the next action. Always write a structured log observation when goal checks run. Otherwise reply HEARTBEAT_OK."\n`
-    : "";
-  return `# HEARTBEAT.md - ${ctx.slug}
-
-<!-- OpenClaw reads this file during heartbeat turns. Runtime scheduling belongs to OpenClaw; this file defines the recurring work contract for the selected domain agent. -->
-
-tasks:
-
-- name: morning-plan
-  interval: 24h
-  prompt: "Resolve through the Session start routing row plus any project-specific planning row. If active work exists and no morning plan observation has been written today, review open scratchpad items, deferred tasks, and recent project activity. Produce a short prioritized daily plan only if there is actionable work. Also write a log observation with the plan summary. Otherwise reply HEARTBEAT_OK."
-
-- name: weekly-sync
-  interval: 7d
-  prompt: "Resolve through the Domain status routing row. If no weekly sync observation has been written for the current week, summarize active projects, flag open items, and note decisions or lessons that should be promoted to MEMORY.md. Also write a structured log observation with project activity counts and pending items. Otherwise reply HEARTBEAT_OK."
-
-- name: stale-project-check
-  interval: 7d
-  prompt: "Resolve through the Domain status routing row. If any project has no observations in the last 14 days and no stale-project check observation has been written for the current week, list stale projects with last activity date and ask whether to archive, resume, or close. Otherwise reply HEARTBEAT_OK."
-${goalTask}
-- name: memory-maintenance
-  interval: 30m
-  prompt: "Resolve through the Session end routing row. Run memory_maintenance to backfill missing embeddings and report memory health. Surface stale scratchpad items only when the worker needs to decide something. Otherwise reply HEARTBEAT_OK."
-
----
-
-## Heartbeat Contract
-
-OpenClaw parses the \`tasks:\` block above and includes only due tasks in the heartbeat prompt. Before doing due recurring work, resolve through \`AGENTS.md\`, read \`MEMORY.md\`, use domain-memory tools before guessing from stale context, and write structured results when useful. If nothing needs attention, reply \`HEARTBEAT_OK\`.
-`;
 }
 
 function domainMemory(ctx) {

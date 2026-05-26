@@ -1,8 +1,8 @@
 # AGENTS.md — {{DOMAIN_NAME}} (Domain Layer)
 
-<!-- DOMAIN LAYER — install.sh appends this file to ~/.openclaw/agents/<domain>/AGENTS.md after the global section.
+<!-- DOMAIN LAYER — install.sh appends this file to ~/.openclaw/workspace/AGENTS.md after the global section.
      OpenClaw treats that workspace as the domain agent's memory and instruction surface.
-     Load model: ~/.openclaw/agents/<domain>/AGENTS.md (global+domain combined)
+     Load model: ~/.openclaw/workspace/AGENTS.md (global+domain combined)
      -> project (<project-root>/AGENTS.md) when project work is routed.
      WHAT BELONGS HERE:
      - Domain vocabulary and methods shared across all projects in this domain
@@ -77,7 +77,7 @@
      - channel-routed turns after OpenClaw has selected this agent
      - heartbeat turns
      - project-scoped turns
-     Domain-level memory lives in ~/.openclaw/agents/{{DOMAIN_NAME}}/MEMORY.md and memory.db -->
+     Domain-level memory lives in ~/.openclaw/workspace/MEMORY.md and memory.db -->
 
 ### Minimum-viable routing row
 
@@ -137,18 +137,9 @@ Read that row as: when a turn starts with "triage" or matches the Triage task ty
 
 ---
 
-## Routed Skills
+## Skill Discoverability
 
-<!-- Domain-level skills are loaded from ~/.openclaw/agents/{{DOMAIN_NAME}}/skills/*.md
-     Universal/project skills are exposed by OpenClaw skill configuration.
-     This table does not perform discovery; it documents when routing rows should use each skill.
-     Add rows as domain-specific skills are created. -->
-
-| Skill | When It Loads |
-|-------|--------------|
-| `domain-status.md` | Weekly reviews, cross-project summaries, domain health checks |
-| `goals-resolver.md` | Heartbeat goal reviews; comparing observed state to declared goals |
-| `[domain-skill].md` | [When to load it] |
+Skills are shipped by the `domain-skills` OpenClaw plugin. Universal skills live under the plugin's `core/` tier and domain-specific ones under `domains/{{DOMAIN_NAME}}/`; per-domain vendor and user dirs override them in last-wins precedence. Query `list_skills` for the merged catalog with provenance, or `read_skill(name)` to fetch a single body — but the agent does not browse this catalog to pick skills. Routing rows below remain the single load mechanism.
 
 ---
 

@@ -10,15 +10,15 @@
 #
 #  1. Checks prerequisites (node, openclaw)
 #  2. Verifies ~/.openclaw/workspace/ exists (created by openclaw onboard)
-#  3. Deploys domain templates into the native workspace:
+#  3. Deploys template-owned files into the native workspace:
 #       - AGENTS.md replaced with combined global + domain routing
-#       - SOUL.md: domain identity section appended (preserves OC's native content)
-#       - HEARTBEAT.md: domain task block appended (preserves OC's native content)
 #       - MEMORY.md, DOCK.md, context/, skills/: added on first run (skipped if present)
+#       Note: SOUL.md, HEARTBEAT.md, USER.md, and IDENTITY.md are OpenClaw-owned.
+#       The template ships no content into those files — see docs/agents/.
 #  4. Installs the domain-memory OpenClaw plugin
 #  5. Creates workspace .env from template (skipped if present)
 #  6. Registers an OpenClaw agent pointing at the native workspace
-#  7. Configures heartbeat defaults through OpenClaw config
+#  7. Configures heartbeat defaults through OpenClaw config (string binding only)
 #  8. Pulls nomic-embed-text via ollama unless skipped
 #  9. Creates a persona shell function that calls openclaw agent
 #  10. Optionally creates a project inside workspace/projects/<slug>/
@@ -130,10 +130,10 @@ if [[ -n "$INTAKE_JSON" ]]; then
   [[ -f "$INTAKE_JSON" ]] || die "--intake-json file not found: $INTAKE_JSON"
   INTAKE_DOMAIN="$(json_get "$INTAKE_JSON" "identity.domainName")"
   INTAKE_SLUG="$(json_get "$INTAKE_JSON" "setup.slug")"
-  INTAKE_PERSONA="$(json_get "$INTAKE_JSON" "setup.personaName")"
   INTAKE_PROJECT_SLUG="$(json_get "$INTAKE_JSON" "setup.projectSlug")"
   [[ -z "$DOMAIN_NAME" ]] && DOMAIN_NAME="${INTAKE_SLUG:-$INTAKE_DOMAIN}"
-  [[ -z "$PERSONA_NAME" ]] && PERSONA_NAME="$INTAKE_PERSONA"
+  # Persona name comes from --persona on the CLI; intake JSON does not carry it.
+  # See ADR 0004 (template owns routing + plugin trio; OpenClaw owns SOUL/persona).
   [[ -z "$PROJECT_SLUG" ]] && PROJECT_SLUG="$INTAKE_PROJECT_SLUG"
 fi
 
@@ -152,6 +152,11 @@ PROJECT_DIR=""
 [[ -n "$PROJECT_SLUG" ]] && PROJECT_DIR="$WORKSPACE_DIR/projects/$(slugify "$PROJECT_SLUG")"
 MEMORY_PLUGIN_DIR="$OPENCLAW_HOME/plugins/domain-memory-$DOMAIN_SLUG"
 COMMERCE_PLUGIN_DIR="$OPENCLAW_HOME/plugins/domain-commerce-$DOMAIN_SLUG"
+SKILLS_PLUGIN_DIR="$OPENCLAW_HOME/plugins/domain-skills-$DOMAIN_SLUG"
+# Skill tier dirs live inside the workspace (template-owned namespace).
+# ~/.openclaw/agents/<name>/ is OpenClaw's per-agent state directory — not ours.
+AGENT_SKILLS_DIR="$WORKSPACE_DIR/skills"
+AGENT_SKILLS_VENDOR_DIR="$AGENT_SKILLS_DIR/vendor"
 INSTALL_DATE="$(date '+%Y-%m-%d')"
 
 run() {
@@ -235,7 +240,7 @@ if [[ ! -f "$WORKSPACE_DIR/IDENTITY.md" ]]; then
   fi
 fi
 
-run "mkdir -p '$WORKSPACE_DIR/skills' '$WORKSPACE_DIR/context' '$OPENCLAW_HOME/plugins'"
+run "mkdir -p '$WORKSPACE_DIR/context' '$OPENCLAW_HOME/plugins'"
 
 # add_new: copy src → dst only if dst does not already exist
 add_new() {
@@ -252,46 +257,11 @@ deploy_always() {
   run "cp '$1' '$2'"
 }
 
-info "Step 3/10 - Deploying domain templates..."
+info "Step 3/10 - Deploying template-owned files..."
 
-# SOUL.md: append domain identity section to OC's native file (idempotent)
-if $DRY_RUN; then
-  echo -e "  ${YELLOW}[dry-run]${NC} would append domain identity section to $WORKSPACE_DIR/SOUL.md"
-else
-  if ! grep -q "# Domain Identity:" "$WORKSPACE_DIR/SOUL.md" 2>/dev/null; then
-    {
-      printf '\n\n---\n\n# Domain Identity: %s\n<!-- Added by install.sh %s -->\n\n' "$PERSONA_NAME" "$INSTALL_DATE"
-      cat "$SCRIPT_DIR/domain/SOUL.md"
-    } | sed \
-        -e "s|{{DOMAIN_NAME}}|$DOMAIN_SLUG|g" \
-        -e "s|{{PERSONA_NAME}}|$PERSONA_NAME|g" \
-        -e "s|{{INSTALL_DATE}}|$INSTALL_DATE|g" \
-        -e "s|{{ESTABLISHED_DATE}}|$INSTALL_DATE|g" \
-      >> "$WORKSPACE_DIR/SOUL.md"
-    success "Appended domain identity to SOUL.md"
-  else
-    info "Domain identity already in SOUL.md — skipping"
-  fi
-fi
-
-# HEARTBEAT.md: append domain task block to OC's native file (idempotent)
-if $DRY_RUN; then
-  echo -e "  ${YELLOW}[dry-run]${NC} would append domain task block to $WORKSPACE_DIR/HEARTBEAT.md"
-else
-  if ! grep -q "# Domain Tasks:" "$WORKSPACE_DIR/HEARTBEAT.md" 2>/dev/null; then
-    {
-      printf '\n\n---\n\n# Domain Tasks: %s\n<!-- Added by install.sh %s -->\n\n' "$DOMAIN_SLUG" "$INSTALL_DATE"
-      cat "$SCRIPT_DIR/domain/HEARTBEAT.md"
-    } | sed \
-        -e "s|{{DOMAIN_NAME}}|$DOMAIN_SLUG|g" \
-        -e "s|{{PERSONA_NAME}}|$PERSONA_NAME|g" \
-        -e "s|{{INSTALL_DATE}}|$INSTALL_DATE|g" \
-      >> "$WORKSPACE_DIR/HEARTBEAT.md"
-    success "Appended domain tasks to HEARTBEAT.md"
-  else
-    info "Domain task block already in HEARTBEAT.md — skipping"
-  fi
-fi
+# OpenClaw-owned bootstrap files (SOUL.md, HEARTBEAT.md, USER.md, IDENTITY.md)
+# are not written by the template. See docs/agents/persona.md and
+# docs/agents/heartbeat-tasks.md for paste-ready content the worker installs themselves.
 
 # Add-only files: copy from template only on first run
 add_new "$SCRIPT_DIR/domain/MEMORY.md" "$WORKSPACE_DIR/MEMORY.md"
@@ -299,29 +269,9 @@ add_new "$SCRIPT_DIR/domain/context/domain.md" "$WORKSPACE_DIR/context/domain.md
 add_new "$SCRIPT_DIR/domain/context/clients.md" "$WORKSPACE_DIR/context/clients.md"
 add_new "$SCRIPT_DIR/DOCK.md" "$WORKSPACE_DIR/DOCK.md"
 
-# USER.md: OC injects this as bootstrap context so the agent knows the worker.
-# Written once with variable substitution; never clobbered on subsequent runs.
-if [[ ! -f "$WORKSPACE_DIR/USER.md" ]]; then
-  if $DRY_RUN; then
-    echo -e "  ${YELLOW}[dry-run]${NC} would write $WORKSPACE_DIR/USER.md"
-  else
-    sed \
-      -e "s|{{WORKER_NAME}}|${PERSONA_NAME}|g" \
-      -e "s|{{DOMAIN_NAME}}|${DOMAIN_SLUG}|g" \
-      "$SCRIPT_DIR/domain/USER.md" > "$WORKSPACE_DIR/USER.md"
-    success "Wrote USER.md (worker identity for OC bootstrap injection)"
-  fi
-else
-  info "USER.md already exists — skipping"
-fi
-
 # Reference files: always write (documentation/config snapshot)
 deploy_always "$SCRIPT_DIR/domain/openclaw/openclaw.domain.json5" "$WORKSPACE_DIR/openclaw.domain.json5"
 deploy_always "$SCRIPT_DIR/domain/openclaw/.env.example" "$WORKSPACE_DIR/.env.example"
-
-for skill in "$SCRIPT_DIR/domain/skills/"*.md; do
-  [[ -f "$skill" ]] && add_new "$skill" "$WORKSPACE_DIR/skills/$(basename "$skill")"
-done
 
 info "Step 4/10 - Building routing-first AGENTS.md..."
 COMBINED_AGENTS="$WORKSPACE_DIR/AGENTS.md"
@@ -356,8 +306,7 @@ for f in \
   "$WORKSPACE_DIR/context/clients.md" \
   "$WORKSPACE_DIR/openclaw.domain.json5" \
   "$WORKSPACE_DIR/.env.example" \
-  "$WORKSPACE_DIR/DOCK.md" \
-  "$WORKSPACE_DIR/USER.md"
+  "$WORKSPACE_DIR/DOCK.md"
 do
   subst_file "$f"
 done
@@ -366,11 +315,12 @@ success "AGENTS.md built with global + domain routing layers"
 
 info "Step 4a - Generating SKILLS.md index..."
 if $DRY_RUN; then
-  echo -e "  ${YELLOW}[dry-run]${NC} node '$SCRIPT_DIR/scripts/build-skills-index.mjs' --workspace-dir '$WORKSPACE_DIR' --template-dir '$SCRIPT_DIR'"
+  echo -e "  ${YELLOW}[dry-run]${NC} node '$SCRIPT_DIR/scripts/build-skills-index.mjs' --workspace-dir '$WORKSPACE_DIR' --template-dir '$SCRIPT_DIR' --domain '{{DOMAIN_NAME}}'"
 else
   node "$SCRIPT_DIR/scripts/build-skills-index.mjs" \
     --workspace-dir "$WORKSPACE_DIR" \
-    --template-dir "$SCRIPT_DIR" || warn "SKILLS.md generation failed - non-blocking"
+    --template-dir "$SCRIPT_DIR" \
+    --domain '{{DOMAIN_NAME}}' || warn "SKILLS.md generation failed - non-blocking"
 fi
 
 if [[ -n "$INTAKE_JSON" ]]; then
@@ -410,11 +360,17 @@ This is the generic checklist (no intake JSON was provided). Run \`install.sh --
 ## Fill in worker-specific content
 
 - [ ] \`$WORKSPACE_DIR/AGENTS.md\` - replace placeholder routing rows; delete \`<!-- ... -->\` annotation blocks.
-- [ ] \`$WORKSPACE_DIR/SOUL.md\` - persona voice, identity, pushback thresholds. See \`domain/examples/\` for reference personas.
 - [ ] \`$WORKSPACE_DIR/context/domain.md\` - what the domain is, scope, active projects.
 - [ ] \`$WORKSPACE_DIR/DOCK.md\` - confirm Carried/Domain, Carried/Persona, Carried/Skills sections.
-- [ ] \`$WORKSPACE_DIR/HEARTBEAT.md\` - confirm or trim the default tasks; add custom tasks if needed.
 - [ ] \`$WORKSPACE_DIR/MEMORY.md\` - capture any starting decisions, patterns, preferences.
+
+## Fill in OpenClaw-owned bootstrap files yourself
+
+The template ships nothing into these files. Reference docs live under \`docs/agents/\`.
+
+- [ ] \`$WORKSPACE_DIR/SOUL.md\` - persona voice, identity, pushback thresholds. See \`docs/agents/persona.md\` and \`domain/examples/\` for reference personas.
+- [ ] \`$WORKSPACE_DIR/HEARTBEAT.md\` - paste the default 5-task block from \`docs/agents/heartbeat-tasks.md\` and edit as needed.
+- [ ] \`$WORKSPACE_DIR/USER.md\` - who the worker is. See \`docs/agents/user-context.md\`.
 
 ## Confirm boundaries
 
@@ -436,6 +392,26 @@ run "cp -R '$SCRIPT_DIR/domain/openclaw/plugins/domain-memory/.' '$MEMORY_PLUGIN
 
 if command -v openclaw &>/dev/null || $DRY_RUN; then
   run "openclaw plugins install -l '$MEMORY_PLUGIN_DIR'" || warn "Plugin link failed - add $MEMORY_PLUGIN_DIR to plugins.load.paths manually"
+fi
+
+info "Step 5a - Installing domain-skills plugin template..."
+if $DRY_RUN; then
+  echo -e "  ${YELLOW}[dry-run]${NC} node '$SCRIPT_DIR/scripts/lint-skills.mjs' --plugin-root '$SCRIPT_DIR/domain/openclaw/plugins/domain-skills' --domain '{{DOMAIN_NAME}}'"
+else
+  node "$SCRIPT_DIR/scripts/lint-skills.mjs" \
+    --plugin-root "$SCRIPT_DIR/domain/openclaw/plugins/domain-skills" \
+    --domain '{{DOMAIN_NAME}}' \
+    --templates-dir "$SCRIPT_DIR/base/templates" || die "Skill lint failed — refusing to install a broken skill library."
+fi
+run "mkdir -p '$SKILLS_PLUGIN_DIR'"
+run "cp -R '$SCRIPT_DIR/domain/openclaw/plugins/domain-skills/.' '$SKILLS_PLUGIN_DIR/'"
+# Rename the {{DOMAIN_NAME}} tier dir to the concrete domain slug.
+if [[ -d "$SKILLS_PLUGIN_DIR/domains/{{DOMAIN_NAME}}" ]]; then
+  run "mv '$SKILLS_PLUGIN_DIR/domains/{{DOMAIN_NAME}}' '$SKILLS_PLUGIN_DIR/domains/$DOMAIN_SLUG'"
+fi
+run "mkdir -p '$AGENT_SKILLS_DIR' '$AGENT_SKILLS_VENDOR_DIR'"
+if command -v openclaw &>/dev/null || $DRY_RUN; then
+  run "openclaw plugins install -l '$SKILLS_PLUGIN_DIR'" || warn "Skills plugin link failed - add $SKILLS_PLUGIN_DIR to plugins.load.paths manually"
 fi
 
 if $ENABLE_COMMERCE; then
@@ -479,7 +455,7 @@ if command -v openclaw &>/dev/null || $DRY_RUN; then
   run "openclaw config set agents.defaults.heartbeat.target 'last'" || warn "Could not set heartbeat target"
   run "openclaw config set agents.defaults.heartbeat.isolatedSession true" || warn "Could not set heartbeat isolation"
   run "openclaw config set agents.defaults.heartbeat.prompt 'Read HEARTBEAT.md if it exists. OpenClaw includes only due tasks from its native tasks block; follow those task prompts strictly. Resolve every recurring task through the AGENTS.md routing table before acting. If nothing needs attention, reply HEARTBEAT_OK.'" || warn "Could not set heartbeat prompt"
-  run "openclaw config set skills.load.extraDirs '[\"$WORKSPACE_DIR/skills\"]'" || warn "Could not set skills extraDirs"
+  run "openclaw config set skills.load.extraDirs '[\"$SKILLS_PLUGIN_DIR/core\", \"$SKILLS_PLUGIN_DIR/domains/$DOMAIN_SLUG\", \"$AGENT_SKILLS_VENDOR_DIR\", \"$AGENT_SKILLS_DIR\"]'" || warn "Could not set skills extraDirs"
 fi
 
 if $SKIP_GATEWAY; then
@@ -544,11 +520,18 @@ ${STATUS_FN_NAME}() {
     openclaw config get "\$k" 2>/dev/null || echo '(unset)'
   done
   printf '\n--- workspace files ---\n'
-  for f in AGENTS.md SOUL.md HEARTBEAT.md MEMORY.md DOCK.md POST-INSTALL-CHECKLIST.md; do
+  for f in AGENTS.md MEMORY.md DOCK.md POST-INSTALL-CHECKLIST.md; do
     if [ -f "${WORKSPACE_DIR}/\$f" ]; then
-      printf '  ✓ %s\n' "\$f"
+      printf '  ✓ %s (template-owned)\n' "\$f"
     else
       printf '  ✗ %s (missing)\n' "\$f"
+    fi
+  done
+  for f in SOUL.md HEARTBEAT.md USER.md IDENTITY.md; do
+    if [ -f "${WORKSPACE_DIR}/\$f" ]; then
+      printf '  ✓ %s (OpenClaw-owned)\n' "\$f"
+    else
+      printf '  ✗ %s (OpenClaw-owned, fill yourself — see docs/agents/)\n' "\$f"
     fi
   done
   printf '\nValidate: %s/install.sh --validate\n\n' "$SCRIPT_DIR"
@@ -588,6 +571,9 @@ echo "  Workspace:      $WORKSPACE_DIR"
 echo "  Active domain:  $OPENCLAW_HOME/active-domain -> $DOMAIN_SLUG"
 echo "  Memory DB:      $WORKSPACE_DIR/memory.db (created by domain-memory tools)"
 echo "  Memory plugin:  $MEMORY_PLUGIN_DIR"
+echo "  Skills plugin:  $SKILLS_PLUGIN_DIR"
+echo "  Skills (user):  $AGENT_SKILLS_DIR"
+echo "  Skills (vendor):$AGENT_SKILLS_VENDOR_DIR"
 if $ENABLE_COMMERCE; then
   echo "  Commerce plugin:$COMMERCE_PLUGIN_DIR"
 fi
@@ -601,11 +587,15 @@ echo ""
 echo "  Daily worker dashboard:"
 echo "    $PERSONA_SLUG-status"
 echo ""
-echo "  Files that still need worker-specific content:"
-echo "    $WORKSPACE_DIR/AGENTS.md"
-echo "    $WORKSPACE_DIR/SOUL.md"
-echo "    $WORKSPACE_DIR/context/domain.md"
-echo "    $WORKSPACE_DIR/DOCK.md"
+echo "  Template-owned files to fill in (annotated scaffolds):"
+echo "    $WORKSPACE_DIR/AGENTS.md           — routing rows"
+echo "    $WORKSPACE_DIR/context/domain.md   — what the domain is"
+echo "    $WORKSPACE_DIR/DOCK.md             — export policy"
+echo ""
+echo "  OpenClaw-owned bootstrap files to fill in yourself:"
+echo "    $WORKSPACE_DIR/SOUL.md       — persona/identity; see docs/agents/persona.md"
+echo "    $WORKSPACE_DIR/HEARTBEAT.md  — recurring tasks; see docs/agents/heartbeat-tasks.md"
+echo "    $WORKSPACE_DIR/USER.md       — worker context; see docs/agents/user-context.md"
 echo ""
 echo "  Checklist:       $WORKSPACE_DIR/POST-INSTALL-CHECKLIST.md"
 echo ""

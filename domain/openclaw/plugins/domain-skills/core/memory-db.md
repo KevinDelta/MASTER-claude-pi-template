@@ -11,9 +11,9 @@ Three components work together:
 
 | Component | Location | Role |
 |-----------|----------|------|
-| `memory.db` | `~/.openclaw/agents/<name>/memory.db` | Working substrate - observations, vectors, goals, scratchpad |
+| `memory.db` | `~/.openclaw/workspace/memory.db` | Working substrate - observations, vectors, goals, scratchpad |
 | `domain-memory` | `domain/openclaw/plugins/domain-memory/` | OpenClaw plugin - recall, status, observation writes, maintenance |
-| `MEMORY.md` | `~/.openclaw/agents/<name>/MEMORY.md` | Human-readable index - curated decisions, patterns, lessons |
+| `MEMORY.md` | `~/.openclaw/workspace/MEMORY.md` | Human-readable index - curated decisions, patterns, lessons |
 
 The DB is the substrate. MEMORY.md is the record a human can read without a query tool. They are complementary — not duplicates.
 `domain_memory_query` returns bounded, redacted excerpts for synthesis. It is not a raw observation export path.
@@ -46,7 +46,7 @@ FTS is the fallback. Vector search improves semantic retrieval when ollama is av
 
 ```bash
 # Open the DB
-sqlite3 ~/.openclaw/agents/<domain-name>/memory.db
+sqlite3 ~/.openclaw/workspace/memory.db
 
 # Check domain identity
 SELECT * FROM _meta;
@@ -74,7 +74,7 @@ SELECT project, task, due_date, created_at FROM deferred_tasks
 WHERE completed_at IS NULL ORDER BY due_date ASC;
 
 # Queue a deferred task (run from bash)
-# sqlite3 ~/.openclaw/agents/<name>/memory.db \
+# sqlite3 ~/.openclaw/workspace/memory.db \
 #   "INSERT INTO deferred_tasks (project, task, due_date) VALUES ('my-project', 'Follow up with client on proposal', '2026-05-01');"
 
 # Current goals
@@ -107,7 +107,7 @@ SELECT project, COUNT(*) FROM observations GROUP BY project ORDER BY COUNT(*) DE
 5. Set `PROJECT_ID` in the project env source (tags observations to this project)
 6. Optionally set `PROJECT_WORKSPACE` and `PROJECT_PHASE`
 7. Run an OpenClaw turn that calls `domain_info` or `domain_status`
-8. Verify DB was created: `ls -la ~/.openclaw/agents/<name>/memory.db`
+8. Verify DB was created: `ls -la ~/.openclaw/workspace/memory.db`
 
 ## Diagnosing Recall Failures
 
@@ -122,9 +122,9 @@ SELECT project, COUNT(*) FROM observations GROUP BY project ORDER BY COUNT(*) DE
 - If 0: embeddings haven't been computed yet - run `memory_maintenance`
 
 **Extension not connecting:**
-- Check `~/.openclaw/agents/<name>/.env` has `OPENCLAW_DOMAIN_NAME` set
+- Check `~/.openclaw/workspace/.env` has `OPENCLAW_DOMAIN_NAME` set
 - Check OpenClaw gateway/plugin logs for domain-memory load errors
-- Check directory exists: `ls ~/.openclaw/agents/<name>/`
+- Check directory exists: `ls ~/.openclaw/workspace/`
 
 **Wrong project observations mixing in:**
 - Verify `PROJECT_ID` is set per project in the env source used by the route

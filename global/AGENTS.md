@@ -1,12 +1,12 @@
 # [Org Name] — Global Agent Configuration
 
-<!-- INSTALL: install.sh builds ~/.openclaw/agents/<domain>/AGENTS.md by combining this file with domain/AGENTS.md.
+<!-- INSTALL: install.sh builds ~/.openclaw/workspace/AGENTS.md by combining this file with domain/AGENTS.md.
      Do not copy this file manually — run install.sh.
 
      OPENCLAW LOAD MODEL:
      OpenClaw treats the domain workspace as the agent workspace. install.sh creates a combined
      AGENTS.md there:
-       1. Global+Domain -> ~/.openclaw/agents/<domain>/AGENTS.md
+       1. Global+Domain -> ~/.openclaw/workspace/AGENTS.md
        2. Project       -> <project-root>/AGENTS.md (engagement-specific, read when routed)
 
      Domain content appears below a "# Domain: <name>" header appended by install.sh.

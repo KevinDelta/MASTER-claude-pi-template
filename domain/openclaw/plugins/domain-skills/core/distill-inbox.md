@@ -1,3 +1,8 @@
+---
+name: distill-inbox
+description: Process one raw artifact from inbox/_inbox/ into the structured parts of the project, then archive the source. Human-gated at every step.
+---
+
 # distill-inbox
 
 Process one raw artifact from `inbox/_inbox/` into the structured parts of the project, then archive the source. Human-gated at every step.
