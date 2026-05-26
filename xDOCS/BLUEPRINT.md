@@ -137,18 +137,20 @@ Composition rules:
 
 ## Memory Architecture
 
-Domain memory has two local layers. OpenClaw's native memory is Markdown/workspace-first; the framework keeps structured memory because it supports cross-project recall, scratchpad items, deferred tasks, goals, aggregate status, and export boundaries.
+Memory is **files-as-truth**. Workspace markdown files are the canonical record; the OC-native search index is a regenerable artifact.
 
-| Layer | Location | Use |
-|-------|----------|-----|
-| OpenClaw Markdown memory | `MEMORY.md` and `memory/*.md` | Human-readable durable facts, preferences, principles, and promoted lessons |
-| Framework structured memory | `memory.db` | Timestamped observations, scratchpad, deferred tasks, goals, project activity, FTS, and vector recall |
+| Layer | Location | Portability |
+|-------|----------|-------------|
+| Workspace markdown | `MEMORY.md`, `memory/*.md` | Must carry — canonical record |
+| OC-native search index | `~/.openclaw/memory/<agent>.sqlite` | Regenerable — do not carry |
 
-Location:
+**Ownership:** OpenClaw native memory owns the index. The `domain-memory` plugin is a thin wrapper — it applies redaction, bounding, and project-filter on top of OC's `memory search` command. It does not own a separate database.
 
-```
-~/.openclaw/workspace/memory.db
-```
+**Portability:** moving a domain means copying workspace markdown and plugin source/config, then running `install.sh`. The index rebuilds on first use.
+
+**Unpromoted observations** — notes written to the index but not yet promoted to a `memory/*.md` file — are ephemeral by design. The session-end routing row is the promotion checkpoint.
+
+**Embeddings:** generated locally by default (Ollama). No cloud provider is auto-detected or activated. Falls back to FTS-only search when Ollama is absent.
 
 Plugin:
 
@@ -156,21 +158,7 @@ Plugin:
 domain/openclaw/plugins/domain-memory/
 ```
 
-Default tools:
-
-| Tool | Purpose |
-|------|---------|
-| `domain_info` | Domain/persona/embedding metadata |
-| `list_active_projects` | Project activity summary |
-| `list_skills` | Skill names and descriptions only |
-| `domain_memory_query` | FTS + vector search over bounded, redacted observation excerpts |
-| `scratchpad_list` | Open scratchpad items |
-| `domain_status` | Aggregate domain health |
-| `observation_write` | Structured memory writes |
-| `memory_maintenance` | Heartbeat embedding backfill and health report |
-| `raw_observations` | Denied by default |
-
-Automatic Pi-style lifecycle capture is not assumed. If OpenClaw exposes equivalent hooks in the installed version, the plugin can add them later. Until then, routing rows require explicit memory query/write tool use.
+The plugin exposes access categories (memory recall, project status, domain identity) as defined in `DOCK.md` Section D. It does not expose raw index entries, file contents, or embedding data. See `DOCK.md` for the full access category table and default postures.
 
 ---
 
@@ -202,15 +190,23 @@ Heartbeat is interval/condition-based, not cron-shaped. OpenClaw decides which n
 
 `DOCK.md` replaces `PI_DOCK.md`.
 
-`DOCK.md` is the durable policy contract, not the only enforcement layer. OpenClaw Gateway handles auth and channel boundaries. OpenClaw bindings select the workspace. The domain-memory plugin enforces the memory/tool allowlist. The default posture is:
+`DOCK.md` is a policy declaration — it states what the agent may and may not expose. It does not enumerate plugin tools or specify per-boundary enforcement details. Enforcement is three-layer:
+
+| Layer | Enforces |
+|-------|---------|
+| Plugin schemas | Tools only expose what their schema allows; raw export denied by default |
+| Routing rows | `AGENTS.md` out-of-bounds row checks DOCK.md at think-time |
+| Gateway config | Auth, channel allowlists, and session policy |
+
+The default posture declared in DOCK.md:
 
 - answer domain and memory questions through synthesized summaries,
 - expose skill names/descriptions, not file contents,
 - expose aggregate project status, not raw logs,
-- deny raw observations by default,
+- deny raw index entries and unpromoted observations by default,
 - require worker approval for requests outside the allowlist.
 
-Portability is part of this policy: the worker owns the workspace files, skills, plugin source/config, Markdown memory, and `memory.db`. A future LanceDB backend may replace the vector/index substrate, but it must preserve default-deny export and worker-owned portability.
+Portability: the worker owns workspace markdown and plugin source/config. The OC-native search index is regenerable and is not part of the portability contract. See ADR 0005 for the full decision record.
 
 ---
 
@@ -229,7 +225,7 @@ AGENTS.md routing row
 -> domain-commerce plugin
 -> Stripe Checkout, Payment Links, Invoices, or payment status API
 -> webhook/payment event
--> bounded event summary in memory.db
+-> bounded event summary written to memory (promoted to markdown if durable)
 ```
 
 Target use cases:

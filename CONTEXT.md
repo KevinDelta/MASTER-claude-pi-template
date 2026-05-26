@@ -27,9 +27,15 @@ A template system for building portable, domain-scoped knowledge worker agents o
 | **Template** | A reusable output shell (e.g. `executive-brief.md`, `weekly-status.md`). Describes the *shape* a deliverable takes. Skills fill templates; one template can be filled by many skills. Distinct from `skill` — skills are process, templates are shape. |
 | **Inbox** | Human-curated staging area for raw upstream artifacts (call transcripts, meeting notes, clipped articles, voice memos). Lives at `base/inbox/` (project-scoped) and `domain/inbox/` (cross-project). Files land in `_inbox/`, get distilled via a routing row with human confirmation, then move to `_processed/`. **Distinct from memory** — inbox is the human's feed-in surface; memory is the agent's own observation store. Distillation never auto-writes to memory; the human decides what crosses that boundary. |
 | **Distill** | The deliberate, human-triggered act of processing an inbox item — extracting insights and proposing where they belong (pillar/skill/decision/memory edit), then archiving the source. Always gated by user confirmation. |
+| **Files-as-truth** | The memory ownership principle: workspace markdown files (`MEMORY.md`, `memory/*.md`) are the canonical record. The OC-native search index is a regenerable artifact, not a co-equal layer. |
+| **Unpromoted observation** | A note written to the OC-native index during a session but not yet elevated to a `memory/*.md` file. Ephemeral by design — does not survive a domain move. The session-end routing row is the promotion checkpoint. |
+| **Enforcement layers** | The three surfaces that implement DOCK.md policy: plugin schemas (tool-level), routing rows (think-time), and Gateway config (access boundary). Each layer changes independently; DOCK.md does not track their implementation details. |
+| **Access category** | A named class of information the domain agent may expose (domain identity, memory recall, project status, skill discovery, structured writes, raw data export, commerce operations). DOCK.md declares categories and their default posture; plugin tools implement them. |
 
 ## What to avoid
 
 - Don't call the routing table a "config file" — it's a **routing table**
 - Don't call SOUL.md a "system prompt" — it's a **persona definition**
 - Don't call the template a "framework" — it's a **template system**
+- Don't call DOCK.md an "enforcement spec" — it's a **policy declaration**; enforcement lives in the three layers
+- Don't call `memory.db` / the OC-native index "the memory" — **workspace markdown is the memory**; the index is a regenerable search artifact
