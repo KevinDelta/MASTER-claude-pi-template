@@ -376,6 +376,7 @@ The template ships nothing into these files. Reference docs live under \`docs/ag
 
 - [ ] \`$WORKSPACE_DIR/.env\` exists; secrets stay out of committed files.
 - [ ] Commerce remains disabled unless \`--enable-commerce\` was passed and approval gates are reviewed.
+$(if $ENABLE_COMMERCE; then echo "- [ ] \`$WORKSPACE_DIR/commerce-catalog.json\` — replace all price_REPLACE_ME values with real Stripe price IDs before using commerce tools."; fi)
 - [ ] \`raw_observations\` denial confirmed (default).
 
 ## Ready signal
@@ -420,6 +421,15 @@ if $ENABLE_COMMERCE; then
   run "cp -R '$SCRIPT_DIR/domain/openclaw/plugins/domain-commerce/.' '$COMMERCE_PLUGIN_DIR/'"
   if command -v openclaw &>/dev/null || $DRY_RUN; then
     run "openclaw plugins install -l '$COMMERCE_PLUGIN_DIR'" || warn "Commerce plugin link failed - add $COMMERCE_PLUGIN_DIR to plugins.load.paths manually"
+  fi
+  # Skill file must live in $AGENT_SKILLS_DIR so routing rows can resolve it
+  run "mkdir -p '$AGENT_SKILLS_DIR'"
+  run "cp '$COMMERCE_PLUGIN_DIR/commerce.md' '$AGENT_SKILLS_DIR/commerce.md'"
+  # Seed catalog from example if none exists yet
+  CATALOG_FILE="$WORKSPACE_DIR/commerce-catalog.json"
+  if [[ ! -f "$CATALOG_FILE" ]]; then
+    run "cp '$COMMERCE_PLUGIN_DIR/commerce-catalog.example.json' '$CATALOG_FILE'"
+    warn "Seeded commerce-catalog.json from example — replace price_REPLACE_ME values with real Stripe price IDs before going live."
   fi
 fi
 
@@ -576,6 +586,8 @@ echo "  Skills (user):  $AGENT_SKILLS_DIR"
 echo "  Skills (vendor):$AGENT_SKILLS_VENDOR_DIR"
 if $ENABLE_COMMERCE; then
   echo "  Commerce plugin:$COMMERCE_PLUGIN_DIR"
+  echo "  Commerce skill: $AGENT_SKILLS_DIR/commerce.md"
+  echo "  Catalog:        $WORKSPACE_DIR/commerce-catalog.json"
 fi
 echo ""
 echo "  Start a local turn:"

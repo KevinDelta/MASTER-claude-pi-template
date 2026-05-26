@@ -96,11 +96,11 @@ Read that row as: when a turn starts with "triage" or matches the Triage task ty
 | **Session start** — orient before any work | — | `MEMORY.md` + `HEARTBEAT.md` when recurring | `memory-query.md` |
 | **Heartbeat** — recurring proactive check | — | `HEARTBEAT.md` + `MEMORY.md` | `memory-query.md` + `domain-status.md` |
 | **Domain status** — cross-project summary, weekly review | — | `MEMORY.md` | `domain-status.md` |
-| **Goal review** — check domain goals against observed state | — | `MEMORY.md` + `HEARTBEAT.md` | `goals-resolver.md` |
-| **Commerce / invoice** — draft, review, finalize, or send invoices | — | `DOCK.md` + `context/clients.md` | `memory-query.md` |
-| **Commerce / payment link** — create approved ad hoc payment links or Checkout Sessions | — | `DOCK.md` + `context/clients.md` | `memory-query.md` |
-| **Commerce / payment status** — summarize paid, open, failed, or overdue payment state | — | `DOCK.md` | `memory-query.md` |
-| **Commerce / refund** — draft or execute refunds | — | `DOCK.md` + `context/clients.md` | `memory-query.md` |
+| **Goal review** — check domain goals against observed state | — | `MEMORY.md` + `HEARTBEAT.md` | `domain-status.md` |
+| **Commerce / invoice** — draft, review, finalize, or send invoices | — | `DOCK.md` + `context/clients.md` | `commerce.md` + `memory-query.md` |
+| **Commerce / payment link** — create approved ad hoc payment links or Checkout Sessions | — | `DOCK.md` + `context/clients.md` | `commerce.md` + `memory-query.md` |
+| **Commerce / payment status** — summarize paid, open, failed, or overdue payment state | — | `DOCK.md` | `commerce.md` |
+| **Commerce / refund** — draft or execute refunds | — | `DOCK.md` + `context/clients.md` | `commerce.md` + `memory-query.md` |
 | **Session end** — update state and write memory | — | — | `memory-write.md` + `context-update.md` |
 | **Harness** — modify AGENTS.md, skills, plugins, OpenClaw config | — | `BLUEPRINT.md` | `harness-dev.md` |
 

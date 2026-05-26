@@ -31,6 +31,9 @@ A template system for building portable, domain-scoped knowledge worker agents o
 | **Unpromoted observation** | A note written to the OC-native index during a session but not yet elevated to a `memory/*.md` file. Ephemeral by design — does not survive a domain move. The session-end routing row is the promotion checkpoint. |
 | **Enforcement layers** | The three surfaces that implement DOCK.md policy: plugin schemas (tool-level), routing rows (think-time), and Gateway config (access boundary). Each layer changes independently; DOCK.md does not track their implementation details. |
 | **Access category** | A named class of information the domain agent may expose (domain identity, memory recall, project status, skill discovery, structured writes, raw data export, commerce operations). DOCK.md declares categories and their default posture; plugin tools implement them. |
+| **Commerce catalog** | A JSON file (`commerce-catalog.json`) in the workspace that lists approved services with Stripe price IDs, unit amounts, and slugs. The agent consults it before constructing any invoice line item or payment link. Seeded from `commerce-catalog.example.json` by `install.sh --enable-commerce`; price IDs must be replaced with real Stripe values before going live. |
+| **Draft-before-send** | The two-turn approval pattern for all commerce mutations: turn 1 calls a draft tool and presents the result; turn 2 calls the send/execute tool only after the human explicitly confirms. Never advance in the same turn. |
+| **Approval reference** | The human's literal confirmation message, carried as `approval_reference` on mutating Stripe calls. Paraphrasing is not allowed; ambiguous messages require a follow-up before proceeding. |
 
 ## What to avoid
 
