@@ -20,7 +20,7 @@ Domain memory has two local layers:
 | OpenClaw Markdown memory | `MEMORY.md` and `memory/*.md` | Human-readable durable facts, preferences, principles, and promoted lessons |
 | Framework structured memory | `memory.db` | Timestamped observations, scratchpad, deferred tasks, goals, project activity, FTS, and vector recall |
 
-**Location:** `~/.openclaw/agents/<name>/memory.db`
+**Location:** `~/.openclaw/workspace/memory.db`
 
 One SQLite file per domain. It carries across every project in the domain. No HTTP service. No Docker.
 
@@ -151,7 +151,7 @@ PROJECT_PHASE=delivery
 ## Diagnosing Missing Context
 
 **DB not opening:**
-- Check `~/.openclaw/agents/<name>/` exists.
+- Check `~/.openclaw/workspace/` exists.
 - Run `domain_info`.
 - Check plugin load paths in `~/.openclaw/openclaw.json`.
 - Check `better-sqlite3` and `sqlite-vec` are installed.

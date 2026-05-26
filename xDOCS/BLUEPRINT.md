@@ -59,18 +59,22 @@ Do not encode channel/account/peer bindings in `AGENTS.md`. That belongs in Open
 ├── openclaw.json                 # OpenClaw Gateway/agent/channel/plugin config
 ├── active-domain                 # last installed/selected domain slug
 ├── plugins/
-│   └── domain-memory-<domain>/   # local OpenClaw plugin copy
-└── agents/
-    └── <domain>/
-        ├── AGENTS.md             # global + domain combined by install.sh
-        ├── SOUL.md
-        ├── HEARTBEAT.md
-        ├── MEMORY.md
-        ├── DOCK.md
-        ├── memory.db             # created by domain-memory tools
-        ├── openclaw.domain.json5 # reference config snapshot
-        ├── context/
-        └── skills/
+│   ├── domain-memory-<domain>/   # local OpenClaw plugin copy (slug-suffixed)
+│   └── domain-skills-<domain>/
+├── workspace/                    # template-owned content lives here
+│   ├── AGENTS.md                 # global + domain combined by install.sh
+│   ├── SOUL.md                   # OpenClaw-owned; worker fills (see docs/agents/persona.md)
+│   ├── HEARTBEAT.md              # OpenClaw-owned; worker fills (see docs/agents/heartbeat-tasks.md)
+│   ├── USER.md                   # OpenClaw-owned; worker fills
+│   ├── IDENTITY.md               # OpenClaw-owned
+│   ├── MEMORY.md                 # template-owned
+│   ├── DOCK.md                   # template-owned
+│   ├── memory.db                 # created by domain-memory tools
+│   ├── openclaw.domain.json5     # reference config snapshot
+│   ├── context/
+│   └── skills/
+└── agents/                       # OpenClaw's per-agent state — NEVER our content
+    └── main/                     # OC manages this directory
 ```
 
 Project repos still use the `base/` template:
@@ -143,7 +147,7 @@ Domain memory has two local layers. OpenClaw's native memory is Markdown/workspa
 Location:
 
 ```
-~/.openclaw/agents/<domain>/memory.db
+~/.openclaw/workspace/memory.db
 ```
 
 Plugin:
@@ -296,7 +300,7 @@ Wizard-generated bundles use the intake-driven form:
 The installer:
 
 1. checks Node/OpenClaw,
-2. creates `~/.openclaw/agents/<domain>/`,
+2. creates `~/.openclaw/workspace/`,
 3. deploys domain files,
 4. builds combined `AGENTS.md`,
 5. applies intake through the canonical framework renderer when `--intake-json` is provided,

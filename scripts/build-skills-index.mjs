@@ -2,12 +2,13 @@
 /* Generate SKILLS.md index from skill frontmatter.
  *
  * Usage:
- *   node scripts/build-skills-index.mjs --workspace-dir <dir> --template-dir <dir>
+ *   node scripts/build-skills-index.mjs --workspace-dir <dir> --template-dir <dir> [--domain <slug>]
  *
- * Reads:
- *   <template-dir>/skills/*.md      (universal skills)
- *   <template-dir>/domain/skills/*.md (domain-scoped skills)
- *   <workspace-dir>/skills/*.md     (installed domain skills, takes precedence)
+ * Reads (in last-wins precedence order for the domain tier):
+ *   <template-dir>/domain/openclaw/plugins/domain-skills/core/*.md         (universal)
+ *   <template-dir>/domain/openclaw/plugins/domain-skills/domains/<slug>/*.md (domain tier, source)
+ *   <workspace-dir>/skills/vendor/*.md                                     (vendored, if present)
+ *   <workspace-dir>/skills/*.md                                            (user, if present)
  *
  * Writes:
  *   <workspace-dir>/SKILLS.md
@@ -29,15 +30,20 @@ if (!opts["workspace-dir"] || !opts["template-dir"]) usage();
 
 const workspaceDir = path.resolve(opts["workspace-dir"]);
 const templateDir = path.resolve(opts["template-dir"]);
+const domainSlug = opts["domain"] || "{{DOMAIN_NAME}}";
 
-const universal = collect(path.join(templateDir, "skills"));
-const domainTemplate = collect(path.join(templateDir, "domain", "skills"));
-const installed = collect(path.join(workspaceDir, "skills"));
+const pluginRoot = path.join(templateDir, "domain", "openclaw", "plugins", "domain-skills");
+const universal = collect(path.join(pluginRoot, "core"));
+const domainTemplate = collect(path.join(pluginRoot, "domains", domainSlug));
+const vendor = collect(path.join(workspaceDir, "skills", "vendor"));
+const user = collect(path.join(workspaceDir, "skills"));
 
-const installedNames = new Set(installed.map((s) => s.name));
-const domainSkills = installed.length
-  ? installed
-  : domainTemplate.filter((s) => !installedNames.has(s.name));
+// Last-wins precedence for the domain tier: template -> vendor -> user.
+const domainMerged = new Map();
+for (const layer of [domainTemplate, vendor, user]) {
+  for (const skill of layer) domainMerged.set(skill.name, skill);
+}
+const domainSkills = Array.from(domainMerged.values()).sort((a, b) => a.name.localeCompare(b.name));
 
 const out = render(universal, domainSkills);
 fs.mkdirSync(workspaceDir, { recursive: true });
@@ -95,7 +101,7 @@ function render(universal, domainSkills) {
   lines.push("## Domain Skills");
   lines.push("");
   if (!domainSkills.length) {
-    lines.push("*No domain skills installed yet. Add `.md` files with `name`/`description` frontmatter to `~/.openclaw/agents/<domain>/skills/`.*");
+    lines.push("*No domain skills installed yet. Add `.md` files with `name`/`description` frontmatter to `~/.openclaw/workspace/skills/`.*");
   } else {
     lines.push("Loaded from this domain's workspace.");
     lines.push("");

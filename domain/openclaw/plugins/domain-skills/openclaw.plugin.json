@@ -1,0 +1,15 @@
+{
+  "id": "domain-skills",
+  "name": "Domain Skills",
+  "description": "Owns the skill library: discovery (list_skills, read_skill), vendoring (install_skill), removal (remove_skill). Routing rows remain the load mechanism — the agent does not browse this plugin to pick skills.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {
+      "domainName": { "type": "string" },
+      "pluginRoot": { "type": "string" },
+      "vendorDir": { "type": "string" },
+      "userDir": { "type": "string" }
+    }
+  }
+}

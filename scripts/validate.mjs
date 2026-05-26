@@ -37,13 +37,12 @@ const domainSlug = opts["domain"] || null;
 
 const results = [];
 
-// Files OC creates natively — must exist before our installer runs
-const OC_NATIVE_FILES = ["AGENTS.md", "SOUL.md", "HEARTBEAT.md", "TOOLS.md"];
+// Template-owned files our installer adds — must exist after install runs.
+// OpenClaw-owned bootstrap files (SOUL.md, HEARTBEAT.md, USER.md, IDENTITY.md, TOOLS.md)
+// are checked by checkDomainInstalled() below; they are not author-required by us.
+const FRAMEWORK_FILES = ["AGENTS.md", "MEMORY.md", "DOCK.md", "context/domain.md", ".env"];
 
-// Files our installer adds — must exist after install runs
-const FRAMEWORK_FILES = ["MEMORY.md", "DOCK.md", "context/domain.md", ".env"];
-
-const REQUIRED_FILES = [...OC_NATIVE_FILES, ...FRAMEWORK_FILES];
+const REQUIRED_FILES = [...FRAMEWORK_FILES];
 
 function pass(label, detail) { results.push({ kind: "pass", label, detail }); }
 function warn(label, detail) { results.push({ kind: "warn", label, detail }); }
@@ -163,23 +162,32 @@ function checkRoutingTable(dir) {
 }
 
 function checkDomainInstalled(dir) {
+  // ADR 0004: SOUL.md and HEARTBEAT.md are OpenClaw-owned. The template does
+  // not write into them. Check the worker has actually filled them.
   const soulFile = path.join(dir, "SOUL.md");
   if (fs.existsSync(soulFile)) {
-    const soulContent = fs.readFileSync(soulFile, "utf8");
-    if (/# Domain Identity:/i.test(soulContent)) {
-      pass("SOUL.md domain section", "domain identity section present");
+    const soulContent = fs.readFileSync(soulFile, "utf8").trim();
+    if (soulContent.length < 80) {
+      warn("SOUL.md content", "SOUL.md is empty or stub — fill it in (see docs/agents/persona.md)");
     } else {
-      warn("SOUL.md domain section", "no '# Domain Identity:' section found — run install.sh to add it");
+      pass("SOUL.md content", `present (${soulContent.length} bytes)`);
     }
+  } else {
+    warn("SOUL.md content", "SOUL.md missing — OpenClaw should create it via `openclaw setup`");
   }
   const hbFile = path.join(dir, "HEARTBEAT.md");
   if (fs.existsSync(hbFile)) {
     const hbContent = fs.readFileSync(hbFile, "utf8");
-    if (/# Domain Tasks:/i.test(hbContent)) {
-      pass("HEARTBEAT.md domain tasks", "domain task block present");
+    if (/^\s*tasks:\s*$/m.test(hbContent) || /-\s*name:\s*\S+/.test(hbContent)) {
+      pass("HEARTBEAT.md tasks", "tasks block detected");
     } else {
-      warn("HEARTBEAT.md domain tasks", "no '# Domain Tasks:' block found — run install.sh to add it");
+      warn(
+        "HEARTBEAT.md tasks",
+        "no tasks: block found — paste the default 5-task block from docs/agents/heartbeat-tasks.md"
+      );
     }
+  } else {
+    warn("HEARTBEAT.md tasks", "HEARTBEAT.md missing — OpenClaw should create it via `openclaw setup`");
   }
 }
 

@@ -1,6 +1,6 @@
 # DOCK.md - Host Interface
 
-<!-- Deploy location: ~/.openclaw/agents/<domain-name>/DOCK.md
+<!-- Deploy location: ~/.openclaw/workspace/DOCK.md
      Deployed by install.sh. Update when domain, skills, channels, or projects change.
 
      PURPOSE:
@@ -25,7 +25,7 @@ What the agent brings into every host/channel session. Group A entries are input
 
 - **Domain:** {{DOMAIN_NAME}} - [one-sentence description of the domain]
 - **Runtime:** OpenClaw Gateway + domain agent workspace
-- **Memory DB:** local only; located at `~/.openclaw/agents/{{DOMAIN_NAME}}/memory.db`; never exported raw
+- **Memory DB:** local only; located at `~/.openclaw/workspace/memory.db`; never exported raw
 
 ### A.2 Carried / Persona
 
@@ -37,7 +37,7 @@ What the agent brings into every host/channel session. Group A entries are input
 
 ### A.4 Carried / Skills
 
-> Re-generated as `~/.openclaw/agents/{{DOMAIN_NAME}}/SKILLS.md` on every install. Keep the line below in sync if you edit the workspace skills directory by hand.
+> Re-generated as `~/.openclaw/workspace/SKILLS.md` on every install. Keep the line below in sync if you edit the workspace skills directory by hand.
 
 - [skill-name] - [what it does]
 - [skill-name] - [what it does]

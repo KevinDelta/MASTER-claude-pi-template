@@ -52,7 +52,7 @@ Rules:
 - Configure the skill directory through OpenClaw `skills.load.extraDirs`.
 
 Verification:
-- Confirm the installed workspace has the skill under `~/.openclaw/agents/<domain>/skills/`.
+- Confirm the installed workspace has the skill under `~/.openclaw/workspace/skills/`.
 - Run an OpenClaw turn that matches the routing row and verify the agent uses the skill before acting.
 
 ---

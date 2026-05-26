@@ -22,24 +22,27 @@ A template for building a portable, domain-scoped knowledge worker agent on Open
 ~/.openclaw/
 ├── workspace/                    ← OC's native workspace (brain files, git-tracked)
 │   ├── AGENTS.md                 ← OC creates; installer replaces with domain routing
-│   ├── SOUL.md                   ← OC creates; installer appends domain identity
-│   ├── HEARTBEAT.md              ← OC creates; installer appends domain task block
-│   ├── TOOLS.md                  ← OC creates; leave alone
+│   ├── SOUL.md                   ← OC-owned; worker fills (docs/agents/persona.md)
+│   ├── HEARTBEAT.md              ← OC-owned; worker fills (docs/agents/heartbeat-tasks.md)
+│   ├── USER.md                   ← OC-owned; worker fills (docs/agents/user-context.md)
+│   ├── IDENTITY.md               ← OC-owned
+│   ├── TOOLS.md                  ← OC-owned
 │   ├── MEMORY.md                 ← installer adds
 │   ├── DOCK.md                   ← installer adds
 │   ├── context/                  ← installer adds
-│   ├── skills/                   ← installer adds
+│   ├── skills/                   ← installer adds (skills/vendor for installed skills)
 │   └── projects/                 ← installer adds (from base/ template)
 │       └── <project-slug>/
 │
 ├── agents/
-│   └── <domain>/                 ← OC runtime only (sessions, state)
+│   └── main/                     ← OC runtime only (sessions, state) — never our content
 │
 └── plugins/
-    └── domain-memory-<domain>/   ← installer adds
+    ├── domain-memory-<domain>/   ← installer adds (slug-suffixed)
+    └── domain-skills-<domain>/   ← installer adds
 ```
 
-The domain agent (`openclaw agents add <domain>`) uses OC's native workspace. Our framework adds the routing table, persona, memory, and project scaffolding on top of what OC already created.
+Single-domain install reuses OC's native `main` agent (created by `openclaw onboard`). Our framework adds the routing table, memory, plugins, and project scaffolding on top of OC's workspace; the worker fills the OC-owned bootstrap files from `docs/agents/`. Future multi-domain support uses `openclaw agents add --workspace ~/.openclaw/workspaces/<slug>/`.
 
 ---
 
@@ -53,7 +56,7 @@ Install OpenClaw and run initial setup:
 openclaw onboard
 ```
 
-This creates `~/.openclaw/workspace/` with native brain files (AGENTS.md, SOUL.md, HEARTBEAT.md, TOOLS.md). Our installer builds on this — it must exist before Step 4.
+This creates `~/.openclaw/workspace/` with native brain files (`AGENTS.md`, `SOUL.md`, `HEARTBEAT.md`, `USER.md`, `IDENTITY.md`, `TOOLS.md`). Our installer builds on this — it must exist before Step 4.
 
 ---
 
@@ -114,15 +117,18 @@ WYNDELTA_INTAKE_EOF
 The installer will:
 
 1. Verify `~/.openclaw/workspace/` exists (fail with instructions if not)
-2. Replace `AGENTS.md` with the domain routing table (global + domain combined)
-3. Append the domain identity section to `SOUL.md`
-4. Append the domain task block to `HEARTBEAT.md`
-5. Add `MEMORY.md`, `DOCK.md`, `context/`, `skills/` (skipped if already present)
-6. Install the domain-memory plugin
+2. Replace `AGENTS.md` with the combined global + domain routing table
+3. Add template-owned files: `MEMORY.md`, `DOCK.md`, `context/`, plus reference config snapshot (`openclaw.domain.json5`, `.env.example`)
+4. Leave OpenClaw-owned files (`SOUL.md`, `HEARTBEAT.md`, `USER.md`, `IDENTITY.md`, `TOOLS.md`) untouched — those are filled by the worker using `docs/agents/`
+5. Generate the `SKILLS.md` index for the workspace
+6. Install the `domain-memory` and `domain-skills` OpenClaw plugins (slug-suffixed)
 7. Create `.env` from template (skipped if already present)
-8. Register the domain agent with OpenClaw
-9. Configure heartbeat defaults
-10. Create a `<persona>` shell alias and `<persona>-status` dashboard function
+8. Sync identity to OpenClaw's `main` agent
+9. Configure heartbeat defaults through OpenClaw config — including the prompt that binds every heartbeat turn to the `AGENTS.md` routing table
+10. Optionally onboard the gateway daemon and pull `nomic-embed-text` via ollama
+11. Create a `<persona>` shell alias and `<persona>-status` dashboard function
+
+See [`docs/adr/0004-template-oc-surface-ownership.md`](docs/adr/0004-template-oc-surface-ownership.md) for the durable rule: the template owns the routing contract and plugin trio; OpenClaw owns its bootstrap files.
 
 ---
 
@@ -134,7 +140,7 @@ The installer will:
 ~/.openclaw/templates/master-agent-template/install.sh --validate --domain <your-slug>
 ```
 
-This checks: workspace exists, OC native files present, domain routing section in AGENTS.md, domain identity in SOUL.md, domain tasks in HEARTBEAT.md, required framework files present, `.env` keys set, agent registered.
+Checks: workspace exists, template-owned files present (`AGENTS.md`, `MEMORY.md`, `DOCK.md`, `context/domain.md`, `.env`), routing table has rows, no leftover annotation blocks, `.env` keys set, agent registered. Soft-warns when OpenClaw-owned `SOUL.md` / `HEARTBEAT.md` are empty or stub.
 
 If you see `FAIL workspace exists`, run `openclaw onboard` and then re-run Step 4.
 
@@ -142,23 +148,32 @@ If you see `FAIL workspace exists`, run `openclaw onboard` and then re-run Step 
 
 ### Step 6 — Fill in your workspace
 
-Open `~/.openclaw/workspace/` and fill in these files before your first session:
+Open `~/.openclaw/workspace/` and fill in these files before your first session. The split below is the ADR-0004 ownership boundary: the installer shipped annotated scaffolds for the template-owned set; the OpenClaw-owned set is empty (or OC's stub) and you fill it yourself from `docs/agents/`.
+
+**Template-owned (annotated scaffolds — fill in, delete annotations):**
 
 | File | What to fill in |
-|---|---|
-| `SOUL.md` | The `# Domain Identity` section appended by the installer — persona voice, identity, relationship. |
+|------|------------------|
 | `AGENTS.md` | Replace placeholder routing rows; delete `<!-- ... -->` annotation blocks. |
 | `context/domain.md` | What your domain is, current focus, active projects. |
-| `DOCK.md` | Confirm the Carried/Domain, Carried/Persona, and Carried/Skills sections. |
-| `HEARTBEAT.md` | Review the default recurring tasks; add or trim as needed. |
+| `DOCK.md` | Confirm Carried/Domain, Carried/Persona, Carried/Skills sections. |
+| `MEMORY.md` | Capture any starting decisions, patterns, preferences. |
 | `.env` | Copy from `.env.example`; fill in secrets. Never commit this file. |
+
+**OpenClaw-owned (template ships nothing — fill from `docs/agents/`):**
+
+| File | Reference |
+|------|-----------|
+| `SOUL.md` | [`docs/agents/persona.md`](docs/agents/persona.md) — persona voice, identity, pushback thresholds |
+| `HEARTBEAT.md` | [`docs/agents/heartbeat-tasks.md`](docs/agents/heartbeat-tasks.md) — paste-block with the default 5 recurring tasks |
+| `USER.md` | [`docs/agents/user-context.md`](docs/agents/user-context.md) — who the worker is |
 
 ---
 
 ### Step 7 — First session
 
 ```bash
-openclaw agent --agent <domain-slug> --message "status" --local
+openclaw agent --agent main --message "status" --local
 ```
 
 Or use the persona alias created by install:
@@ -192,12 +207,14 @@ This creates `~/.openclaw/workspace/projects/<project-slug>/` from the `base/` t
 ## OpenClaw vs this framework
 
 | Layer | Owned by |
-|---|---|
+|-------|----------|
 | Runtime, channels, identity, auth, heartbeat scheduling, plugin loading | OpenClaw |
-| Native workspace files (AGENTS.md, SOUL.md, HEARTBEAT.md, TOOLS.md) | OpenClaw |
-| Domain routing table, persona, memory, skills, projects | This framework |
+| Bootstrap files: `SOUL.md`, `HEARTBEAT.md`, `USER.md`, `IDENTITY.md`, `TOOLS.md` | OpenClaw (worker fills using `docs/agents/`) |
+| Routing contract: `AGENTS.md`, `MEMORY.md`, `DOCK.md`, `context/`, project layer under `base/` | This framework |
+| Plugin trio: `domain-memory`, `domain-skills`, optional `domain-commerce` | This framework |
+| Heartbeat *binding* to the routing table | OpenClaw config string set by `install.sh` (not file authorship) |
 
-OpenClaw creates the workspace. This framework populates it with domain-specific identity and makes it routing-first.
+OpenClaw creates the workspace. This framework populates the template-owned files with the routing contract and ships the plugins. The worker fills the OpenClaw-owned bootstrap files themselves from `docs/agents/`. The durable rule lives in [`docs/adr/0004-template-oc-surface-ownership.md`](docs/adr/0004-template-oc-surface-ownership.md) and is enforced by [`scripts/lint-ownership.mjs`](scripts/lint-ownership.mjs).
 
 ---
 
@@ -213,6 +230,7 @@ git pull --ff-only
 ## Notes
 
 - Do not commit `.env` files, client bundles, or secrets.
-- `HEARTBEAT.md` — do not create cron jobs, launchd jobs, or systemd timers. The `# Domain Tasks:` block is the source of truth.
+- Heartbeat — do not create cron jobs, launchd jobs, or systemd timers. The `tasks:` block in `HEARTBEAT.md` is the source of truth; use the paste-block in [`docs/agents/heartbeat-tasks.md`](docs/agents/heartbeat-tasks.md) to install the defaults.
+- The template never writes to `SOUL.md`, `HEARTBEAT.md`, `USER.md`, or `IDENTITY.md`. [`scripts/lint-ownership.mjs`](scripts/lint-ownership.mjs) enforces this.
 - `DOCK.md` is the policy contract for memory export, host/channel access, and optional commerce boundaries.
 - Optional Stripe commerce tooling: `install.sh --enable-commerce`. See `DOCK.md §F` for constraints.

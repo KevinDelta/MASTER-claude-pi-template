@@ -208,22 +208,6 @@ function insertObservation(
   return result.lastInsertRowid as number;
 }
 
-function readSkills(): Array<{ name: string; description: string }> {
-  const skillsDir = path.join(workspaceDir(), "skills");
-  if (!fs.existsSync(skillsDir)) return [];
-  const skills: Array<{ name: string; description: string }> = [];
-  for (const file of fs.readdirSync(skillsDir)) {
-    if (!file.endsWith(".md")) continue;
-    const content = fs.readFileSync(path.join(skillsDir, file), "utf8");
-    const frontmatter = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!frontmatter) continue;
-    const name = frontmatter[1].match(/^name:\s*(.+)$/m)?.[1]?.trim();
-    const description = frontmatter[1].match(/^description:\s*(.+)$/m)?.[1]?.trim();
-    if (name && description) skills.push({ name, description });
-  }
-  return skills;
-}
-
 async function backfillEmbeddings(db: Database.Database, limit: number): Promise<number> {
   const rows = db.prepare(`
     SELECT o.id, o.content
@@ -304,18 +288,6 @@ export default definePluginEntry({
         } finally {
           db.close();
         }
-      },
-    });
-
-    api.registerTool({
-      name: "list_skills",
-      description: "Return skill names and descriptions only. Does not return skill file contents.",
-      parameters: Type.Object({}),
-      async execute() {
-        return { content: [{ type: "text", text: JSON.stringify({
-          skills: readSkills(),
-          note: "Skill file contents are not exported by the dock allowlist.",
-        }, null, 2) }] };
       },
     });
 
