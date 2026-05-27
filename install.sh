@@ -19,7 +19,7 @@
 #  5. Creates workspace .env from template (skipped if present)
 #  6. Registers an OpenClaw agent pointing at the native workspace
 #  7. Configures heartbeat defaults through OpenClaw config (string binding only)
-#  8. Pulls nomic-embed-text via ollama unless skipped
+#  8. Configures OC built-in local embedding provider (no cloud fallback)
 #  9. Creates a persona shell function that calls openclaw agent
 #  10. Optionally creates a project inside workspace/projects/<slug>/
 #
@@ -65,7 +65,6 @@ MODEL="anthropic/claude-sonnet-4-5"
 THINKING="medium"
 HEARTBEAT_EVERY="30m"
 ENABLE_COMMERCE=false
-SKIP_OLLAMA=false
 SKIP_GATEWAY=false
 YES=false
 DRY_RUN=false
@@ -82,7 +81,6 @@ while [[ $# -gt 0 ]]; do
     --thinking) THINKING="$2"; shift 2 ;;
     --heartbeat) HEARTBEAT_EVERY="$2"; shift 2 ;;
     --enable-commerce) ENABLE_COMMERCE=true; shift ;;
-    --skip-ollama) SKIP_OLLAMA=true; shift ;;
     --skip-gateway) SKIP_GATEWAY=true; shift ;;
     --yes) YES=true; shift ;;
     --dry-run) DRY_RUN=true; shift ;;
@@ -179,7 +177,7 @@ echo "  Thinking:  $THINKING"
 echo "  Heartbeat: $HEARTBEAT_EVERY"
 echo "  Commerce:  $(if $ENABLE_COMMERCE; then echo 'install domain-commerce Stripe plugin'; else echo 'disabled'; fi)"
 echo "  Gateway:   $(if $SKIP_GATEWAY; then echo 'skip'; else echo 'onboard/install daemon'; fi)"
-echo "  Ollama:    $(if $SKIP_OLLAMA; then echo 'skip'; else echo 'install nomic-embed-text'; fi)"
+echo "  Embeddings: OC built-in local provider (no cloud fallback)"
 [[ -n "$INTAKE_JSON" ]] && echo "  Intake:    $INTAKE_JSON"
 [[ -n "$PROJECT_SLUG" ]] && echo "  Project:   $WORKSPACE_DIR/projects/$(slugify "$PROJECT_SLUG")"
 $DRY_RUN && echo "  Mode:      DRY RUN - no changes will be made"
@@ -191,7 +189,6 @@ if ! $YES; then
   echo "    --model <id>       (currently: $MODEL)"
   echo "    --thinking <level> (currently: $THINKING)  - off|minimal|low|medium|high|xhigh"
   echo "    --heartbeat <dur>  (currently: $HEARTBEAT_EVERY)"
-  echo "    --skip-ollama      to skip nomic-embed-text pull"
   echo "    --skip-gateway     to skip OpenClaw daemon onboarding"
   echo "    --enable-commerce  to install the optional Stripe plugin (off by default)"
   echo "    --dry-run          to print steps without executing"
@@ -475,17 +472,9 @@ else
   run "openclaw onboard --flow quickstart --mode local --install-daemon" || warn "Gateway onboarding failed - run: openclaw onboard --flow quickstart --mode local --install-daemon"
 fi
 
-if $SKIP_OLLAMA; then
-  info "Step 9/10 - Skipping ollama (--skip-ollama)"
-else
-  info "Step 9/10 - Ensuring ollama + nomic-embed-text..."
-  if ! command -v ollama &>/dev/null; then
-    info "Installing ollama..."
-    run "curl -fsSL https://ollama.ai/install.sh | sh"
-  else
-    info "ollama: found"
-  fi
-  run "ollama pull nomic-embed-text" || warn "ollama pull failed - FTS recall still works; vector recall requires nomic-embed-text"
+info "Step 9/10 - Configuring embedding provider (OC built-in local, no cloud fallback)..."
+if command -v openclaw &>/dev/null || $DRY_RUN; then
+  run "openclaw config set agents.defaults.memorySearch '{\"provider\":\"local\",\"fallback\":\"none\",\"enabled\":true}'" || warn "Could not set memorySearch config - set agents.defaults.memorySearch manually"
 fi
 
 info "Step 10/10 - Creating persona shell alias '$PERSONA_SLUG'..."

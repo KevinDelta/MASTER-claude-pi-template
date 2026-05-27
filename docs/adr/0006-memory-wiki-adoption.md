@@ -13,7 +13,7 @@ Run against a clean `--profile validation` instance with `vaultMode: isolated`, 
 | 1. Obsidian render mode | Partial pass | YAML frontmatter and wikilinks in index files confirmed. `obsidian-cli search` returns no matches — requires vault registration in the Obsidian app; not a markdown correctness failure |
 | 2. privacyTier enforced | Fail (just-labelled) | `local-private` pages appear in `wiki_search` results without filtering; tier is metadata only. See wrapper requirement below |
 | 3. Compile is local-only | Pass | No outbound network calls during compile; all cache artifacts (`agent-digest.json`, `claims.jsonl`) written locally |
-| 4. Bridge + local embeddings | Partial pass | Embedding provider is `local` transport (OC built-in HuggingFace GGUF), not Ollama. No cloud provider auto-detected. Bridge import not fully testable — no exported artifacts in clean profile; no `bridge_import` op exposed via `wiki_apply` |
+| 4. Bridge + local embeddings | Pass | OC built-in local provider (`local` transport, HuggingFace GGUF) confirmed — no cloud auto-detection. ADR 0008 updated: built-in is now the template default (Ollama no longer required). Bridge import not fully testable — no exported artifacts in clean profile; not blocking for `isolated` mode adoption |
 | 5. `wiki_lint` catches what it advertises | Pass | Contradictions, low-confidence claims, and missing evidence all flagged correctly |
 | 6. Structured-claim authoring over real usage | Incomplete | Requires at least one work-week; not evaluable in a single session |
 
@@ -27,6 +27,6 @@ If check 6 fails: do not adopt. Structured-claim overhead doesn't earn its keep;
 
 **Check 2 — DOCK wrapper required.** `wiki_search` does not filter by `privacyTier`. If adopted, the `domain-memory` plugin must wrap `wiki_search` calls and suppress results where `privacyTier` is `local-private` or `confirm-before-use` before returning to the host. This wrapper is the same outbound-boundary layer described in ADR 0005; the DOCK category "Memory recall — raw files and index entries denied" covers it. Document the wrapper in the plugin and in the routing row that loads `memory-wiki`.
 
-**Check 4 — Ollama discrepancy.** OC's `memory-wiki` uses its built-in local embedding provider (HuggingFace GGUF via `local` transport) rather than Ollama. ADR 0007 specifies Ollama as the template default. Before adoption, confirm whether `memory-wiki` can be configured to use the Ollama embedding provider, or update ADR 0007 to accept OC's built-in local provider as an equivalent. Either resolution is acceptable; the key constraint (no cloud auto-detection) is satisfied by both.
+**Check 4 — Resolved.** ADR 0008 updated to adopt OC's built-in local provider as the template default. The discrepancy is closed; `memory-wiki`'s use of `local` transport is now the intended behaviour, not a deviation.
 
 **Check 1 — obsidian-cli vault registration.** The wiki vault must be registered in the Obsidian app for `obsidian-cli search` to function. Add a post-install step to `install.sh` (or the post-install checklist) that prompts the worker to open the wiki vault in Obsidian at least once. Not blocking adoption; blocking the obsidian-skills synergy.
