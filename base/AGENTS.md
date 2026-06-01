@@ -32,7 +32,12 @@
 
 <!-- List every area directory under areas/. Name for what work happens there.
      Good: /drafting, /research, /production, /client-comms
-     Bad: /documents, /files, /misc -->
+     Bad: /documents, /files, /misc
+
+     Each area is either a General Area (uses `## Workflow`; artifacts land directly in the
+     area) or a Staged Area (uses `## Stage Sequence`; work decomposes into numbered stage
+     folders like 01_discovery/, each with its own CONTEXT.md + output/). Mode is implicit:
+     numbered stage folders = Staged Area. See ADR 0010 and base/README.md. -->
 
 - `/areas/[area-a]` — [what work happens here]
 - `/areas/[area-b]` — [what work happens here]
@@ -75,6 +80,7 @@
 | **Write / draft** — produce first draft of any deliverable | /areas/[area-a] | `context/project.md` + `context/client.md` + `[area-a]/CONTEXT.md` | `stop-slop.md` |
 | **Edit / revise** — refine existing draft, apply feedback | /areas/[area-a] | `[area-a]/CONTEXT.md` | `stop-slop.md` |
 | **Review / QA** — check deliverable against brief and standards | /areas/[area-a] | `context/project.md` + `[area-a]/CONTEXT.md` | `stop-slop.md` |
+| **Staged area / next stage** — advance a Staged Area by running its next numbered stage | /areas/[staged-area]/NN_stage | stage `CONTEXT.md` (its `## Inputs` name the upstream `../NN_prev/output/` to read) | — |
 | **Client comms** — draft message, email, or update for client | /areas/[area-b] | `context/client.md` + `[area-b]/CONTEXT.md` | `stop-slop.md` |
 | **Document** — update AGENTS.md, CONTEXT.md, decisions, reference docs | — | `context/project.md` | `doc-authoring.md` |
 | **Build / code** — write, edit, or debug code | /areas/[area-c] | `context/stack.md` + `[area-c]/CONTEXT.md` | — |
@@ -85,6 +91,15 @@
 | **Distill inbox** — process a raw artifact from `inbox/_inbox/` into pillars / decisions / skills | /inbox | `SOUL.md` + `context/project.md` + recent `context/decisions.md` | `distill-inbox.md` |
 | **Harness** — modify AGENTS.md, skills, plugins, OpenClaw config, or settings | — | `BLUEPRINT.md` | `harness-dev.md` |
 | **Session end** — update state and write memory | — | — | `memory-write.md` + `context-update.md` |
+
+<!-- STAGED AREAS (ADR 0010):
+     The "Staged area / next stage" row is the generic, skill-free template for advancing a
+     Staged Area. For a human-gated area (the default), give each invocable stage its own
+     stage-targeted row whose Area cell points at the numbered folder (e.g. /areas/research/01_discovery);
+     the human reviewing output/ and invoking the next stage IS the edit gate. For a
+     `mode: autonomous` area, point a single row at the area root and let it walk all stages.
+     A stage owns its own output shape via its CONTEXT.md `## Outputs`, so staged rows stay
+     skill-free — do not load a producer skill (one declaring `Template:`) from a staged row. -->
 
 ---
 
