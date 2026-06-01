@@ -28,6 +28,22 @@ The framework keeps the differentiated pieces:
 
 ---
 
+## Operating Principles
+
+MASTER inherits five design principles from the Interpretable Context Methodology (ICM).¹ They are the discipline for structural decisions: every ADR and review cites them by name as anchors ("per principle 4, this change erases the edit gate"). When a structural choice is in tension with one of these, that tension must be named and resolved in an ADR — not papered over.
+
+1. **One stage, one job.** Each unit of work handles one step and writes its own output. A stage that fetches data does not also filter it; a stage that filters does not also format the final deliverable.
+2. **Plain text as the interface.** Markdown and JSON are the substrate — any tool or human with a text editor can participate. This is the rule that makes **files-as-truth (ADR 0007)** principled rather than arbitrary, and it bites precisely where MASTER is *not* plain text: `memory.db` and the sqlite-vec index are regenerable artifacts, not co-equal truth; commerce state lives behind explicit gates. Workspace markdown is canonical.
+3. **Layered context loading.** Each stage loads only the context it needs — prevention of the "lost in the middle" failure, not after-the-fact compression. Realised as the L0–L4 layer model and the `[ref]`/`[work]` distinction.
+4. **Every output is an edit surface.** Intermediate artifacts are human-readable files a person can inspect and edit before downstream steps consume them. The `output/` folder of a stage, the inbox distillation surface, and the two-turn commerce approval are all edit gates.
+5. **Configure the factory, not the product.** Reusable reference material (the factory — L3 `[ref]`) is kept separate from per-run working artifacts (the product — L4 `[work]`). A workspace is configured once and produces many deliverables. Governed by the narrowest-scope rule.
+
+See **ADR 0009** for the full rationale (including why all five are named, not four) and the L0–L4 layer model these principles rest on, and **ADR 0010** for the Staged Area pattern that implements them.
+
+¹ Van Clief & McDermott, *Interpretable Context Methodology: Folder Structure as Agent Architecture*, arXiv:2603.16021v2.
+
+---
+
 ## Core Files
 
 | File | What It Is | Who Reads It |
