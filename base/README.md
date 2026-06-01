@@ -21,6 +21,24 @@ The structure is the system. If the folders are legible, a standard LLM can navi
 
 ---
 
+## Areas: General vs Staged
+
+Every directory under `areas/` is one of two kinds, declared **implicitly** by its shape (see [ADR-0010](../docs/adr/0010-staged-area-workspace-pattern.md)):
+
+- **General Area** — one-shot work. Artifacts land directly inside `areas/<area>/`. Its `CONTEXT.md` has a `## Workflow` section. Use it when stage decomposition would be theater (a single draft, a one-shot triage). This is the default.
+- **Staged Area** — work that decomposes into numbered, ordered **stages** with a human edit gate between them (e.g. research → synthesis → delivery). Its `CONTEXT.md` has a `## Stage Sequence` section listing the active stages, and the area contains numbered **stage** folders.
+
+A **Stage** is one numbered step inside a Staged Area:
+
+- Folders live directly under the area, two-digit and underscored: `01_discovery/`, `02_synthesis/`, `03_delivery/` — no `stages/` wrapper.
+- Minimum scaffold is `CONTEXT.md` + `output/`. Optional: `references/` (stage-scoped reference material) and `scripts/` (deterministic non-AI work — fetch, normalize, format). There is no `scratch/`; the agent's transient working context is its session.
+- The stage `CONTEXT.md` is a five-section contract, in order: `## Inputs` (the working artifacts it transforms) · `## Working References` (the stable rules it applies) · `## Process` · `## Outputs` (names the canonical output file) · `## Verify` (the checks run before the output is ready).
+- **Handoffs carry through the contracts, not a control file.** The upstream stage's `## Outputs` names what it wrote; the downstream stage's `## Inputs` names what it reads. There is no `HANDOFF.md` and no status enum — the state of a Staged Area *is* which `output/` folders contain files.
+
+Pick the kind by the work, not by default-to-staged: most areas are General. Reach for a Staged Area only when distinct steps each deserve their own edit gate.
+
+---
+
 ## How an agent navigates this folder
 
 For any non-trivial task the agent resolves a routing row in `AGENTS.md`, then reads in this order:
@@ -71,6 +89,7 @@ The system improves by the weight of decisions and dialogue you feed into it —
 ## Pointers
 
 - **Routing table and operating contract**: [`AGENTS.md`](AGENTS.md)
+- **General vs Staged Areas, stage contracts**: [ADR-0010](../docs/adr/0010-staged-area-workspace-pattern.md)
 - **Tool policy**: [`TOOLS.md`](TOOLS.md)
 - **Voice and principles**: [`SOUL.md`](SOUL.md)
 - **Output shells**: [`templates/`](templates/)

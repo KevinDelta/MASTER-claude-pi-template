@@ -18,6 +18,23 @@
      Rename this file's header to match the actual area.
      Example: "# Drafting — Context" or "# Research — Context" -->
 
+<!-- AREA MODE — pick one, then delete this block (ADR 0010):
+
+     This scaffold is a GENERAL AREA: one-shot work, artifacts land directly in this folder,
+     and the process lives in the `## Workflow` section below. This is the right default.
+
+     To make it a STAGED AREA instead — work that decomposes into numbered, ordered stages
+     with a human edit gate between each (e.g. research → synthesis → delivery):
+       1. Delete the `## Workflow` section and replace it with a `## Stage Sequence` section
+          that lists the active stage folders and what each produces.
+       2. Create numbered stage folders directly under this area: 01_discovery/, 02_synthesis/,
+          03_delivery/ — each with its own CONTEXT.md (five sections: Inputs / Working References /
+          Process / Outputs / Verify) and an output/ folder.
+       3. Hand off through the contracts: upstream `## Outputs` → downstream `## Inputs`. No
+          HANDOFF.md, no status enum, no scratch/.
+     Mode is implicit: numbered stage folders + `## Stage Sequence` = Staged Area; otherwise General.
+     See base/README.md and ADR 0010. Never keep both `## Workflow` and `## Stage Sequence` active. -->
+
 ## Purpose
 
 <!-- What is this area for? What does it produce?

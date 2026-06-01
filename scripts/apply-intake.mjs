@@ -708,6 +708,13 @@ ${functionsBlock}
 
 ---
 
+<!-- AREA MODE (ADR 0010): this is a GENERAL AREA — one-shot work using the ## Workflow below.
+     To make it a STAGED AREA, replace ## Workflow with a ## Stage Sequence section and add
+     numbered stage folders (01_discovery/, 02_synthesis/, …), each a CONTEXT.md
+     (Inputs / Working References / Process / Outputs / Verify) + output/. Handoffs flow
+     upstream ## Outputs → downstream ## Inputs — no HANDOFF.md, no status enum, no scratch/.
+     Mode is implicit: numbered stage folders = Staged Area. See base/README.md. Delete this note. -->
+
 ## Workflow
 
 ${workflowBlock}
