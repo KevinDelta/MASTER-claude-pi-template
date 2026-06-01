@@ -1,0 +1,26 @@
+[
+  {
+    "slug": "consulting-hourly",
+    "label": "Consulting — hourly",
+    "stripe_price_id": "price_REPLACE_ME",
+    "unit_amount_cents": 20000,
+    "currency": "usd",
+    "description": "One hour of consulting work"
+  },
+  {
+    "slug": "project-retainer-monthly",
+    "label": "Project retainer — monthly",
+    "stripe_price_id": "price_REPLACE_ME",
+    "unit_amount_cents": 500000,
+    "currency": "usd",
+    "description": "Monthly project retainer"
+  },
+  {
+    "slug": "deliverable-flat",
+    "label": "Deliverable — flat fee",
+    "stripe_price_id": "price_REPLACE_ME",
+    "unit_amount_cents": 150000,
+    "currency": "usd",
+    "description": "Flat-fee deliverable or project milestone"
+  }
+]

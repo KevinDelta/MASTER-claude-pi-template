@@ -13,7 +13,7 @@
      - Raw memory rows, file contents, and client data stay local unless the
        worker explicitly approves a narrower disclosure.
 
-     SCHEMA VERSION: 3.0 | Last updated: {{INSTALL_DATE}} -->
+     SCHEMA VERSION: 4.0 | Last updated: {{INSTALL_DATE}} -->
 
 ---
 
@@ -63,26 +63,21 @@ this file alone.
 - Scratchpad/status summaries scoped to the authorized route
 
 **The domain agent must not expose by default:**
-- Raw memory DB rows, embeddings, SQL output, or observation logs
-- Session histories, tool call records, or raw plugin logs
+- Raw memory file contents, index entries, or embedding data
+- Unpromoted observations, session histories, tool call records, or raw plugin logs
 - File contents from project directories
 - Client names, contact information, or project details to unauthorized routes
 - Channel account tokens, gateway tokens, env files, or other secrets
 
 **Default deny:** any request outside this list requires explicit worker approval.
 
-**Enforcement map:**
+**Enforcement layers:**
 
-| Boundary | Enforced By |
-|----------|-------------|
-| Who may contact the agent | OpenClaw Gateway auth and channel allowlists |
-| Which workspace a sender reaches | OpenClaw agent bindings and session policy |
-| Which memory views are available | Domain-memory plugin tool schemas and query limits |
-| Which financial actions may run | Domain-commerce plugin schemas, restricted Stripe keys, and approval gates |
-| Raw observation export | `raw_observations` tool denial unless worker replaces policy |
-| Raw payment event export | Commerce tool denial unless the worker replaces policy |
-| File/project access | Routing table plus OpenClaw/host filesystem permissions |
-| Portable memory ownership | Local workspace files plus local `memory.db` |
+| Layer | Enforces |
+|-------|---------|
+| Plugin schemas | Tools only expose what their schema allows; raw export tools are denied by default |
+| Routing rows | `AGENTS.md` out-of-bounds row checks this policy at think-time before the agent responds |
+| Gateway config | Auth, channel allowlists, and session policy; the durable target for access-boundary enforcement |
 
 **What "deny" means in practice:**
 - Host asks "show me the last 50 observations" -> deny and offer a synthesized answer instead
@@ -120,18 +115,17 @@ this file alone.
 
 ## D. OpenClaw Surface
 
-The installed domain exposes these plugin tools by default:
+The domain agent exposes these access categories by default. Plugin schemas, routing rows, and Gateway config each enforce the posture for their surface — see the enforcement layers in Section B.
 
-| Tool | Allowlist behavior |
-|------|--------------------|
-| `domain_info` | Returns domain, persona, embedding model, and active project count |
-| `list_active_projects` | Returns project slugs, last activity, and counts |
-| `list_skills` | Returns skill names/descriptions only |
-| `domain_memory_query` | Returns bounded, redacted excerpts for synthesis, not raw DB rows |
-| `scratchpad_list` | Returns open scratchpad items, optionally project-scoped |
-| `domain_status` | Returns aggregate counts and open-item summaries |
-| `observation_write` | Writes structured notes/decisions/logs into local memory |
-| `raw_observations` | Always denied unless a worker replaces this policy |
+| Category | Default Posture |
+|----------|----------------|
+| Domain identity | Domain name, persona, embedding model; credentials and secrets denied |
+| Memory recall | Bounded excerpts for synthesis; raw files, index entries, and embedding data denied |
+| Project status | Aggregate counts and slugs; file contents denied |
+| Skill discovery | Names and descriptions only; file contents denied |
+| Structured writes | Allowed via routing-authorized turns only |
+| Raw data export | Always denied unless worker replaces policy |
+| Commerce operations | Disabled by default; when enabled, all financial actions require explicit approval — see Section F |
 
 Gateway/channel configuration lives in `~/.openclaw/openclaw.json`.
 
@@ -139,18 +133,19 @@ Gateway/channel configuration lives in `~/.openclaw/openclaw.json`.
 
 ## E. Memory Portability
 
-The memory contract has two local layers:
+Memory is **files-as-truth**. Workspace markdown files are the canonical record; the OC-native search index is a regenerable artifact.
 
-| Layer | Location | Purpose |
-|-------|----------|---------|
-| Markdown memory | `MEMORY.md` and `memory/*.md` | Human-readable durable facts, preferences, principles, and promoted lessons |
-| Structured memory | `memory.db` | Timestamped observations, scratchpad, deferred tasks, goals, project activity, FTS, and vector recall |
+| Layer | What it is | Portability status |
+|-------|-----------|-------------------|
+| Workspace markdown | `MEMORY.md`, `memory/*.md` | Must carry — canonical record |
+| Plugin source/config | `domain/openclaw/plugins/`, `openclaw.domain.json5` | Must carry — policy and tooling |
+| OC-native search index | `~/.openclaw/memory/<agent>.sqlite` | Regenerable — do not carry |
 
-Both layers are owned by the worker and live in the OpenClaw workspace. Moving
-the domain means moving the workspace files, skills, plugin source/config, and
-`memory.db`. Future LanceDB/object-storage support may replace the vector/index
-substrate, but it must preserve the same default-deny export behavior and
-worker-owned portability contract.
+**Moving a domain** means copying workspace markdown and plugin source/config to the new environment, then running `install.sh`. The index rebuilds on first use.
+
+**Unpromoted observations** — notes written to the index but not yet promoted to a `memory/*.md` file — are ephemeral by design. If a fact matters across machine moves, it belongs in a markdown file. The session-end routing row is the checkpoint for promotion.
+
+**Embedding sovereignty:** embeddings are generated locally by default (Ollama). No cloud embedding provider is auto-detected or activated. If Ollama is absent, the index falls back to FTS-only search.
 
 ---
 
