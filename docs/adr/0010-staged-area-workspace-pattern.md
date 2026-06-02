@@ -47,7 +47,7 @@ ICM §4.5 / Fig. 5 report that human editing concentrates at the first stage (di
 
 ## Skill-flavor scoping (extends ADR 0001)
 
-Producer-skills (those declaring `Template:` front-matter, which own a deliverable's shape) are valid in **General Areas only**. A Staged Area's stage owns its output shape directly via its `## Outputs` section (and an optional `Template:` reference in the stage `CONTEXT.md`). Loading a producer-skill from a staged-stage routing row splits the per-stage contract across two surfaces — a lint error (`scripts/lint-skills.mjs`).
+Producer-skills (those declaring `Template:` front-matter, which own a deliverable's shape) are valid in **General Areas only**. A Staged Area's stage owns its output shape directly via its `## Outputs` section (and an optional `Template:` reference in the stage `CONTEXT.md`). Loading a producer-skill from a staged-stage routing row splits the per-stage contract across two surfaces — a documented rule now, and a lint error once the deferred `scripts/lint-skills.mjs` workspace-pattern checks land (see Considered Options).
 
 ## Routing
 

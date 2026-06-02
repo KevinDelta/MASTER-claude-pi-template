@@ -83,29 +83,47 @@ Do not encode channel/account/peer bindings in `AGENTS.md`. That belongs in Open
 │   ├── HEARTBEAT.md              # OpenClaw-owned; worker fills (see docs/agents/heartbeat-tasks.md)
 │   ├── USER.md                   # OpenClaw-owned; worker fills
 │   ├── IDENTITY.md               # OpenClaw-owned
+│   ├── TOOLS.md                  # OpenClaw-owned
 │   ├── MEMORY.md                 # template-owned
 │   ├── DOCK.md                   # template-owned
 │   ├── memory.db                 # created by domain-memory tools
 │   ├── openclaw.domain.json5     # reference config snapshot
 │   ├── context/
-│   └── skills/
+│   ├── skills/
+│   └── projects/                 # installer adds; one subdir per --project-slug
+│       └── <slug>/               # a project workspace (scaffolded from base/ — see below)
 └── agents/                       # OpenClaw's per-agent state — NEVER our content
     └── main/                     # OC manages this directory
 ```
 
-Project repos still use the `base/` template:
+Projects are **not** separate repos — they live inside the workspace at
+`workspace/projects/<slug>/`, scaffolded from the `base/` template (blank via
+`--project-slug`, or generated from intake via `--intake-json`):
 
 ```
-<project-root>/
-├── AGENTS.md
-├── TOOLS.md
-├── SOUL.md                       # optional project override
+workspace/projects/<slug>/
+├── AGENTS.md                     # project routing rows; override domain rows by task key
+├── README.md                     # human orientation (General vs Staged areas)
+├── SOUL.md                       # optional project persona override
+├── TOOLS.md                      # project tool policy
 ├── openclaw/
 │   ├── .env.example
 │   └── project.config.json5
-├── context/
-└── areas/
+├── context/                      # project.md, client.md, stack.md, decisions.md
+├── memory/                       # project-scoped memory markdown
+├── inbox/                        # _inbox/ → distill → _processed/
+├── templates/                    # deliverable shells referenced by producer skills
+└── areas/                        # one subdir per area (ADR 0010)
+    └── <area>/
+        ├── CONTEXT.md            # General Area (## Workflow) OR Staged Area (## Stage Sequence)
+        └── 01_discovery/         # Staged Areas only: numbered stage folders, no stages/ wrapper
+            ├── CONTEXT.md        #   stage contract: Inputs / Working References / Process / Outputs / Verify
+            └── output/           #   the L4 product + edit-gate surface the human reviews
 ```
+
+Intake-generated projects are a subset of this (no `inbox/`, `templates/`, or
+`openclaw/` until added); a blank `--project-slug` scaffold is the full `base/`
+tree with the example areas removed.
 
 ---
 
@@ -306,7 +324,7 @@ Constraints and tradeoffs:
 Wizard-generated bundles use the intake-driven form:
 
 ```bash
-./install.sh --intake-json master.json --project-dir <project-root>
+./install.sh --intake-json master.json --project-slug <name>
 ```
 
 The installer:

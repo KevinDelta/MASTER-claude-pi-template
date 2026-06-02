@@ -32,7 +32,7 @@ ICM Fig. 1 defines a five-layer context hierarchy. MASTER adopts the layer *role
 
 Direct applications of principles 3 and 5.
 
-- **Routing-row tags.** A `Read:` cell may suffix a file with `[ref]` (L3 factory — internalize as constraint) or `[work]` (L4 product — process as input). Documentation by default; `scripts/lint-skills.mjs` enforces that producer-skills never write to `[ref]` paths and that inbox distillation never treats `[work]` files as durable rule.
+- **Routing-row tags.** A `Read:` cell may suffix a file with `[ref]` (L3 factory — internalize as constraint) or `[work]` (L4 product — process as input). Documentation by default. The intended `scripts/lint-skills.mjs` enforcement — producer-skills never write to `[ref]` paths, inbox distillation never treats `[work]` files as durable rule — is deferred (ADR 0010 defers the workspace-pattern linter until real Staged Areas exist).
 - **Narrowest-scope rule.** Reference material lives at the narrowest tier where it applies: stage → `NN_stage/references/`; project → `base/context/`; domain → `domain/context/`; global → `global/`. Prevents the L3 duplication antipattern (a brand-voice file copied into every delivery stage). Migration is a scope audit, not a wholesale relocation.
 
 ## Considered Options
@@ -45,7 +45,7 @@ Direct applications of principles 3 and 5.
 ## Consequences
 
 - The five principles live at the top of `xDOCS/BLUEPRINT.md` as named anchors cited in future ADRs and reviews.
-- `[ref]`/`[work]` tags and the narrowest-scope rule govern factory/product placement; enforced by `scripts/lint-skills.mjs`.
+- `[ref]`/`[work]` tags and the narrowest-scope rule govern factory/product placement; `scripts/lint-skills.mjs` enforcement is deferred (see ADR 0010), documentation-only until then.
 - The L0–L4 vocabulary is documented in `CONTEXT.md` and used as shared language in reviews ("per L4, this stage is treating a working artifact as a rule").
 - **What is NOT introduced:** no `pipeline-skill` runtime flavor; no `CONTEXT.md → GLOSSARY.md` rename; no relocation of routing out of `AGENTS.md`.
 - The concrete folder mechanics that implement these principles — Staged Areas, the stage contract, handoffs — are specified in **ADR 0010**.
